@@ -3,13 +3,14 @@ import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey });
+export const runtime = "nodejs";
+export const preferredRegion = ["fra1", "cdg1"];
 
 /** Opciones del generador */
 type Options = {
   length: "short" | "medium" | "long";
-  tone: "auto" | "calido" | "neutro" | "poetico" | "directo"; // ← auto
-  pov: "auto" | "primera" | "tercera";                         // ← auto
+  tone: "auto" | "calido" | "neutro" | "poetico" | "directo";
+  pov: "auto" | "primera" | "tercera";
   includeHighlights: boolean;
   onlyPinned: boolean;
   pinnedWeight: 1 | 2 | 3;
@@ -18,30 +19,30 @@ type Options = {
 };
 
 function toneText(t: Exclude<Options["tone"], "auto">) {
-  return (
-    t === "poetico" ? "poético, sensible y visual (sin florituras excesivas)" :
-    t === "directo" ? "directo y claro (sin sonar frío)" :
-    t === "calido"  ? "cálido y cercano" :
-                      "neutral y limpio"
-  );
+  return t === "poetico"
+    ? "poético, sensible y visual (sin florituras excesivas)"
+    : t === "directo"
+    ? "directo y claro (sin sonar frío)"
+    : t === "calido"
+    ? "cálido y cercano"
+    : "neutral y limpio";
 }
 
 function povText(p: Exclude<Options["pov"], "auto">) {
-  return p === "primera"
-    ? "primera persona"
-    : "tercera persona cercana";
+  return p === "primera" ? "primera persona" : "tercera persona cercana";
 }
 
-/** Rango de palabras orientativo (se ajustará si hay pocos datos) */
 function desiredWordRange(length: Options["length"]) {
   switch (length) {
-    case "short": return [400, 600] as const;
-    case "long":  return [1200, 1800] as const;
-    default:      return [700, 1000] as const;
+    case "short":
+      return [400, 600] as const;
+    case "long":
+      return [1200, 1800] as const;
+    default:
+      return [700, 1000] as const;
   }
 }
 
-/** Recorta la ambición si hay poca info (feedChars pequeño) */
 function adaptRangeByData(base: readonly [number, number], feedChars: number) {
   if (feedChars < 400) return [150, 300] as const;
   if (feedChars < 900) return [250, 450] as const;
@@ -49,14 +50,18 @@ function adaptRangeByData(base: readonly [number, number], feedChars: number) {
   return base;
 }
 
-/** Tokens máximos a partir del rango de palabras deseado */
-function maxTokensForRange([minW, maxW]: readonly [number, number]) {
-  // 1 palabra ~= 1.25 tokens aprox. + margen
-  return Math.round((maxW * 1.35));
+function maxTokensForRange([, maxW]: readonly [number, number]) {
+  // 1 palabra ~ 1.25 tokens aprox. + margen
+  return Math.round(maxW * 1.35);
 }
 
-/** Construye el prompt con imitación de tono/voz cuando está en AUTO */
-function buildPrompt(feed: string, from: string, to: string, opt: Options, feedChars: number) {
+function buildPrompt(
+  feed: string,
+  from: string,
+  to: string,
+  opt: Options,
+  feedChars: number
+) {
   const baseRange = desiredWordRange(opt.length);
   const finalRange = adaptRangeByData(baseRange, feedChars);
   const [minW, maxW] = finalRange;
@@ -111,7 +116,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const nowY = new Date().getFullYear();
   const from = url.searchParams.get("from") || `${nowY}-01-01`;
-  const to   = url.searchParams.get("to")   || `${nowY}-12-31`;
+  const to = url.searchParams.get("to") || `${nowY}-12-31`;
 
   const opt: Options = {
     length: (url.searchParams.get("length") as Options["length"]) || "medium",
@@ -119,15 +124,19 @@ export async function GET(req: Request) {
     pov: (url.searchParams.get("pov") as Options["pov"]) || "auto",
     includeHighlights: url.searchParams.get("highlights") !== "false",
     onlyPinned: url.searchParams.get("onlyPinned") === "true",
-    pinnedWeight: (Number(url.searchParams.get("pinnedWeight")) as 1|2|3) || 2,
+    pinnedWeight:
+      (Number(url.searchParams.get("pinnedWeight")) as 1 | 2 | 3) || 2,
     strict: url.searchParams.get("strict") !== "false",
     userNotes: url.searchParams.get("notes") || undefined,
   };
 
-  // Auth (cookie)
+  // Auth
   const supabase = createRouteHandlerClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   // Datos
   let q = supabase
@@ -144,43 +153,56 @@ export async function GET(req: Request) {
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data || data.length === 0) {
-    return NextResponse.json({ error: "No hay entradas en ese rango." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No hay entradas en ese rango." },
+      { status: 400 }
+    );
   }
 
-  // Feed (★ en pinned)
-  const feed = data.map(e => `${e.entry_date} [${e.slot}]${e.is_pinned ? "★" : ""} ${e.content}`).join("\n");
+  const feed = data
+    .map(
+      (e) =>
+        `${e.entry_date} [${e.slot}]${e.is_pinned ? "★" : ""} ${e.content}`
+    )
+    .join("\n");
   const feedChars = feed.length;
 
   const prompt = buildPrompt(feed, from, to, opt, feedChars);
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
+  if (!apiKey)
+    return NextResponse.json(
+      { error: "Missing GEMINI_API_KEY" },
+      { status: 500 }
+    );
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" }); // o "gemini-1.5-flash" si prefieres
-  // Temperatura y tokens en función de estricto + tamaño de datos
+  // IA (SDK @google/genai)
+  const ai = new GoogleGenAI({ apiKey });
+
   const baseRange = desiredWordRange(opt.length);
   const finalRange = adaptRangeByData(baseRange, feedChars);
   const maxOutputTokens = maxTokensForRange(finalRange);
 
   const temperature = opt.strict
     ? 0.25
-    : (opt.tone === "poetico" ? 0.9 : opt.tone === "directo" ? 0.5 : 0.65);
-const resp = await ai.responses.generate({
-  model: "gemini-2.5-flash-lite",
-  input: prompt, // pasas el prompt directamente
-  config: { temperature, maxOutputTokens }, // NO 'generationConfig'
-});
-const story = (resp.output_text ?? "").trim();
- });
- const story = (resp.response.text() ?? "").trim();
-});
-const story = (resp.output_text ?? "").trim();
+    : opt.tone === "poetico"
+    ? 0.9
+    : opt.tone === "directo"
+    ? 0.5
+    : 0.65;
 
-  const story = resp.text?.trim() || "";
+  const resp = await ai.responses.generate({
+    model: "gemini-2.5-flash-lite",
+    input: prompt,
+    config: { temperature, maxOutputTokens }, // NO 'generationConfig'
+  });
+
+  const story = (resp.output_text ?? "").trim();
 
   return NextResponse.json({
-    from, to, options: opt,
+    from,
+    to,
+    options: opt,
     words: story ? story.split(/\s+/).length : 0,
     story,
   });
