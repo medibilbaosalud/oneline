@@ -1,0 +1,10 @@
+﻿{
+  "functions": {
+    "app/api/**/route.ts": {
+      "includeFiles": "node_modules/@google/genai/**"
+    },
+    "app/api/**/route.js": {
+      "includeFiles": "node_modules/@google/genai/**"
+    }
+  }
+}
