@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey });
 
 /** Opciones del generador */
 type Options = {
@@ -164,10 +166,12 @@ export async function GET(req: Request) {
   const temperature = opt.strict
     ? 0.25
     : (opt.tone === "poetico" ? 0.9 : opt.tone === "directo" ? 0.5 : 0.65);
-
-  const resp = await model.generateContent({
-  contents: [{ role: "user", parts: [{ text: prompt }] }],
-  generationConfig: { temperature, maxOutputTokens },
+const resp = await ai.responses.generate({
+  model: "gemini-2.5-flash-lite",
+  input: prompt, // pasas el prompt directamente
+  config: { temperature, maxOutputTokens }, // NO 'generationConfig'
+});
+const story = (resp.output_text ?? "").trim();
  });
  const story = (resp.response.text() ?? "").trim();
 });
