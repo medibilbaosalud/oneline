@@ -4,6 +4,7 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { GoogleGenAI } from "@google/genai";
 
 
+
 export const runtime = "nodejs";
 export const preferredRegion = ["fra1", "cdg1"];
 
