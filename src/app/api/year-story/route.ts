@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { GoogleAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /** Opciones del generador */
 type Options = {
@@ -154,8 +154,8 @@ export async function GET(req: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
 
-  const ai = new GoogleAI({ apiKey });
-
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" }); // o "gemini-1.5-flash" si prefieres
   // Temperatura y tokens en función de estricto + tamaño de datos
   const baseRange = desiredWordRange(opt.length);
   const finalRange = adaptRangeByData(baseRange, feedChars);
@@ -165,10 +165,11 @@ export async function GET(req: Request) {
     ? 0.25
     : (opt.tone === "poetico" ? 0.9 : opt.tone === "directo" ? 0.5 : 0.65);
 
-  const resp = await ai.responses.generate({
-  model: "gemini-2.5-flash-lite",
-  input: prompt,
-  config: { temperature, maxOutputTokens },
+  const resp = await model.generateContent({
+  contents: [{ role: "user", parts: [{ text: prompt }] }],
+  generationConfig: { temperature, maxOutputTokens },
+ });
+ const story = (resp.response.text() ?? "").trim();
 });
 const story = (resp.output_text ?? "").trim();
 
