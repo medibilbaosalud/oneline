@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-
-
+// asegura Node en funciones (Gemini SDK no va en edge)
 export const runtime = "nodejs";
 export const preferredRegion = ["fra1", "cdg1"];
 
-/** Opciones del generador */
+// ---- Tipos y utilidades mínimas ----
 type Options = {
   length: "short" | "medium" | "long";
   tone: "auto" | "calido" | "neutro" | "poetico" | "directo";
@@ -21,30 +20,20 @@ type Options = {
 };
 
 function toneText(t: Exclude<Options["tone"], "auto">) {
-  return t === "poetico"
-    ? "poético, sensible y visual (sin florituras excesivas)"
-    : t === "directo"
-    ? "directo y claro (sin sonar frío)"
-    : t === "calido"
-    ? "cálido y cercano"
-    : "neutral y limpio";
+  return t === "poetico" ? "poético y visual (sin florituras)" :
+         t === "directo" ? "directo y claro (sin sonar frío)" :
+         t === "calido"  ? "cálido y cercano" :
+                           "neutral y limpio";
 }
-
 function povText(p: Exclude<Options["pov"], "auto">) {
   return p === "primera" ? "primera persona" : "tercera persona cercana";
 }
 
 function desiredWordRange(length: Options["length"]) {
-  switch (length) {
-    case "short":
-      return [400, 600] as const;
-    case "long":
-      return [1200, 1800] as const;
-    default:
-      return [700, 1000] as const;
-  }
+  if (length === "short") return [400, 600] as const;
+  if (length === "long")  return [1200, 1800] as const;
+  return [700, 1000] as const;
 }
-
 function adaptRangeByData(base: readonly [number, number], feedChars: number) {
   if (feedChars < 400) return [150, 300] as const;
   if (feedChars < 900) return [250, 450] as const;
@@ -52,73 +41,59 @@ function adaptRangeByData(base: readonly [number, number], feedChars: number) {
   return base;
 }
 
-function maxTokensForRange([, maxW]: readonly [number, number]) {
-  // 1 palabra ~ 1.25 tokens aprox. + margen
-  return Math.round(maxW * 1.35);
-}
-
-function buildPrompt(
-  feed: string,
-  from: string,
-  to: string,
-  opt: Options,
-  feedChars: number
-) {
-  const baseRange = desiredWordRange(opt.length);
-  const finalRange = adaptRangeByData(baseRange, feedChars);
-  const [minW, maxW] = finalRange;
+function buildPrompt(feed: string, from: string, to: string, opt: Options, feedChars: number) {
+  const [minW, maxW] = adaptRangeByData(desiredWordRange(opt.length), feedChars);
 
   const toneLine =
     opt.tone === "auto"
-      ? "Imita con moderación el TONO predominante de las entradas (registro, energía, vocabulario, coloquialismos, emojis). Si varía entre días, elige un término medio natural."
+      ? "Imita con moderación el tono predominante de las entradas."
       : `Tono: ${toneText(opt.tone)}`;
 
   const povLine =
     opt.pov === "auto"
-      ? "Escribe en PRIMERA persona si las entradas mayoritariamente están en primera; en caso contrario usa TERCERA cercana."
+      ? "Usa PRIMERA persona si las entradas lo sugieren; si no, TERCERA cercana."
       : `Voz: ${povText(opt.pov)}`;
 
-  const reglasEstrictas = `
-REGLAS DE FIDELIDAD (obligatorias):
-- NO inventes hechos, motivaciones, personas o lugares no presentes en las entradas.
-- Evita inferencias temporales/estacionales (“rutina”, “otoño”, etc.) salvo que se mencionen explícitas.
-- Si los datos son escasos, prioriza concisión y fidelidad sobre longitud.
-- Usa *micro-citas* en cursiva con fragmentos EXACTOS cuando aporten color.
-- Da ${opt.pinnedWeight}x de peso a las líneas marcadas con ★.
-- Cada párrafo debe apoyarse en uno o varios hechos del feed (evita afirmaciones sin base).`.trim();
+  const reglas = `
+REGLAS DE FIDELIDAD:
+- No inventes hechos, personas o lugares no presentes en las entradas.
+- Evita inferencias estacionales/temporales salvo mención explícita.
+- Si hay pocos datos, prima concisión y fidelidad.
+- Da ${opt.pinnedWeight}x de peso a las líneas marcadas con ★.`.trim();
 
-  const notasUsuario = opt.userNotes?.trim()
+  const notas = opt.userNotes?.trim()
     ? `\nNOTAS DEL USUARIO (si no contradicen las reglas):\n${opt.userNotes.trim()}\n`
     : "";
 
   return `
-Rol: Eres un biógrafo cuidadoso. Escribe en español.
+Rol: Biógrafo cuidadoso. Escribe en español.
 
-Objetivo: Redacta una HISTORIA continua del periodo ${from}–${to} basada SOLO en las entradas.
+Objetivo: redacta una HISTORIA continua del periodo ${from}–${to} basada SOLO en las entradas.
 
 ${toneLine}
 ${povLine}
-Longitud objetivo: ${minW}–${maxW} palabras.
-Comienzo: entra directo al primer párrafo (sin “Aquí tienes…”, ni meta-comentarios).
+Longitud: ${minW}–${maxW} palabras. Empieza directo al primer párrafo.
 
-${reglasEstrictas}
-${notasUsuario}
+${reglas}
+${notas}
 
-ENTRADAS (orden cronológico, YYYY-MM-DD [slot][★ si pinned] texto):
+ENTRADAS (YYYY-MM-DD [slot][★ si pinned] texto):
 ${feed}
 
 SALIDA:
-- SOLO Markdown (sin encabezados genéricos).
-- Cuerpo: párrafos coherentes y FIELES al texto dado.
-- ${opt.includeHighlights ? "Al final añade **Destellos del periodo (10 puntos)** con puntos muy breves, fieles al feed." : "No añadas listas al final."}
-- Cierra con **Si pudiera decirle algo a mi yo de enero…** (máx. 3–4 líneas).`.trim();
+- SOLO Markdown.
+- Párrafos coherentes y fieles al texto dado.
+- ${opt.includeHighlights ? "Al final añade **Destellos del periodo (10 puntos)**." : "No añadas listas al final."}
+- Cierra con **Si pudiera decirle algo a mi yo de enero…** (máx. 3–4 líneas).
+`.trim();
 }
 
+// ---- Handler principal ----
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const nowY = new Date().getFullYear();
   const from = url.searchParams.get("from") || `${nowY}-01-01`;
-  const to = url.searchParams.get("to") || `${nowY}-12-31`;
+  const to   = url.searchParams.get("to")   || `${nowY}-12-31`;
 
   const opt: Options = {
     length: (url.searchParams.get("length") as Options["length"]) || "medium",
@@ -126,19 +101,15 @@ export async function GET(req: Request) {
     pov: (url.searchParams.get("pov") as Options["pov"]) || "auto",
     includeHighlights: url.searchParams.get("highlights") !== "false",
     onlyPinned: url.searchParams.get("onlyPinned") === "true",
-    pinnedWeight:
-      (Number(url.searchParams.get("pinnedWeight")) as 1 | 2 | 3) || 2,
+    pinnedWeight: (Number(url.searchParams.get("pinnedWeight")) as 1|2|3) || 2,
     strict: url.searchParams.get("strict") !== "false",
     userNotes: url.searchParams.get("notes") || undefined,
   };
 
   // Auth
   const supabase = createRouteHandlerClient({ cookies });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user)
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   // Datos
   let q = supabase
@@ -149,61 +120,28 @@ export async function GET(req: Request) {
     .lte("entry_date", to)
     .order("entry_date", { ascending: true })
     .order("slot", { ascending: true });
-
   if (opt.onlyPinned) q = q.eq("is_pinned", true);
 
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data || data.length === 0) {
-    return NextResponse.json(
-      { error: "No hay entradas en ese rango." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "No hay entradas en ese rango." }, { status: 400 });
   }
 
-  const feed = data
-    .map(
-      (e) =>
-        `${e.entry_date} [${e.slot}]${e.is_pinned ? "★" : ""} ${e.content}`
-    )
-    .join("\n");
-  const feedChars = feed.length;
-
-  const prompt = buildPrompt(feed, from, to, opt, feedChars);
+  const feed = data.map(e => `${e.entry_date} [${e.slot}]${e.is_pinned ? "★" : ""} ${e.content}`).join("\n");
+  const prompt = buildPrompt(feed, from, to, opt, feed.length);
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey)
-    return NextResponse.json(
-      { error: "Missing GEMINI_API_KEY" },
-      { status: 500 }
-    );
+  if (!apiKey) return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
 
-  // IA (SDK @google/genai)
-  const ai = new GoogleGenAI({ apiKey });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const baseRange = desiredWordRange(opt.length);
-  const finalRange = adaptRangeByData(baseRange, feedChars);
-  const maxOutputTokens = maxTokensForRange(finalRange);
-
-  const temperature = opt.strict
-    ? 0.25
-    : opt.tone === "poetico"
-    ? 0.9
-    : opt.tone === "directo"
-    ? 0.5
-    : 0.65;
-
-const resp = await ai.responses.generate({
-  model: "gemini-2.5-flash-lite",
-  input: prompt,
-  config: { temperature, maxOutputTokens }, // 👈 no 'generationConfig'
-});
-const story = (resp.output_text ?? "").trim();
+  const resp = await model.generateContent(prompt);
+  const story = (resp.response.text() ?? "").trim();
 
   return NextResponse.json({
-    from,
-    to,
-    options: opt,
+    from, to, options: opt,
     words: story ? story.split(/\s+/).length : 0,
     story,
   });
