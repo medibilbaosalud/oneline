@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { GoogleGenAI } from "@google/genai";
 
+
 export const runtime = "nodejs";
 export const preferredRegion = ["fra1", "cdg1"];
 
@@ -191,13 +192,12 @@ export async function GET(req: Request) {
     ? 0.5
     : 0.65;
 
-  const resp = await ai.responses.generate({
-    model: "gemini-2.5-flash-lite",
-    input: prompt,
-    config: { temperature, maxOutputTokens }, // NO 'generationConfig'
-  });
-
-  const story = (resp.output_text ?? "").trim();
+const resp = await ai.responses.generate({
+  model: "gemini-2.5-flash-lite",
+  input: prompt,
+  config: { temperature, maxOutputTokens }, // 👈 no 'generationConfig'
+});
+const story = (resp.output_text ?? "").trim();
 
   return NextResponse.json({
     from,
