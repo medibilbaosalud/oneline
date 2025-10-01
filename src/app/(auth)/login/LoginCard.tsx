@@ -1,57 +1,101 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function LoginCard() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState<null | 'sign-in' | 'sign-up'>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSignIn = async () => {
+    setMessage(null);
+    setBusy('sign-in');
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    setBusy(null);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    router.push('/today');
+    router.refresh();
+  };
+
+  const handleSignUp = async () => {
+    setMessage(null);
+    setBusy('sign-up');
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    setBusy(null);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    // Si tu proyecto tiene "Email confirmations" activadas, el user debe confirmar por email
+    setMessage('Check your inbox to confirm your account.');
+  };
+
+  const disabled = busy !== null || !email || !password;
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
-      <h1 className="mb-1 text-2xl font-semibold">Bienvenido a OneLine</h1>
-      <p className="mb-6 text-sm text-neutral-400">
-        Escribe una línea cada día ✍️
-      </p>
+    <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-neutral-900/60 p-8 shadow-xl backdrop-blur">
+      <h1 className="text-3xl font-semibold">Welcome to OneLine</h1>
+      <p className="mt-2 text-sm text-white/70">Write one line every day ✍️</p>
 
-      <form className="space-y-4">
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-300">Email</label>
+      <div className="mt-6 space-y-4">
+        <div>
+          <label className="mb-1 block text-sm text-white/80">Email</label>
           <input
-            className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 outline-none placeholder:text-neutral-500 focus:border-indigo-400/50"
-            placeholder="tu@email.com"
             type="email"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 outline-none ring-0 focus:border-white/20"
             autoComplete="email"
           />
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm text-neutral-300">Contraseña</label>
+        <div>
+          <label className="mb-1 block text-sm text-white/80">Password</label>
           <input
-            className="w-full rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 outline-none placeholder:text-neutral-500 focus:border-indigo-400/50"
-            placeholder="••••••••"
             type="password"
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 outline-none ring-0 focus:border-white/20"
             autoComplete="current-password"
           />
         </div>
 
+        {message && (
+          <p className="text-sm text-red-400">{message}</p>
+        )}
+
         <button
-          type="button"
-          className="mt-2 w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400"
+          onClick={handleSignIn}
+          disabled={disabled}
+          className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-500/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Iniciar sesión
+          {busy === 'sign-in' ? 'Signing in…' : 'Sign in'}
         </button>
 
         <button
-          type="button"
-          className="w-full rounded-lg border border-white/10 px-4 py-2 text-neutral-200 hover:bg-white/5"
+          onClick={handleSignUp}
+          disabled={busy !== null || !email || !password}
+          className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Crear cuenta
+          {busy === 'sign-up' ? 'Creating account…' : 'Create account'}
         </button>
-      </form>
+      </div>
     </div>
   );
 }
