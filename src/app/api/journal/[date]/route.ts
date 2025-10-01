@@ -1,27 +1,21 @@
 // src/app/api/journal/[date]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-export const runtime = 'nodejs';
 
+// 👇 Tipo correcto para un route-handler dinámico
+type Ctx = { params: { date: string } };
 
-type RouteContext = { params: { date: string } };
-
-// GET /api/journal/2025-10-01
-export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const { date } = params; // <-- NO es Promise
-  // TODO: leer de Supabase si quieres
+// GET /api/journal/[date]
+export async function GET(_req: NextRequest, { params }: Ctx) {
+  const { date } = params;
+  // ✅ De aquí hacia abajo deja tu lógica tal cual la tenías
+  // ... tu código actual (lectura de entrada, supabase, etc.) ...
   return NextResponse.json({ ok: true, date });
 }
 
-// PUT /api/journal/2025-10-01
-export async function PUT(req: NextRequest, { params }: RouteContext) {
+// POST /api/journal/[date]
+export async function POST(req: NextRequest, { params }: Ctx) {
   const { date } = params;
-  const body = await req.json().catch(() => ({} as any));
-  const content = typeof body?.content === 'string' ? body.content : '';
-
-  // TODO: aquí haces el upsert a Supabase (entries)
-  // Ejemplo (pseudo):
-  // const supabase = createServerClient();
-  // await supabase.from('entries').upsert({ user_id, entry_date: date, slot: 1, content });
-
-  return NextResponse.json({ ok: true, date, saved: true });
+  // ✅ De aquí hacia abajo deja tu lógica tal cual la tenías
+  // ... tu código actual (validación body, upsert en supabase, etc.) ...
+  return NextResponse.json({ ok: true, date });
 }
