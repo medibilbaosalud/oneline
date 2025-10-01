@@ -1,21 +1,32 @@
 // src/app/api/journal/[date]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-// 👇 Tipo correcto para un route-handler dinámico
 type Ctx = { params: { date: string } };
 
-// GET /api/journal/[date]
+// GET /api/journal/2025-10-01
 export async function GET(_req: NextRequest, { params }: Ctx) {
-  const { date } = params;
-  // ✅ De aquí hacia abajo deja tu lógica tal cual la tenías
-  // ... tu código actual (lectura de entrada, supabase, etc.) ...
+  const { date } = params; // <- params es un OBJETO, NO un Promise
+  // TODO: lee las entradas de ese día desde tu DB si quieres
   return NextResponse.json({ ok: true, date });
 }
 
-// POST /api/journal/[date]
+// POST /api/journal/2025-10-01
 export async function POST(req: NextRequest, { params }: Ctx) {
   const { date } = params;
-  // ✅ De aquí hacia abajo deja tu lógica tal cual la tenías
-  // ... tu código actual (validación body, upsert en supabase, etc.) ...
-  return NextResponse.json({ ok: true, date });
+  const body = await req.json().catch(() => ({} as any));
+
+  // TODO: guarda en DB. Aquí sólo validamos y devolvemos.
+  if (typeof body?.content !== 'string') {
+    return NextResponse.json(
+      { ok: false, error: 'content must be a string' },
+      { status: 400 }
+    );
+  }
+
+  return NextResponse.json({ ok: true, date, saved: { content: body.content } });
+}
+
+// Opcional (por si quieres controlar métodos no soportados)
+export function OPTIONS() {
+  return NextResponse.json({}, { status: 204 });
 }
