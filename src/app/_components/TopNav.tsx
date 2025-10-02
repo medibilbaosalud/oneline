@@ -2,48 +2,42 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import AuthButton from './AuthButton';
 
-const links = [
-  { href: '/today', label: 'Today' },
-  { href: '/summaries', label: 'Summaries' },
-  { href: '/settings', label: 'Settings' },
-];
+function NavLink({ href, label }: { href: string; label: string }) {
+  const pathname = usePathname();
+  const active = pathname === href || pathname?.startsWith(href + '/');
+  return (
+    <Link
+      href={href}
+      className={`rounded-md px-3 py-2 text-sm transition ${
+        active ? 'bg-neutral-800 text-white' : 'text-neutral-300 hover:bg-neutral-800/60'
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
 
 export default function TopNav() {
-  const pathname = usePathname() ?? '/';
-
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-neutral-950/70 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-4">
-        <Link
-          href="/today"
-          className="mr-2 rounded-md px-2 py-1 text-sm font-semibold text-neutral-200 hover:bg-white/5"
-        >
-          OneLine
-        </Link>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-neutral-950/70 backdrop-blur">
+      <nav className="mx-auto flex h-12 max-w-5xl items-center justify-between px-3">
+        <div className="flex items-center gap-2">
+          <Link href="/" className="rounded-md px-2 py-1 text-sm font-semibold text-white hover:bg-neutral-800/60">
+            OneLine
+          </Link>
+          <div className="ml-2 hidden gap-1 sm:flex">
+            <NavLink href="/today" label="Today" />
+            <NavLink href="/summaries" label="Summaries" />
+            <NavLink href="/settings" label="Settings" />
+          </div>
+        </div>
 
-        <nav className="flex items-center gap-1">
-          {links.map((l) => {
-            const active =
-              pathname === l.href ||
-              (l.href !== '/' && pathname.startsWith(l.href + '/'));
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={[
-                  'rounded-md px-3 py-1.5 text-sm transition-colors',
-                  active
-                    ? 'bg-white/10 text-white'
-                    : 'text-neutral-400 hover:bg-white/5 hover:text-white',
-                ].join(' ')}
-              >
-                {l.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+        {/* Botón de autenticación a la derecha */}
+        <AuthButton />
+      </nav>
     </header>
   );
 }
+
