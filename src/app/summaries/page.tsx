@@ -1,10 +1,10 @@
-// src/app/summaries/page.tsx
 'use client';
 
-// ⬇️ Solo una vez. Estas tres líneas evitan el prerender y el caché estático.
+// Forzamos que NO se prerenderice ni se cachee.
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
+// ❌ Elimina cualquier `export const revalidate = ...` y `export const fetchCache = ...`
+// ❌ No importes nada llamado `revalidate` de 'next/cache' en ESTE archivo.
+
 
 // (tu código actual)
 import { useEffect, useMemo, useState } from 'react';
