@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import SummariesClient from './SummariesClient';
 
+
 type Summary = {
   id: string;
   period: string;
