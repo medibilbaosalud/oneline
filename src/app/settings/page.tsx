@@ -2,121 +2,84 @@
 
 import { useEffect, useState } from 'react';
 
-type Settings = {
-  user_id: string;
-  frequency: 'weekly' | 'monthly' | 'yearly';
-  delivery: 'in_app' | 'email';
-  timezone: string;
-  hour_utc: number;
-  last_summary_at: string | null;
-};
+type Frequency = 'off' | 'weekly' | 'monthly' | 'yearly';
+const STORAGE_KEY = 'oneline:summary_frequency';
 
 export default function SettingsPage() {
-  const [s, setS] = useState<Settings | null>(null);
+  const [freq, setFreq] = useState<Frequency>('off');
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json())
-      .then(setS);
+    try {
+      const v = localStorage.getItem(STORAGE_KEY) as Frequency | null;
+      if (v) setFreq(v);
+    } catch { /* noop */ }
   }, []);
 
-  async function save() {
-    if (!s) return;
+  function save() {
     setSaving(true);
     try {
-      await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          frequency: s.frequency,
-          delivery: s.delivery,
-          timezone: s.timezone,
-          hour_utc: s.hour_utc,
-        }),
-      });
+      localStorage.setItem(STORAGE_KEY, freq);
+      setSavedAt(new Date().toLocaleString());
     } finally {
       setSaving(false);
     }
   }
 
-  if (!s) return null;
-
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-50">
-      <div className="mx-auto max-w-2xl p-6 space-y-8">
-        <h1 className="text-2xl font-semibold">Settings</h1>
+    <main className="min-h-screen">
+      <div className="mx-auto max-w-3xl p-6">
+        <h1 className="mb-6 text-2xl font-semibold">Settings</h1>
 
-        <section className="rounded-xl bg-neutral-900/60 p-5 ring-1 ring-white/10">
-          <h2 className="mb-4 font-medium">Summary cadence</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {(['weekly', 'monthly', 'yearly'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setS({ ...s, frequency: f })}
-                className={`rounded-lg px-3 py-2 capitalize ${
-                  s.frequency === f ? 'bg-indigo-500 text-white' : 'bg-neutral-800 hover:bg-neutral-700'
-                }`}
-              >
-                {f}
-              </button>
+        <section className="space-y-4 rounded-2xl bg-neutral-900/60 p-5 ring-1 ring-white/10">
+          <fieldset className="space-y-2">
+            <legend className="text-sm text-neutral-400">
+              Summary delivery frequency
+            </legend>
+
+            {([
+              { value: 'off', label: 'Disabled' },
+              { value: 'weekly', label: 'Weekly' },
+              { value: 'monthly', label: 'Monthly' },
+              { value: 'yearly', label: 'Yearly' },
+            ] as { value: Frequency; label: string }[]).map((opt) => (
+              <label key={opt.value} className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="freq"
+                  value={opt.value}
+                  checked={freq === opt.value}
+                  onChange={() => setFreq(opt.value)}
+                  className="size-4"
+                />
+                <span>{opt.label}</span>
+              </label>
             ))}
-          </div>
-        </section>
+          </fieldset>
 
-        <section className="rounded-xl bg-neutral-900/60 p-5 ring-1 ring-white/10">
-          <h2 className="mb-4 font-medium">Delivery</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {(['in_app', 'email'] as const).map((d) => (
-              <button
-                key={d}
-                onClick={() => setS({ ...s, delivery: d })}
-                className={`rounded-lg px-3 py-2 capitalize ${
-                  s.delivery === d ? 'bg-indigo-500 text-white' : 'bg-neutral-800 hover:bg-neutral-700'
-                }`}
-              >
-                {d.replace('_', ' ')}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : 'Save preferences'}
+            </button>
+            {savedAt && (
+              <span className="text-xs text-neutral-400">
+                Saved at {savedAt}
+              </span>
+            )}
           </div>
-          {s.delivery === 'email' && (
-            <p className="mt-3 text-sm opacity-70">
-              * Email sending not enabled yet. We’ll add Resend or Gmail later.
-            </p>
-          )}
-        </section>
 
-        <section className="rounded-xl bg-neutral-900/60 p-5 ring-1 ring-white/10">
-          <h2 className="mb-4 font-medium">Time</h2>
-          <div className="flex gap-3 items-center">
-            <label className="text-sm opacity-70">UTC hour</label>
-            <input
-              type="number"
-              min={0}
-              max={23}
-              value={s.hour_utc}
-              onChange={(e) => setS({ ...s, hour_utc: Number(e.target.value) })}
-              className="w-20 rounded bg-neutral-800 px-2 py-1 outline-none"
-            />
-            <input
-              type="text"
-              value={s.timezone}
-              onChange={(e) => setS({ ...s, timezone: e.target.value })}
-              className="flex-1 rounded bg-neutral-800 px-3 py-1 outline-none"
-              placeholder="e.g. Europe/Madrid"
-            />
-          </div>
+          <p className="text-xs text-neutral-500">
+            This only stores your preference in your browser for now, so your
+            deployment stays lean and green. We can wire this to notifications
+            later (email or in-app) without touching your current setup.
+          </p>
         </section>
-
-        <div className="flex justify-end">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="rounded-lg bg-indigo-500 px-4 py-2 font-medium hover:bg-indigo-400 disabled:opacity-40"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
       </div>
     </main>
   );
