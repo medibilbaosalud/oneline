@@ -1,4 +1,9 @@
 'use client';
+// src/app/summaries/page.tsx
+export const dynamic = 'force-dynamic';  // evita SSG
+export const revalidate = 0;             // sin caché estática
+
+// (tu código actual debajo)
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
