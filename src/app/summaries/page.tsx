@@ -2,6 +2,10 @@
 // src/app/summaries/page.tsx
 export const dynamic = 'force-dynamic';  // evita SSG
 export const revalidate = 0;             // sin caché estática
+// o también:
+// export const fetchCache = 'force-no-store';
+// export const revalidate = 0;
+
 
 // (tu código actual debajo)
 
