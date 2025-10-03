@@ -1,42 +1,57 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function AuthButton() {
   const supabase = createClientComponentClient();
-  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<null | { id: string }>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return;
+      setUser(data.user ?? null);
+      setLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
   }, [supabase]);
 
-  const signInGoogle = async () => {
-    const origin = window.location.origin;
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${origin}/auth/callback` },
-    });
-  };
+  if (loading) {
+    return (
+      <div className="h-8 w-16 rounded bg-neutral-800/70 animate-pulse" />
+    );
+  }
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    window.location.assign("/today");
-  };
+  if (!user) {
+    // Sin sesión → link a /login (magic link)
+    return (
+      <Link
+        href="/login"
+        className="rounded-lg bg-indigo-500 px-3 py-2 text-sm font-medium hover:bg-indigo-400"
+      >
+        Sign in
+      </Link>
+    );
+  }
 
-  return user ? (
+  // Con sesión → botón para cerrar sesión
+  return (
     <button
-      onClick={signOut}
-      className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm hover:bg-neutral-700"
+      onClick={async () => {
+        await supabase.auth.signOut();
+        router.refresh(); // refresca el layout para que cambie el botón
+      }}
+      className="rounded-lg bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
     >
       Sign out
-    </button>
-  ) : (
-    <button
-      onClick={signInGoogle}
-      className="rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-400"
-    >
-      Sign in
     </button>
   );
 }
