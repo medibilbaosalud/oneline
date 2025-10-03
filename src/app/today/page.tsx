@@ -1,56 +1,75 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { quoteOfToday } from '@/lib/quotes'; // cambia a '../../lib/quotes' si no usas alias '@'
 
-const MAX_LINES = 5;
-const MAX_CHARS = 240;
+type Q = { t: string; a: string };
 
-function clampInput(raw: string) {
-  // Normaliza CRLF a \n, limita líneas y luego el total de caracteres
-  const lines = raw.replace(/\r/g, '').split('\n').slice(0, MAX_LINES);
-  return lines.join('\n').slice(0, MAX_CHARS);
-}
+// ——— One-Line limit ———
+const MAX = 180;
 
-function formatLongDate(d = new Date()) {
-  return new Intl.DateTimeFormat('en-US', {
+// ——— Curated quotes ———
+const QUOTES: Q[] = [
+  { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
+  { t: 'The only way to do great work is to love what you do.', a: 'Steve Jobs' },
+  { t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.', a: 'Steve Jobs' },
+  { t: 'Innovation distinguishes between a leader and a follower.', a: 'Steve Jobs' },
+  { t: 'Simple can be harder than complex; you have to work hard to get your thinking clean to make it simple.', a: 'Steve Jobs' },
+  { t: 'Design is not just what it looks like and feels like. Design is how it works.', a: 'Steve Jobs' },
+  { t: 'Everything around you that you call life was made up by people that were no smarter than you.', a: 'Steve Jobs' },
+
+  { t: 'The journey of a thousand miles begins with a single step.', a: 'Lao Tzu' },
+  { t: 'Act as if what you do makes a difference. It does.', a: 'William James' },
+  { t: 'How we spend our days is, of course, how we spend our lives.', a: 'Annie Dillard' },
+  { t: 'It is not that we have a short time to live, but that we waste much of it.', a: 'Seneca' },
+  { t: 'You have power over your mind — not outside events. Realize this, and you will find strength.', a: 'Marcus Aurelius' },
+  { t: "You can't use up creativity. The more you use, the more you have.", a: 'Maya Angelou' },
+  { t: 'Be faithful in small things because it is in them that your strength lies.', a: 'Mother Teresa' },
+  { t: 'What you seek is seeking you.', a: 'Rumi' },
+  { t: 'It does not matter how slowly you go as long as you do not stop.', a: 'Confucius' },
+  { t: 'Whatever you can do or dream you can, begin it. Boldness has genius, power and magic in it.', a: 'Johann Wolfgang von Goethe' },
+  { t: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.', a: 'Will Durant' },
+  { t: 'You can do anything, but not everything.', a: 'David Allen' },
+  { t: 'If you are going through hell, keep going.', a: 'Winston Churchill' },
+  { t: "Whether you think you can, or you think you can't — you're right.", a: 'Henry Ford' },
+  { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
+  { t: 'The best way to predict the future is to invent it.', a: 'Alan Kay' },
+  { t: 'No zero days. One line is enough.', a: 'OneLine' },
+];
+
+function prettyDate(d = new Date()) {
+  return d.toLocaleDateString('en-US', {
     weekday: 'long',
-    year: 'numeric',
     month: 'long',
     day: 'numeric',
-  }).format(d);
+    year: 'numeric',
+  });
+}
+
+function quoteOfToday(): Q {
+  const key = Number(new Date().toISOString().slice(0, 10).replace(/-/g, '')); // YYYYMMDD
+  const idx = key % QUOTES.length;
+  return QUOTES[idx];
 }
 
 export default function TodayPage() {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
-
   const quote = useMemo(() => quoteOfToday(), []);
-  const today = useMemo(() => new Date(), []);
-  const dateLabel = useMemo(() => formatLongDate(today), [today]);
 
-  const charCount = text.length;
-  const lineCount = text ? text.split('\n').length : 0;
+  const count = text.length;
 
   async function handleSave() {
-    const content = text.trim();
-    if (!content) return;
-
+    if (!text.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/journal/today', {
+      // TODO: ajusta a tu API real si ya la tienes
+      await fetch('/api/journal/today', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: text }),
       });
-      if (!res.ok) {
-        console.error('Failed to save entry', await res.text());
-      } else {
-        // Si quieres limpiar después de guardar:
-        // setText('');
-      }
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     } finally {
       setSaving(false);
     }
@@ -59,43 +78,26 @@ export default function TodayPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950 text-neutral-50">
       <div className="mx-auto max-w-3xl p-6">
-        {/* Header */}
-        <p className="mb-2 text-xs tracking-wider text-neutral-400">TODAY</p>
-        <h1 className="mb-4 text-3xl font-semibold">{dateLabel}</h1>
+        <header className="mb-8">
+          <p className="text-xs uppercase tracking-widest text-neutral-400">Today</p>
+          <h1 className="mt-1 text-3xl font-semibold md:text-4xl">{prettyDate()}</h1>
+          <p className="mt-4 italic text-neutral-300">
+            “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
+          </p>
+        </header>
 
-        {/* Quote of the day */}
-        <p className="mb-8 text-lg text-neutral-300">
-          <span className="italic">“{quote.text}”</span>
-          {quote.author ? <span className="ml-2 text-neutral-400">— {quote.author}</span> : null}
-        </p>
-
-        {/* Editor */}
         <section className="rounded-2xl bg-neutral-900/60 p-5 ring-1 ring-white/10 backdrop-blur">
-          <label htmlFor="entry" className="sr-only">
-            Write your one-line entry
-          </label>
           <textarea
-            id="entry"
             value={text}
-            onChange={(e) => setText(clampInput(e.target.value))}
-            maxLength={MAX_CHARS}
-            rows={5}
-            placeholder="Up to 5 lines — one line that captures your day…"
+            onChange={(e) => setText(e.target.value)}
+            maxLength={MAX}
+            placeholder="One line that captures your day…"
             className="h-48 w-full resize-none bg-transparent leading-relaxed outline-none placeholder:text-neutral-500"
-            spellCheck={false}
           />
-
           <div className="mt-4 flex items-center justify-between">
-            <span
-              className={`text-sm ${
-                charCount >= MAX_CHARS || lineCount >= MAX_LINES
-                  ? 'text-rose-400'
-                  : 'text-neutral-400'
-              }`}
-            >
-              {lineCount}/{MAX_LINES} lines · {charCount}/{MAX_CHARS} chars
+            <span className={`text-sm ${count === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
+              {count}/{MAX}
             </span>
-
             <div className="flex gap-3">
               <button
                 type="button"
@@ -114,11 +116,11 @@ export default function TodayPage() {
               </button>
             </div>
           </div>
-
-          <p className="mt-3 text-xs text-neutral-500">
-            Up to 5 lines • 240 characters. Tip: one honest sentence beats a perfect paragraph.
-          </p>
         </section>
+
+        <p className="mt-6 text-center text-xs text-neutral-500">
+          Tip: one honest sentence beats a perfect paragraph.
+        </p>
       </div>
     </main>
   );

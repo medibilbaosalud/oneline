@@ -1,49 +1,41 @@
-// src/app/api/settings/route.ts
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-
-type Body = { frequency?: 'weekly' | 'monthly' | 'yearly' };
+import { NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export async function GET() {
   const supabase = createRouteHandlerClient({ cookies });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
 
   const { data, error } = await supabase
-    .from('settings')
-    .select('frequency')
-    .eq('user_id', user.id)
+    .from("user_settings")
+    .select("*")
+    .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ ok: false, error }, { status: 500 });
 
-  return NextResponse.json({ frequency: data?.frequency ?? 'yearly' });
+  // Si no existe, devuelve por defecto
+  return NextResponse.json({
+    ok: true,
+    settings: data ?? { user_id: user.id, frequency: "weekly" },
+  });
 }
 
-export async function POST(req: Request) {
-  const supabase = createRouteHandlerClient({ cookies });
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
-
-  const body = (await req.json()) as Body;
-  const { frequency } = body;
-
-  if (frequency && !['weekly', 'monthly', 'yearly'].includes(frequency)) {
-    return NextResponse.json({ error: 'invalid frequency' }, { status: 400 });
+export async function PUT(req: Request) {
+  const { frequency }:{frequency?: "weekly"|"monthly"|"yearly"} = await req.json();
+  if (!["weekly","monthly","yearly"].includes(frequency || "")) {
+    return NextResponse.json({ ok: false }, { status: 400 });
   }
 
+  const supabase = createRouteHandlerClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+
   const { error } = await supabase
-    .from('settings')
-    .upsert({ user_id: user.id, frequency }, { onConflict: 'user_id' });
+    .from("user_settings")
+    .upsert({ user_id: user.id, frequency });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, frequency: frequency ?? null });
+  if (error) return NextResponse.json({ ok: false, error }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }
