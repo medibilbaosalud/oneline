@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+// src/app/auth/callback/route.ts
+import { NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
-export async function GET(req: NextRequest) {
-  const code = new URL(req.url).searchParams.get("code");
-
-  if (code) {
-    const supabase = createRouteHandlerClient({ cookies });
-    await supabase.auth.exchangeCodeForSession(code);
-  }
-  return NextResponse.redirect(new URL("/today", req.url));
+export async function GET(request: Request) {
+  const supabase = createRouteHandlerClient({ cookies });
+  // Intercambia el "code" por una sesión y guarda cookies
+  await supabase.auth.exchangeCodeForSession(request.url);
+  // Redirige al diario
+  return NextResponse.redirect(new URL('/today', request.url));
 }
