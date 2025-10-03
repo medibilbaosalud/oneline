@@ -1,42 +1,40 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useEffect, useState } from "react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function AuthButton() {
   const supabase = createClientComponentClient();
-  const [email, setEmail] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setEmail(session?.user?.email ?? null);
-    })();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, [supabase]);
 
-  async function handleSignOut() {
+  const signInGoogle = async () => {
+    const origin = window.location.origin;
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${origin}/auth/callback` },
+    });
+  };
+
+  const signOut = async () => {
     await supabase.auth.signOut();
-    window.location.assign('/today'); // o '/' si prefieres
-  }
+    window.location.assign("/today");
+  };
 
-  function goToSignIn() {
-    window.location.assign('/auth');  // la página de login (punto 2 del mensaje anterior)
-  }
-
-  return email ? (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-neutral-400">{email}</span>
-      <button
-        onClick={handleSignOut}
-        className="rounded-lg bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
-      >
-        Sign out
-      </button>
-    </div>
+  return user ? (
+    <button
+      onClick={signOut}
+      className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm hover:bg-neutral-700"
+    >
+      Sign out
+    </button>
   ) : (
     <button
-      onClick={goToSignIn}
-      className="rounded-lg bg-indigo-500 px-3 py-2 text-sm text-white hover:bg-indigo-400"
+      onClick={signInGoogle}
+      className="rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-400"
     >
       Sign in
     </button>
