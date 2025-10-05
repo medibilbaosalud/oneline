@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
+type Mode = "signin" | "signup";
+
 export default function LoginClient() {
   const router = useRouter();
   const params = useSearchParams();
@@ -12,10 +14,12 @@ export default function LoginClient() {
 
   const supabase = createClientComponentClient();
 
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   // Si ya estás logueado, vete directo a "next"
   useEffect(() => {
@@ -24,66 +28,109 @@ export default function LoginClient() {
     });
   }, [next, router, supabase]);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setPending(true);
     setError(null);
+    setInfo(null);
+    setPending(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setPending(false);
-
-    if (error) {
-      setError(error.message);
-      return;
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.replace(next); // ✅ redirección inmediata
+      } else {
+        // Sign Up
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        // Para setups sin confirmación de email activada,
+        // el usuario ya entra; si tu proyecto requiere confirmación,
+        // mostramos un mensaje y no redirigimos aún.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          router.replace(next);
+        } else {
+          setInfo("Check your inbox to confirm your account.");
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong");
+    } finally {
+      setPending(false);
     }
-
-    // 🔁 Redirección inmediata tras login correcto
-    router.replace(next);
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 max-w-md mx-auto">
-      <div>
-        <label className="block text-sm mb-1">Email</label>
-        <input
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded bg-neutral-800 px-3 py-2"
-          required
-        />
+    <div className="mx-auto w-full max-w-md">
+      {/* Card oscura */}
+      <div className="rounded-2xl bg-neutral-900/70 p-6 ring-1 ring-white/10">
+        {/* Tabs Sign in / Sign up */}
+        <div className="mb-6 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("signin")}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              mode === "signin"
+                ? "bg-neutral-800 text-white"
+                : "text-neutral-300 hover:bg-neutral-800/60"
+            }`}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("signup")}
+            className={`rounded-md px-3 py-1.5 text-sm ${
+              mode === "signup"
+                ? "bg-neutral-800 text-white"
+                : "text-neutral-300 hover:bg-neutral-800/60"
+            }`}
+          >
+            Sign up
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm text-neutral-300">Email</label>
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg bg-neutral-800 px-3 py-2 text-neutral-100 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-neutral-300">Password</label>
+            <input
+              type="password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg bg-neutral-800 px-3 py-2 text-neutral-100 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
+              required
+            />
+          </div>
+
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+          {info && <p className="text-sm text-emerald-400">{info}</p>}
+
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+          >
+            {pending ? (mode === "signin" ? "Signing in…" : "Creating account…") : (mode === "signin" ? "Sign in" : "Create account")}
+          </button>
+
+          <p className="mt-2 text-center text-xs text-neutral-500">
+            You’ll be redirected back to <span className="font-medium">{next}</span> after auth.
+          </p>
+        </form>
       </div>
-
-      <div>
-        <label className="block text-sm mb-1">Password</label>
-        <input
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded bg-neutral-800 px-3 py-2"
-          required
-        />
-      </div>
-
-      {error && <p className="text-rose-400 text-sm">{error}</p>}
-
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
-      >
-        {pending ? "Signing in…" : "Sign in"}
-      </button>
-
-      <p className="text-center text-xs text-neutral-500 mt-2">
-        You’ll be redirected back to <span className="font-medium">{next}</span> after auth.
-      </p>
-    </form>
+    </div>
   );
 }
