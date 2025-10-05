@@ -1,56 +1,26 @@
-'use client';
+// src/app/api/cron/due-summaries/route.ts
+import { NextResponse } from 'next/server';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import AuthButton from './AuthButton';
+// Si quieres forzar a que sea función Node.js en Vercel:
+export const runtime = 'nodejs';
+// Para que no se cachee:
+export const dynamic = 'force-dynamic';
 
-function NavLink({ href, label }: { href: string; label: string }) {
-  const pathname = usePathname();
-  const active =
-    pathname === href || (pathname?.startsWith(href + '/') ?? false);
-
-  return (
-    <Link
-      href={href}
-      className={`rounded-md px-3 py-2 text-sm transition ${
-        active
-          ? 'bg-neutral-800 text-white'
-          : 'text-neutral-300 hover:bg-neutral-800/60'
-      }`}
-    >
-      {label}
-    </Link>
-  );
-}
-
-export default function TopNav() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-neutral-950/70 backdrop-blur">
-      <nav className="mx-auto flex h-12 max-w-5xl items-center justify-between px-3">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="rounded-md px-2 py-1 text-sm font-semibold text-white hover:bg-neutral-800/60"
-          >
-            OneLine
-          </Link>
-
-          <div className="ml-2 hidden gap-1 sm:flex">
-           <div className="ml-2 hidden gap-1 sm:flex">
-           <NavLink href="/today" label="Today" />
-           <NavLink href="/summaries" label="Summaries" />
-           <NavLink href="/history" label="History" />   {/* ⬅︎ nuevo botón */}
-           <NavLink href="/settings" label="Settings" />
-</div>
-
-            
-          </div>
-        </div>
-
-        {/* Botón de autenticación (inicia sesión por email o cierra sesión) */}
-        <AuthButton />
-      </nav>
-    </header>
-  );
+/**
+ * Cron (GET) — sólo devuelve OK por ahora.
+ * Aquí dentro luego pondremos la lógica real de "due summaries".
+ */
+export async function GET() {
+  try {
+    // TODO: tu lógica para comprobar qué usuarios tienen “summary” tocando y generarlo
+    // Por ahora devolvemos un OK para que el build no falle.
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error('due-summaries error', err);
+    return NextResponse.json(
+      { ok: false, error: err?.message ?? 'unknown' },
+      { status: 500 }
+    );
+  }
 }
 
