@@ -1,59 +1,55 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-type SbUser = {
-  id: string;
-  email?: string;
-};
-
 export default function AuthButton() {
-  const supabase = useMemo(() => createClientComponentClient(), []);
+  const supabase = createClientComponentClient();
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<SbUser | null>(null);
-
-  // Carga el usuario actual y escucha cambios de sesión
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    supabase.auth.getUser().then(({ data }) => {
-      if (!isMounted) return;
-      setUser(data.user ? { id: data.user.id, email: data.user.email ?? undefined } : null);
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setEmail(data.session?.user?.email ?? null);
       setLoading(false);
-    });
+    })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email ?? undefined } : null);
-      // Refresca el árbol del App Router para que el UI (TopNav) se actualice
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        router.refresh();
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null);
+      router.refresh(); // refresca server components (nav, etc.)
     });
 
     return () => {
-      isMounted = false;
+      mounted = false;
       sub.subscription.unsubscribe();
     };
   }, [supabase, router]);
 
   if (loading) {
     return (
-      <div className="text-sm text-neutral-400 px-2 py-1">
+      <button
+        className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-neutral-300"
+        disabled
+      >
         …
-      </div>
+      </button>
     );
   }
 
-  if (!user) {
+  if (!email) {
+    const next = encodeURIComponent(pathname || '/today');
     return (
       <Link
-        href="/auth/login"
-        className="rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+        href={`/login?next=${next}`}
+        className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
       >
         Sign in
       </Link>
@@ -62,15 +58,14 @@ export default function AuthButton() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden sm:inline text-sm text-neutral-300">
-        {user.email ?? 'Account'}
-      </span>
+      <span className="text-xs text-neutral-300 hidden sm:inline">{email}</span>
       <button
         onClick={async () => {
           await supabase.auth.signOut();
+          router.replace('/today');
           router.refresh();
         }}
-        className="rounded-md bg-neutral-800 px-3 py-2 text-sm text-white hover:bg-neutral-700"
+        className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700"
       >
         Sign out
       </button>
