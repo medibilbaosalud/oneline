@@ -1,14 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type Q = { t: string; a: string };
-
-// ——— One-Line limit ———
 const MAX = 180;
-
-// ——— Curated quotes ———
 const QUOTES: Q[] = [
+  { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
   { t: 'The only way to do great work is to love what you do.', a: 'Steve Jobs' },
   { t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.', a: 'Steve Jobs' },
@@ -44,36 +41,55 @@ function prettyDate(d = new Date()) {
     year: 'numeric',
   });
 }
-
 function quoteOfToday(): Q {
-  const key = Number(new Date().toISOString().slice(0, 10).replace(/-/g, '')); // YYYYMMDD
-  const idx = key % QUOTES.length;
-  return QUOTES[idx];
+  const key = Number(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
+  return QUOTES[key % QUOTES.length];
 }
 
 export default function TodayPage() {
   const [text, setText] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState<string|undefined>();
   const quote = useMemo(() => quoteOfToday(), []);
 
-  const count = text.length;
+  // Carga el entry existente (si lo hay)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/journal/today', { cache: 'no-store' });
+        const json = await res.json();
+        if (typeof json?.content === 'string') setText(json.content);
+      } catch {}
+    })();
+  }, []);
 
   async function handleSave() {
     if (!text.trim()) return;
-    setSaving(true);
+    setStatus('saving');
+    setErrorMsg(undefined);
+
     try {
-      // TODO: ajusta a tu API real si ya la tienes
-      await fetch('/api/journal/today', {
+      const res = await fetch('/api/journal/today', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content: text }),
       });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setStatus('error');
+        setErrorMsg(j?.error ?? 'Could not save. Please try again.');
+        return;
+      }
+      setStatus('saved');
+      // Oculta el “Saved” después de unos segundos
+      setTimeout(() => setStatus('idle'), 2000);
     } catch (e) {
-      console.error(e);
-    } finally {
-      setSaving(false);
+      setStatus('error');
+      setErrorMsg('Network error. Please try again.');
     }
   }
+
+  const count = text.length;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950 text-neutral-50">
@@ -94,11 +110,20 @@ export default function TodayPage() {
             placeholder="One line that captures your day…"
             className="h-48 w-full resize-none bg-transparent leading-relaxed outline-none placeholder:text-neutral-500"
           />
-          <div className="mt-4 flex items-center justify-between">
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className={`text-sm ${count === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
               {count}/{MAX}
             </span>
-            <div className="flex gap-3">
+
+            <div className="flex items-center gap-3">
+              {status === 'saved' && (
+                <span className="text-emerald-400 text-sm">Saved ✓</span>
+              )}
+              {status === 'error' && (
+                <span className="text-rose-400 text-sm">{errorMsg}</span>
+              )}
+
               <button
                 type="button"
                 onClick={() => setText('')}
@@ -109,10 +134,10 @@ export default function TodayPage() {
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!text.trim() || saving}
+                disabled={!text.trim() || status === 'saving'}
                 className="rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
               >
-                {saving ? 'Saving…' : 'Save entry'}
+                {status === 'saving' ? 'Saving…' : 'Save entry'}
               </button>
             </div>
           </div>
