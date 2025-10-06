@@ -6,6 +6,8 @@ type Q = { t: string; a: string };
 const MAX = 180;
 const QUOTES: Q[] = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
+  // ... (tu lista)
+  { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
   { t: 'The only way to do great work is to love what you do.', a: 'Steve Jobs' },
   { t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.', a: 'Steve Jobs' },
