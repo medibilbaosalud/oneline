@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 type Q = { t: string; a: string };
-const MAX = 180;
+const MAX = 300;
 const QUOTES: Q[] = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   // ... (tu lista)
