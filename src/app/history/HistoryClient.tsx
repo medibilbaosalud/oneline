@@ -1,148 +1,188 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 
-type Entry = {
+type Item = {
   id: string;
-  content: string;
+  day: string;
   created_at: string;
+  content: string | null;
 };
 
-function todayISO() {
-  const d = new Date();
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
-}
-function thirtyDaysAgoISO() {
-  const d = new Date();
-  d.setDate(d.getDate() - 30);
-  return d.toISOString().slice(0, 10);
-}
+const MAX = 300;
 
-export default function HistoryClient() {
-  const [from, setFrom] = useState(thirtyDaysAgoISO());
-  const [to, setTo] = useState(todayISO());
-  const [items, setItems] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(false);
+export default function HistoryClient({ items }: { items: Item[] }) {
+  const [editing, setEditing] = useState<Item | null>(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  // Para el resumen generado
-  const [making, setMaking] = useState(false);
-  const [story, setStory] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  function openEditor(item: Item) {
+    setEditing(item);
+    setText(item.content ?? "");
+    setMessage(null);
+  }
 
-  async function fetchEntries() {
-    setLoading(true);
+  function closeEditor() {
+    setEditing(null);
+    setText("");
+    setMessage(null);
+  }
+
+  async function save() {
+    if (!editing) return;
+    if (!text.trim()) {
+      setMessage("Please write something before saving.");
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
     try {
-      const res = await fetch(`/api/journal?from=${from}&to=${to}`, { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Error fetching entries');
-      setItems(json.items ?? []);
+      // Reutilizamos tu ruta existente:
+      // PUT /api/journal/[date]  -> body: { content }
+      const res = await fetch(`/api/journal/${editing.day}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      if (!res.ok) {
+        const err = await safeJson(res);
+        throw new Error(err?.error || "Failed to save entry");
+      }
+      setMessage("Saved!");
+      // Opcional: refrescar la página o mutar localmente
+      setTimeout(() => {
+        window.location.reload();
+      }, 600);
     } catch (e: any) {
-      console.error(e);
+      setMessage(e.message);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  useEffect(() => { fetchEntries(); }, []); // carga inicial
+  const list = useMemo(() => {
+    return items.map((it) => ({
+      ...it,
+      preview:
+        (it.content ?? "").length > 120
+          ? (it.content ?? "").slice(0, 120) + "…"
+          : it.content ?? "",
+      prettyDate: new Date(it.day + "T00:00:00Z").toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    }));
+  }, [items]);
 
-  async function generateSummary() {
-    setMaking(true);
-    setStory(null); setError(null);
-    try {
-      // Reutilizamos tu endpoint existente que usabas con YearStoryButton
-      const res = await fetch(`/api/year-story?from=${from}&to=${to}`, { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Error generating summary');
-      setStory(json.story);
-      // si ese endpoint ya guarda en summaries, listo; si no, puedes
-      // crear aquí un POST a /api/summaries para persistirlo
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setMaking(false);
-    }
+  if (!items.length) {
+    return (
+      <p className="text-neutral-400">
+        You don’t have any entries yet. Write your first line in <strong>Today</strong>.
+      </p>
+    );
   }
-
-  const rangeLabel = useMemo(() => {
-    return new Date(from).toLocaleDateString() + ' → ' + new Date(to).toLocaleDateString();
-  }, [from, to]);
 
   return (
-    <div className="space-y-6">
-      {/* Filtros */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <label className="flex flex-col">
-          <span className="text-xs text-neutral-400">From</span>
-          <input
-            type="date"
-            value={from}
-            max={to}
-            onChange={(e) => setFrom(e.target.value)}
-            className="rounded-lg bg-neutral-900 px-3 py-2 ring-1 ring-white/10"
-          />
-        </label>
-        <label className="flex flex-col">
-          <span className="text-xs text-neutral-400">To</span>
-          <input
-            type="date"
-            value={to}
-            min={from}
-            onChange={(e) => setTo(e.target.value)}
-            className="rounded-lg bg-neutral-900 px-3 py-2 ring-1 ring-white/10"
-          />
-        </label>
-        <div className="flex gap-3">
-          <button
-            onClick={fetchEntries}
-            className="rounded-lg bg-neutral-800 px-4 py-2 text-sm hover:bg-neutral-700"
-            disabled={loading}
+    <>
+      <ul className="space-y-3">
+        {list.map((it) => (
+          <li
+            key={it.id}
+            className="rounded-xl border border-white/10 bg-neutral-900/60 p-4"
           >
-            {loading ? 'Loading…' : 'Apply'}
-          </button>
-          <button
-            onClick={generateSummary}
-            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
-            disabled={making || loading || items.length === 0}
-            title={items.length === 0 ? 'No entries in range' : ''}
-          >
-            {making ? 'Generating…' : 'Generate summary'}
-          </button>
-        </div>
-      </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-widest text-neutral-400">
+                  {it.prettyDate}
+                </p>
+                <p className="mt-1 text-neutral-100">{it.preview || <em className="text-neutral-400">No text</em>}</p>
+              </div>
+              <button
+                onClick={() => openEditor(it)}
+                className="rounded-md bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
+              >
+                Edit
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
 
-      {/* Lista */}
-      <div className="rounded-2xl bg-neutral-900/60 ring-1 ring-white/10">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <p className="text-sm text-neutral-300">Entries: {items.length} · {rangeLabel}</p>
-        </div>
-        <ul className="divide-y divide-white/5">
-          {items.map((e) => (
-            <li key={e.id} className="px-4 py-3">
-              <p className="text-xs text-neutral-400">
-                {new Date(e.created_at).toLocaleString()}
-              </p>
-              <p className="mt-1 whitespace-pre-wrap leading-relaxed">
-                {e.content}
-              </p>
-            </li>
-          ))}
-          {items.length === 0 && !loading && (
-            <li className="px-4 py-8 text-center text-neutral-500">No entries in this range.</li>
-          )}
-        </ul>
-      </div>
+      {/* Simple modal editor */}
+      {editing && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div className="w-full max-w-xl rounded-2xl bg-neutral-900 p-5 ring-1 ring-white/10">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Edit entry</h2>
+              <button
+                onClick={closeEditor}
+                className="rounded-md px-2 py-1 text-sm text-neutral-300 hover:bg-neutral-800"
+              >
+                Close
+              </button>
+            </div>
 
-      {/* Resultado del resumen */}
-      {story && (
-        <section className="rounded-2xl bg-neutral-900/60 p-4 ring-1 ring-white/10">
-          <h2 className="mb-3 text-lg font-semibold">Summary for {rangeLabel}</h2>
-          <article className="prose prose-invert max-w-none">
-            <pre className="whitespace-pre-wrap">{story}</pre>
-          </article>
-        </section>
+            <p className="mt-1 text-xs text-neutral-400">
+              {new Date(editing.day + "T00:00:00Z").toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              maxLength={MAX}
+              rows={7}
+              className="mt-4 w-full rounded-xl bg-neutral-800 p-3 outline-none"
+              placeholder="Edit your line…"
+            />
+
+            <div className="mt-2 flex items-center justify-between">
+              <span
+                className={`text-sm ${
+                  text.length === MAX ? "text-rose-400" : "text-neutral-400"
+                }`}
+              >
+                {text.length}/{MAX}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={closeEditor}
+                  className="rounded-md bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
+                  disabled={busy}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={save}
+                  disabled={busy || !text.trim()}
+                  className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+                >
+                  {busy ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+
+            {message && (
+              <p className="mt-3 text-sm text-neutral-300">{message}</p>
+            )}
+          </div>
+        </div>
       )}
-
-      {error && <p className="text-rose-400 text-sm">{error}</p>}
-    </div>
+    </>
   );
+}
+
+async function safeJson(res: Response) {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
