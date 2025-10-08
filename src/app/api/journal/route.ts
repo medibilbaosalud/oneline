@@ -1,38 +1,28 @@
-// src/app/api/journal/route.ts
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
+export const dynamic = "force-dynamic";
 
-  const from = url.searchParams.get('from'); // YYYY-MM-DD
-  const to   = url.searchParams.get('to');   // YYYY-MM-DD
-  const limit = Number(url.searchParams.get('limit') ?? '100');
+export async function GET(req: NextRequest) {
+  const supabase = createRouteHandlerClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-  // Puedes añadir paginación por cursor si lo necesitas más adelante
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
+  const { searchParams } = new URL(req.url);
+  const from = searchParams.get("from") ?? "1900-01-01";
+  const to = searchParams.get("to") ?? "2999-12-31";
+  const limit = Number(searchParams.get("limit") ?? 60);
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const { data, error } = await supabase
+    .from("journal")
+    .select("id, day, preview, content, created_at, updated_at")
+    .eq("user_id", user.id)
+    .gte("day", from)
+    .lte("day", to)
+    .order("day", { ascending: false })
+    .limit(limit);
 
-    // Construimos el query
-    let q = supabase
-      .from('journal')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (from) q = q.gte('created_at', `${from}T00:00:00.000Z`);
-    if (to)   q = q.lte('created_at',   `${to}T23:59:59.999Z`);
-
-    const { data, error } = await q;
-    if (error) throw error;
-
-    return NextResponse.json({ items: data ?? [] });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ items: data ?? [] });
 }
