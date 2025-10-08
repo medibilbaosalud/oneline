@@ -1,3 +1,10 @@
+// src/app/api/journal/today/route.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";   // 👈 importa el TIPO
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+
+
 export async function POST(req: NextRequest) {
   const started = Date.now();
   try {
