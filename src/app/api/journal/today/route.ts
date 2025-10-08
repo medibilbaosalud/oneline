@@ -1,58 +1,97 @@
 // src/app/api/journal/today/route.ts
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";   // 👈 importa el TIPO
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
+export const runtime = "nodejs";       // evita edge
+export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
-  const started = Date.now();
+function todayUTC() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function GET(_req: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
     const { data: { user } } = await supabase.auth.getUser();
-
     if (!user) {
-      console.error("[POST /journal/today] 401 unauthenticated");
-      return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
+      return NextResponse.json({ entry: null, error: "unauthenticated" }, { status: 401 });
     }
 
-    let body: any = {};
+    const { data, error } = await supabase
+      .from("journal")
+      .select("id, user_id, day, content, created_at, updated_at")
+      .eq("user_id", user.id)
+      .eq("day", todayUTC())
+      .maybeSingle();
+
+    if (error) {
+      console.error("[GET] supabase error:", error);
+      return NextResponse.json({ entry: null, error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ entry: data ?? null });
+  } catch (e: any) {
+    console.error("[GET] fatal:", e);
+    return NextResponse.json({ entry: null, error: e?.message || "server error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const started = Date.now();
+  console.time("[POST] journal/today");
+  try {
+    const supabase = createRouteHandlerClient({ cookies });
+
+    console.log("[POST] 1) getUser()");
+    const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+    if (getUserError) console.error("[POST] getUser error:", getUserError);
+    if (!user) {
+      console.timeEnd("[POST] journal/today");
+      return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    }
+
+    console.log("[POST] 2) parse body");
+    let body: any = null;
     try {
       body = await req.json();
     } catch (e) {
-      console.error("[POST /journal/today] invalid json:", e);
-      return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
+      console.error("[POST] invalid json:", e);
+      console.timeEnd("[POST] journal/today");
+      return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
 
     const raw = (body?.content ?? "").toString();
     const content = raw.slice(0, 300);
-    const preview = content.slice(0, 200);
-    const day = new Date().toISOString().slice(0, 10);
+    const day = todayUTC();
     const nowIso = new Date().toISOString();
 
-    console.log("[POST /journal/today] upsert", {
-      user_id: user.id, day, contentLen: content.length, t: nowIso,
-    });
+    console.log("[POST] 3) upsert", { user_id: user.id, day, content_len: content.length });
 
+    // Asegúrate: en la tabla 'journal' existen columnas user_id(uuid), day(date o text), content(text), updated_at(timestamp) o quita updated_at si no existe.
     const { data, error } = await supabase
       .from("journal")
       .upsert(
-        { user_id: user.id, day, content, preview, updated_at: nowIso },
-        { onConflict: "user_id,day" }
+        { user_id: user.id, day, content, updated_at: nowIso },
+        { onConflict: "user_id,day" }    // requiere índice único (user_id, day)
       )
-      .select("id,user_id,day,content,preview,created_at,updated_at")
-      .maybeSingle();
+      .select("id, user_id, day, content, created_at, updated_at")
+      .single();
 
     if (error) {
-      console.error("[POST /journal/today] supabase error:", error.message);
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+      console.error("[POST] supabase upsert error:", error);
+      console.timeEnd("[POST] journal/today");
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log("[POST /journal/today] ok in", Date.now() - started, "ms");
-    return NextResponse.json({ ok: true, entry: data ?? null });
-  } catch (err: any) {
-    // Paracaídas: nunca devolvemos sin JSON
-    console.error("[POST /journal/today] fatal:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "internal error" }, { status: 500 });
+    console.log("[POST] 4) ok in", Date.now() - started, "ms");
+    console.timeEnd("[POST] journal/today");
+    return NextResponse.json({ ok: true, entry: data });
+  } catch (e: any) {
+    console.error("[POST] fatal:", e);
+    console.timeEnd("[POST] journal/today");
+    // Lo MÁS importante: RESPONDER SIEMPRE, aunque haya error
+    return NextResponse.json({ error: e?.message || "server error" }, { status: 500 });
   }
 }
