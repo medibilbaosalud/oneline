@@ -1,63 +1,54 @@
-// src/app/api/journal/today/route.ts
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-export const runtime = "nodejs";        // evita edge
-export const dynamic = "force-dynamic"; // evita cachés
+export const runtime = "nodejs";         // serverless (no edge)
+export const dynamic = "force-dynamic";  // sin caché
 
-function todayUTC() {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
-export async function GET(_req: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ entry: null, error: "unauthenticated" }, { status: 401 });
-  }
-
-  const { data, error } = await supabase
-    .from("journal")
-    .select("id, user_id, day, content, created_at, updated_at")
-    .eq("user_id", user.id)
-    .eq("day", todayUTC())
-    .maybeSingle();
-
-  if (error) {
-    return NextResponse.json({ entry: null, error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ entry: data ?? null });
-}
-
-export async function POST(req: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
-
-  let body: any;
+// Devuelve la última entrada del usuario (opcional, solo para que el GET no rompa)
+export async function GET() {
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ entry: null }, { status: 401 });
+
+    const { data, error } = await supabase
+      .from("journal")
+      .select("id, content, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return NextResponse.json({ entry: data ?? null });
+  } catch (err: any) {
+    console.error("/api/journal/today GET", err);
+    return NextResponse.json({ error: err?.message ?? "internal" }, { status: 500 });
   }
+}
 
-  const content = (body?.content ?? "").toString().slice(0, 300);
-  const day = todayUTC();
-  const nowIso = new Date().toISOString();
+// Inserta una nueva entrada (SIN day/preview)
+export async function POST(req: Request) {
+  try {
+    const supabase = createRouteHandlerClient({ cookies });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-  // upsert por (user_id, day) — necesita el índice único journal_user_day_key
-  const { data, error } = await supabase
-    .from("journal")
-    .upsert({ user_id: user.id, day, content, updated_at: nowIso }, { onConflict: "user_id,day" })
-    .select("id, user_id, day, content, created_at, updated_at")
-    .single();
+    const body = await req.json().catch(() => ({}));
+    const content = String(body?.content ?? "").slice(0, 300);  // tope 300 chars
+    if (!content.trim()) return NextResponse.json({ error: "empty" }, { status: 400 });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { data, error } = await supabase
+      .from("journal")
+      .insert({ user_id: user.id, content })
+      .select("id, content, created_at")
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json({ ok: true, entry: data });
+  } catch (err: any) {
+    console.error("/api/journal/today POST", err);
+    return NextResponse.json({ error: err?.message ?? "internal" }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, entry: data });
 }
