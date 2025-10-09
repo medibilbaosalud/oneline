@@ -1,22 +1,28 @@
+// @ts-nocheck
 // src/app/api/journal/day/[day]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
 export const dynamic = "force-dynamic";
+// export const runtime = "nodejs"; // si usas SDKs que requieren Node
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { day: string } }
-) {
-  const day = params.day; // YYYY-MM-DD
+export const POST: any = async (req: NextRequest, context: any) => {
+  // Compat: params puede venir como objeto o como Promise
+  let day = "";
+  try {
+    const p = context?.params;
+    day = p && typeof p.then === "function" ? (await p).day : p?.day;
+  } catch {}
+
   const supabase = createRouteHandlerClient({ cookies });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(new URL(`/login?next=/history/${day}`, req.url));
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // El form es application/x-www-form-urlencoded
+  if (!user) {
+    return NextResponse.redirect(new URL(`/login?next=/history/${day}`, req.url));
+  }
+
+  // Form: application/x-www-form-urlencoded
   const form = await req.formData();
   const raw = String(form.get("content") ?? "");
   const content = raw.slice(0, 300);
@@ -33,6 +39,5 @@ export async function POST(
       new URL(`/history/${day}?error=${encodeURIComponent(error.message)}`, req.url)
     );
   }
-
   return NextResponse.redirect(new URL(`/history`, req.url));
-}
+};
