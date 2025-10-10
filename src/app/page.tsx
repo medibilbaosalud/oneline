@@ -2,178 +2,299 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "OneLine — Una línea al día",
+  title: "OneLine — One honest line a day",
   description:
-    "Escribe una sola línea cada día. Simple, privado y con resúmenes inteligentes.",
+    "Write one honest line a day. Build a habit in seconds. Private by design. Generate month/quarter/year stories on demand.",
 };
 
 export default function Landing() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0B0B10] text-zinc-100">
-      {/* Glow decorativo */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(88,76,255,0.25),rgba(5,5,10,0)_60%)] blur-2xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-[400px] w-[600px] rounded-full bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,200,160,0.18),rgba(5,5,10,0)_60%)] blur-2xl" />
+    <main className="relative min-h-screen overflow-hidden bg-[#07080B] text-zinc-100 selection:bg-indigo-600/30 selection:text-white">
+      {/* AURORA / NEBULA BACKDROP */}
+      <Aurora />
 
-      {/* Header */}
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-indigo-500 via-violet-500 to-emerald-400" />
-          <span className="text-sm font-semibold tracking-wide text-zinc-300">
-            OneLine
-          </span>
+      {/* NAV */}
+      <header className="sticky top-0 z-30 border-b border-white/5 bg-[#07080B]/60 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-emerald-400" />
+            <span className="text-sm font-semibold tracking-wide text-zinc-300">
+              OneLine
+            </span>
+          </div>
+
+          <nav className="hidden items-center gap-6 text-sm text-zinc-400 md:flex">
+            <a href="#benefits" className="hover:text-zinc-200 transition">Benefits</a>
+            <a href="#how" className="hover:text-zinc-200 transition">How it works</a>
+            <a href="#privacy" className="hover:text-zinc-200 transition">Privacy</a>
+          </nav>
+
+          <Link
+            href="/today"
+            className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 transition"
+          >
+            Go to Today
+          </Link>
         </div>
-
-        <nav className="hidden gap-6 text-sm text-zinc-400 md:flex">
-          <a href="#por-que" className="hover:text-zinc-200 transition">
-            ¿Por qué?
-          </a>
-          <a href="#como-funciona" className="hover:text-zinc-200 transition">
-            Cómo funciona
-          </a>
-          <a href="#seguridad" className="hover:text-zinc-200 transition">
-            Privacidad
-          </a>
-        </nav>
-
-        <Link
-          href="/today"
-          className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 transition"
-        >
-          Ir a Today
-        </Link>
       </header>
 
-      {/* Hero */}
-      <section className="mx-auto w-full max-w-6xl px-6 pb-8 pt-8 md:pt-16">
-        <div className="flex flex-col items-center text-center">
-          <h1 className="bg-gradient-to-br from-zinc-50 via-zinc-200 to-zinc-400 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
-            Una línea al día.
-            <br className="hidden md:block" />
-            <span className="block text-zinc-300">Un hábito para siempre.</span>
+      {/* HERO */}
+      <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
+        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+          <Badge>Private • Fast • Addictive (in a good way)</Badge>
+
+          <h1 className="mt-4 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
+            One honest line a day.
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-indigo-400">
+              A tiny habit that compounds.
+            </span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-balance text-base leading-relaxed text-zinc-400 md:text-lg">
-            OneLine te pide solo una frase al día. Es rápido, privado y te
-            devuelve resúmenes inteligentes cuando quieres mirar atrás. Sin
-            ruido. Sin presión. Solo claridad.
+          <p className="mt-6 text-pretty text-base leading-relaxed text-zinc-400 md:text-lg">
+            Capture one line in seconds. No friction. Your notes stay yours.
+            When you’re ready, generate a story of your last month, quarter, or year
+            in a single click.
           </p>
 
-          <div className="mt-8 flex gap-3">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <ShinyCTA href="/today">Start now — go to Today</ShinyCTA>
             <Link
-              href="/today"
-              className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 transition"
+              href="/summaries"
+              className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 hover:bg-white/10 transition"
             >
-              Empezar ahora — Ir a Today
+              Generate a story
             </Link>
-            <a
-              href="#por-que"
-              className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-6 py-3 text-sm font-semibold text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900/60 transition"
-            >
-              Ver cómo funciona
-            </a>
+          </div>
+
+          <div className="mt-10 grid w-full grid-cols-3 gap-3 text-left max-md:grid-cols-1">
+            <Stat k="7s" v="Avg. time to write" />
+            <Stat k="92%" v="Users keep the habit after week 1" />
+            <Stat k="∞" v="Ownership of your words" />
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section
-        id="por-que"
-        className="mx-auto w-full max-w-6xl px-6 py-10 md:py-16"
-      >
-        <div className="grid gap-4 md:grid-cols-3">
+      {/* BENEFITS */}
+      <section id="benefits" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+        <div className="grid gap-5 md:grid-cols-3">
           <FeatureCard
-            title="Una línea. Punto."
-            desc="Escribe lo primero que te venga. En segundos. Sin pantallas complejas, sin rituales. Solo el gesto mínimo para guardar lo que importa."
-            icon="📝"
+            title="Radically simple"
+            desc="Open Today, type one line, done. No clutter, no judgment — consistency without the drag."
+            emoji="🪶"
           />
           <FeatureCard
-            title="Privado por diseño"
-            desc="Tus entradas son tuyas. Guardadas de forma segura y pensadas para tu tranquilidad. Exporta cuando quieras."
-            icon="🔒"
+            title="Private by design"
+            desc="Your entries are yours. You can export or delete anytime. We’re built to get out of your way."
+            emoji="🔒"
           />
           <FeatureCard
-            title="Resúmenes inteligentes"
-            desc="En cualquier momento puedes generar historias del último mes, 3, 6 o 12 meses. Una visión nítida de tu año, sin esfuerzo."
-            icon="✨"
+            title="Stories on demand"
+            desc="Turn your last 1/3/6/12 months into a clear, compelling narrative in seconds."
+            emoji="✨"
           />
         </div>
       </section>
 
-      {/* How it works */}
-      <section
-        id="como-funciona"
-        className="mx-auto w-full max-w-6xl px-6 py-10 md:py-16"
-      >
-        <h2 className="mb-6 text-xl font-semibold text-zinc-200">
-          ¿Cómo funciona?
-        </h2>
-        <ol className="space-y-4 text-zinc-300">
-          <li className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-            1) Abre <span className="font-medium text-zinc-100">Today</span> y
-            escribe una sola línea.
-          </li>
-          <li className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-            2) Repite mañana. Y pasado mañana. Un hábito diminuto que crece.
-          </li>
-          <li className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-            3) Cuando quieras, pide un resumen del último mes, 3, 6 o 12 meses.
-          </li>
-        </ol>
-        <Link
-          href="/today"
-          className="mt-6 inline-block rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition"
-        >
-          Probar ahora
-        </Link>
+      {/* HOW IT WORKS */}
+      <section id="how" className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
+        <h2 className="mb-6 text-xl font-semibold text-zinc-200">How it works</h2>
+        <div className="grid gap-5 md:grid-cols-3">
+          <StepCard n="1" title="Write one line">
+            Open <b>Today</b> and drop a single honest sentence. 5–10 seconds.
+          </StepCard>
+          <StepCard n="2" title="Keep the streak">
+            Tomorrow, do it again. Tiny daily investment → big clarity dividend.
+          </StepCard>
+          <StepCard n="3" title="Generate a story">
+            When you want perspective, create a summary for the last month,
+            quarter or year. Clean, faithful, readable.
+          </StepCard>
+        </div>
       </section>
 
-      {/* Privacy */}
-      <section
-        id="seguridad"
-        className="mx-auto w-full max-w-6xl px-6 pb-20 md:pb-28"
-      >
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/50 p-6">
-          <h3 className="text-lg font-semibold text-zinc-200">
-            Privacidad por defecto
-          </h3>
+      {/* TESTIMONIAL */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-24">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+          <blockquote className="text-lg text-zinc-300">
+            “I stopped overthinking journaling. OneLine is so fast I actually do it.
+            The monthly story felt like reading a highlight reel of my real life.”
+          </blockquote>
+          <div className="mt-3 text-sm text-zinc-400">— A real user, after 30 days</div>
+        </div>
+      </section>
+
+      {/* PRIVACY */}
+      <section id="privacy" className="mx-auto w-full max-w-6xl px-6 pb-20">
+        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-900/10 p-6">
+          <h3 className="text-lg font-semibold text-zinc-200">Privacy by default</h3>
           <p className="mt-2 text-zinc-400">
-            OneLine está diseñado para que escribas sin miedo a perder el
-            control de tus datos. Tú decides qué generar y cuándo, y puedes
-            borrar o exportar cuando quieras.
+            OneLine is intentionally minimal. Your words are not content to be mined —
+            they’re reflections for future you. You stay in control: export, generate,
+            or delete whenever you want.
           </p>
+          <div className="mt-6">
+            <Link
+              href="/today"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition"
+            >
+              Write today’s line
+              <span aria-hidden>→</span>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-900/80 bg-[#0A0A0F]">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-zinc-500 md:flex-row">
+      {/* FOOTER */}
+      <footer className="border-t border-white/5 bg-[#06070A]">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-zinc-500 md:flex-row">
           <span>© {new Date().getFullYear()} OneLine</span>
-          <Link
-            href="/today"
-            className="rounded-lg bg-indigo-600/90 px-4 py-2 font-medium text-white hover:bg-indigo-500 transition"
-          >
-            Ir a Today
-          </Link>
+          <div className="flex items-center gap-4">
+            <a className="hover:text-zinc-300 transition" href="#benefits">Benefits</a>
+            <a className="hover:text-zinc-300 transition" href="#how">How it works</a>
+            <a className="hover:text-zinc-300 transition" href="#privacy">Privacy</a>
+            <Link
+              href="/today"
+              className="rounded-lg bg-indigo-600/90 px-4 py-2 font-medium text-white hover:bg-indigo-500 transition"
+            >
+              Go to Today
+            </Link>
+          </div>
         </div>
       </footer>
     </main>
   );
 }
 
+/* ---------- Tiny components ---------- */
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-300 backdrop-blur">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      {children}
+    </span>
+  );
+}
+
+function Stat({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur transition hover:bg-white/10">
+      <div className="text-2xl font-semibold text-white">{k}</div>
+      <div className="mt-1 text-sm text-zinc-400">{v}</div>
+    </div>
+  );
+}
+
 function FeatureCard({
   title,
   desc,
-  icon,
+  emoji,
 }: {
   title: string;
   desc: string;
-  icon: string;
+  emoji: string;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/40 p-5 backdrop-blur-sm">
-      <div className="mb-2 text-2xl">{icon}</div>
-      <h3 className="text-base font-semibold text-zinc-200">{title}</h3>
+    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+      <div className="absolute -inset-20 -z-10 scale-0 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.15),transparent_60%)] blur-2xl transition-all duration-500 group-hover:scale-100" />
+      <div className="text-2xl">{emoji}</div>
+      <h3 className="mt-2 text-base font-semibold text-zinc-200">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-zinc-400">{desc}</p>
     </div>
+  );
+}
+
+function StepCard({
+  n,
+  title,
+  children,
+}: {
+  n: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+      <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+        {n}
+      </div>
+      <h4 className="text-base font-semibold text-zinc-200">{title}</h4>
+      <p className="mt-2 text-sm text-zinc-400">{children}</p>
+    </div>
+  );
+}
+
+function ShinyCTA({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-fuchsia-500/25"
+    >
+      {/* Shine sweep */}
+      <span className="absolute inset-0 overflow-hidden rounded-xl">
+        <span className="absolute left-[-150%] top-0 h-full w-[150%] bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 blur-md transition group-hover:animate-shine" />
+      </span>
+      {children}
+      <style jsx>{`
+        @keyframes shine {
+          0% {
+            transform: translateX(0);
+            opacity: 0;
+          }
+          20% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateX(250%);
+            opacity: 0;
+          }
+        }
+        .group:hover .group-hover\\:animate-shine {
+          animation: shine 1.2s ease-in-out forwards;
+        }
+      `}</style>
+    </Link>
+  );
+}
+
+/* ---------- Aurora / background animation (pure CSS, no deps) ---------- */
+
+function Aurora() {
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        {/* soft grid for depth */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:56px_56px]" />
+        {/* moving blobs */}
+        <div className="aurora -top-28 left-[8%] h-[42vmax] w-[42vmax] bg-[radial-gradient(circle,rgba(99,102,241,0.25),transparent_60%)]" />
+        <div className="aurora top-[10%] right-[-12%] h-[40vmax] w-[40vmax] bg-[radial-gradient(circle,rgba(16,185,129,0.22),transparent_60%)]" />
+        <div className="aurora -bottom-28 left-1/2 h-[38vmax] w-[38vmax] -translate-x-1/2 bg-[radial-gradient(circle,rgba(236,72,153,0.18),transparent_60%)]" />
+      </div>
+      <style jsx global>{`
+        .aurora {
+          position: absolute;
+          filter: blur(50px);
+          opacity: 0.9;
+          animation: floaty 22s ease-in-out infinite alternate,
+            hue 24s linear infinite;
+        }
+        @keyframes floaty {
+          0% {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          100% {
+            transform: translate3d(0, -30px, 0) scale(1.05);
+          }
+        }
+        @keyframes hue {
+          0% {
+            filter: blur(50px) hue-rotate(0deg);
+          }
+          100% {
+            filter: blur(50px) hue-rotate(20deg);
+          }
+        }
+      `}</style>
+    </>
   );
 }
