@@ -1,5 +1,5 @@
+// src/components/MobileNav.tsx
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -15,26 +15,14 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Cierra el menú cuando cambias de ruta
+  useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  // Evita hacer scroll del body cuando el menú está abierto
-  useEffect(() => {
-    if (open) {
-      document.documentElement.style.overflow = "hidden";
-    } else {
-      document.documentElement.style.overflow = "";
-    }
-    return () => {
-      document.documentElement.style.overflow = "";
-    };
+    document.documentElement.style.overflow = open ? "hidden" : "";
+    return () => { document.documentElement.style.overflow = ""; };
   }, [open]);
 
   return (
     <>
-      {/* Botón hamburguesa visible en móvil */}
       <div className="md:hidden">
         <button
           aria-label="Open menu"
@@ -45,23 +33,13 @@ export default function MobileNav() {
         </button>
       </div>
 
-      {/* Overlay + panel */}
       {open && (
         <>
-          {/* Overlay oscuro con blur: evita que se vea el fondo */}
           <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
             onClick={() => setOpen(false)}
           />
-
-          {/* Panel superior fijo con fondo sólido */}
-          <nav className="
-              fixed inset-x-0 top-0 z-50
-              border-b border-white/10
-              bg-neutral-950
-              shadow-2xl
-              md:hidden
-            ">
+          <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-neutral-950 shadow-2xl md:hidden">
             <div className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] pb-3">
               <span className="text-zinc-100 text-lg font-semibold">OneLine</span>
               <button
@@ -72,7 +50,6 @@ export default function MobileNav() {
                 ✕
               </button>
             </div>
-
             <ul className="px-2 pb-4">
               {links.map((l) => {
                 const active = pathname === l.href;
