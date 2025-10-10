@@ -1,20 +1,16 @@
-// src/app/summaries/page.tsx
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import StoryGenerator from "./StoryGenerator";
 
-import SummariesClient from './SummariesClient';
-import YearStoryButton from './YearStoryButton';
-
-export default function Page() {
+export default function SummariesPage() {
   return (
-    <div className="mx-auto max-w-3xl p-6">
-      {/* Tu lista de resúmenes */}
-      <SummariesClient />
+    <main className="min-h-screen bg-black">
+      <div className="mx-auto max-w-4xl px-6 py-10">
+        <h1 className="text-3xl font-semibold text-zinc-100">Summaries</h1>
+        <p className="mt-1 text-zinc-400">Generate a story from your journal.</p>
 
-      {/* Acción extra opcional */}
-      <div className="mt-8">
-        <YearStoryButton />
+        <div className="mt-8">
+          <StoryGenerator />
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
