@@ -44,19 +44,19 @@ export default function MobileNav() {
 
       {!open ? null : (
         <nav
-          className={[
-            // Fullscreen
-            "fixed inset-0 z-[100]",
-            // Fondo muy legible con blur
-            "bg-neutral-950/95 backdrop-blur-xl",
-            // Gradiente sutil para profundidad
-            "bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-900/85",
-            // Safe areas iOS
-            "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
-          ].join(" ")}
-          role="dialog"
-          aria-modal="true"
-        >
+  className={[
+    // Fullscreen on top of everything
+    "fixed inset-0 z-[9999] isolate",
+    // Solid opaque background—no see-through, perfect legibility
+    "bg-neutral-950",
+    // Make the sheet itself scroll if content overflows
+    "overflow-y-auto",
+    // Respect iOS safe-areas
+    "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+  ].join(" ")}
+  role="dialog"
+  aria-modal="true"
+>
           <div className="mx-auto flex h-full max-w-xl flex-col px-4">
             {/* Top bar */}
             <div className="flex items-center justify-between py-3">
