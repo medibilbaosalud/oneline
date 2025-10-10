@@ -1,3 +1,4 @@
+// src/app/summaries/page.tsx
 import StoryGenerator from "./StoryGenerator";
 
 export default function SummariesPage() {
