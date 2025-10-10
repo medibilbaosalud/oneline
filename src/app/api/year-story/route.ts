@@ -2,17 +2,6 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-// Usaremos Gemini si está disponible, con import dinámico para no romper el build
-let genAI: any | null = null;
-try {
-  // @ts-ignore
-  const { GoogleGenerativeAI } = await import("@google/generative-ai");
-  const apiKey = process.env.GEMINI_API_KEY;
-  genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-} catch {
-  genAI = null;
-}
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const preferredRegion = ["fra1", "cdg1"];
@@ -23,7 +12,7 @@ type Options = {
   tone: "auto" | "calido" | "neutro" | "poetico" | "directo";
   pov: "auto" | "primera" | "tercera";
   includeHighlights: boolean;
-  onlyPinned: boolean;        // con tu schema actual NO hay 'is_pinned'; lo ignoraremos si viene true
+  onlyPinned: boolean;        // ignorado con tu schema actual
   pinnedWeight: 1 | 2 | 3;
   strict: boolean;
   userNotes?: string;
@@ -101,7 +90,31 @@ SALIDA:
 `.trim();
 }
 
-// ---- Handler principal ----
+async function getGemini() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+  return new GoogleGenerativeAI(apiKey);
+}
+
+async function getModel(genAI: any) {
+  // Prueba varios nombres estables
+  const names = [
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash-8b-latest",
+    "gemini-1.5-pro-latest"
+  ];
+  for (const name of names) {
+    try {
+      const m = genAI.getGenerativeModel({ model: name });
+      // validación ultraligera
+      await m.generateContent("ok");
+      return m;
+    } catch {}
+  }
+  throw new Error("No Gemini model available for generateContent()");
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const nowY = new Date().getFullYear();
@@ -113,7 +126,7 @@ export async function GET(req: Request) {
     tone: (url.searchParams.get("tone") as Options["tone"]) || "auto",
     pov: (url.searchParams.get("pov") as Options["pov"]) || "auto",
     includeHighlights: url.searchParams.get("highlights") !== "false",
-    onlyPinned: url.searchParams.get("onlyPinned") === "true",    // sin efecto con tu schema
+    onlyPinned: url.searchParams.get("onlyPinned") === "true",
     pinnedWeight: (Number(url.searchParams.get("pinnedWeight")) as 1|2|3) || 2,
     strict: url.searchParams.get("strict") !== "false",
     userNotes: url.searchParams.get("notes") || undefined,
@@ -124,8 +137,7 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  // Datos (tu tabla: public.journal con created_at)
-  // Filtramos por rango de fechas (ambas inclusive)
+  // Datos de tu tabla journal
   const fromIso = `${from}T00:00:00.000Z`;
   const toIso   = `${to}T23:59:59.999Z`;
 
@@ -142,23 +154,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No hay entradas en ese rango." }, { status: 400 });
   }
 
-  // Construimos feed: YYYY-MM-DD texto
   const feed = data.map(e => `${ymd(e.created_at)} ${e.content}`).join("\n");
   const prompt = buildPrompt(feed, from, to, opt, feed.length);
 
   try {
     let story = "";
+    const genAI = await getGemini();
 
     if (genAI) {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = await getModel(genAI);
       const resp = await model.generateContent(prompt);
       story = (resp?.response?.text?.() ?? "").trim();
       if (!story) {
-        // fallback si viene vacío
         story = feed.replace(/^(?=\S)/gm, "- ");
       }
     } else {
-      // Fallback local (sin GEMINI_API_KEY)
+      // Fallback sin API key
       const joined = data.map(d => `[${ymd(d.created_at)}] ${d.content}`).join(" ");
       const brief = joined.length > 1500 ? joined.slice(0, 1500) + "…" : joined;
       story =
