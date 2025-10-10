@@ -100,7 +100,7 @@ async function getGemini() {
 async function getModel(genAI: any) {
   // Prueba varios nombres estables
   const names = [
-    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
   ];
   for (const name of names) {
     try {
