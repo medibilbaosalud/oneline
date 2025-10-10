@@ -1,5 +1,6 @@
 // src/components/MobileNav.tsx
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -15,14 +16,22 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
+  // Cierra al cambiar de ruta
   useEffect(() => setOpen(false), [pathname]);
+
+  // Bloquea scroll del body cuando está abierto
   useEffect(() => {
-    document.documentElement.style.overflow = open ? "hidden" : "";
-    return () => { document.documentElement.style.overflow = ""; };
+    const html = document.documentElement;
+    if (open) html.style.overflow = "hidden";
+    else html.style.overflow = "";
+    return () => {
+      html.style.overflow = "";
+    };
   }, [open]);
 
   return (
     <>
+      {/* Trigger solo en móvil */}
       <div className="md:hidden">
         <button
           aria-label="Open menu"
@@ -33,14 +42,24 @@ export default function MobileNav() {
         </button>
       </div>
 
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
-            onClick={() => setOpen(false)}
-          />
-          <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-neutral-950 shadow-2xl md:hidden">
-            <div className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top)] pb-3">
+      {!open ? null : (
+        <nav
+          className={[
+            // Fullscreen
+            "fixed inset-0 z-[100]",
+            // Fondo muy legible con blur
+            "bg-neutral-950/95 backdrop-blur-xl",
+            // Gradiente sutil para profundidad
+            "bg-gradient-to-b from-neutral-950/95 via-neutral-950/90 to-neutral-900/85",
+            // Safe areas iOS
+            "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+          ].join(" ")}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="mx-auto flex h-full max-w-xl flex-col px-4">
+            {/* Top bar */}
+            <div className="flex items-center justify-between py-3">
               <span className="text-zinc-100 text-lg font-semibold">OneLine</span>
               <button
                 aria-label="Close menu"
@@ -50,7 +69,19 @@ export default function MobileNav() {
                 ✕
               </button>
             </div>
-            <ul className="px-2 pb-4">
+
+            {/* CTA principal */}
+            <div className="mt-3">
+              <Link
+                href="/today"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-400 active:scale-[.99]"
+              >
+                Go to Today
+              </Link>
+            </div>
+
+            {/* Links */}
+            <ul className="mt-6 space-y-1">
               {links.map((l) => {
                 const active = pathname === l.href;
                 return (
@@ -58,9 +89,9 @@ export default function MobileNav() {
                     <Link
                       href={l.href}
                       className={[
-                        "block rounded-lg px-3 py-3 text-base font-medium",
+                        "block rounded-xl px-4 py-3 text-base",
                         active
-                          ? "bg-white/10 text-white"
+                          ? "bg-white/12 text-white ring-1 ring-white/15"
                           : "text-zinc-300 hover:bg-white/10 hover:text-zinc-100",
                       ].join(" ")}
                     >
@@ -70,8 +101,24 @@ export default function MobileNav() {
                 );
               })}
             </ul>
-          </nav>
-        </>
+
+            {/* Badge/claim opcional */}
+            <div className="mt-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                Private • Fast • Addictive (in a good way)
+              </div>
+            </div>
+
+            {/* Spacer para empujar el contenido */}
+            <div className="flex-1" />
+
+            {/* Sign-out / footer opcional */}
+            <div className="pb-4 pt-2 text-center text-xs text-zinc-500">
+              © {new Date().getFullYear()} OneLine
+            </div>
+          </div>
+        </nav>
       )}
     </>
   );
