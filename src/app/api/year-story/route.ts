@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// asegura Node en funciones (Gemini SDK no va en edge)
+// Usaremos Gemini si está disponible, con import dinámico para no romper el build
+let genAI: any | null = null;
+try {
+  // @ts-ignore
+  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+  const apiKey = process.env.GEMINI_API_KEY;
+  genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+} catch {
+  genAI = null;
+}
+
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const preferredRegion = ["fra1", "cdg1"];
 
 // ---- Tipos y utilidades mínimas ----
@@ -13,32 +23,35 @@ type Options = {
   tone: "auto" | "calido" | "neutro" | "poetico" | "directo";
   pov: "auto" | "primera" | "tercera";
   includeHighlights: boolean;
-  onlyPinned: boolean;
+  onlyPinned: boolean;        // con tu schema actual NO hay 'is_pinned'; lo ignoraremos si viene true
   pinnedWeight: 1 | 2 | 3;
   strict: boolean;
   userNotes?: string;
 };
 
 function toneText(t: Exclude<Options["tone"], "auto">) {
-  return t === "poetico" ? "poético y visual (sin florituras)" :
-         t === "directo" ? "directo y claro (sin sonar frío)" :
-         t === "calido"  ? "cálido y cercano" :
-                           "neutral y limpio";
+  return t === "poetico" ? "poético y visual (sin florituras)"
+       : t === "directo" ? "directo y claro (sin sonar frío)"
+       : t === "calido"  ? "cálido y cercano"
+       :                   "neutral y limpio";
 }
 function povText(p: Exclude<Options["pov"], "auto">) {
   return p === "primera" ? "primera persona" : "tercera persona cercana";
 }
-
 function desiredWordRange(length: Options["length"]) {
   if (length === "short") return [400, 600] as const;
   if (length === "long")  return [1200, 1800] as const;
   return [700, 1000] as const;
 }
 function adaptRangeByData(base: readonly [number, number], feedChars: number) {
-  if (feedChars < 400) return [150, 300] as const;
-  if (feedChars < 900) return [250, 450] as const;
+  if (feedChars < 400)  return [150, 300] as const;
+  if (feedChars < 900)  return [250, 450] as const;
   if (feedChars < 1600) return [400, Math.min(700, base[1])] as const;
   return base;
+}
+function ymd(d: string | Date) {
+  const iso = typeof d === "string" ? d : new Date(d).toISOString();
+  return iso.slice(0, 10); // YYYY-MM-DD
 }
 
 function buildPrompt(feed: string, from: string, to: string, opt: Options, feedChars: number) {
@@ -59,7 +72,7 @@ REGLAS DE FIDELIDAD:
 - No inventes hechos, personas o lugares no presentes en las entradas.
 - Evita inferencias estacionales/temporales salvo mención explícita.
 - Si hay pocos datos, prima concisión y fidelidad.
-- Da ${opt.pinnedWeight}x de peso a las líneas marcadas con ★.`.trim();
+- Da ${opt.pinnedWeight}x de peso a las líneas marcadas con ★ (si hubiera).`.trim();
 
   const notas = opt.userNotes?.trim()
     ? `\nNOTAS DEL USUARIO (si no contradicen las reglas):\n${opt.userNotes.trim()}\n`
@@ -77,7 +90,7 @@ Longitud: ${minW}–${maxW} palabras. Empieza directo al primer párrafo.
 ${reglas}
 ${notas}
 
-ENTRADAS (YYYY-MM-DD [slot][★ si pinned] texto):
+ENTRADAS (YYYY-MM-DD texto):
 ${feed}
 
 SALIDA:
@@ -100,7 +113,7 @@ export async function GET(req: Request) {
     tone: (url.searchParams.get("tone") as Options["tone"]) || "auto",
     pov: (url.searchParams.get("pov") as Options["pov"]) || "auto",
     includeHighlights: url.searchParams.get("highlights") !== "false",
-    onlyPinned: url.searchParams.get("onlyPinned") === "true",
+    onlyPinned: url.searchParams.get("onlyPinned") === "true",    // sin efecto con tu schema
     pinnedWeight: (Number(url.searchParams.get("pinnedWeight")) as 1|2|3) || 2,
     strict: url.searchParams.get("strict") !== "false",
     userNotes: url.searchParams.get("notes") || undefined,
@@ -111,38 +124,55 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  // Datos
-  let q = supabase
-    .from("entries")
-    .select("entry_date,slot,content,is_pinned")
-    .eq("user_id", user.id)
-    .gte("entry_date", from)
-    .lte("entry_date", to)
-    .order("entry_date", { ascending: true })
-    .order("slot", { ascending: true });
-  if (opt.onlyPinned) q = q.eq("is_pinned", true);
+  // Datos (tu tabla: public.journal con created_at)
+  // Filtramos por rango de fechas (ambas inclusive)
+  const fromIso = `${from}T00:00:00.000Z`;
+  const toIso   = `${to}T23:59:59.999Z`;
 
-  const { data, error } = await q;
+  const { data, error } = await supabase
+    .from("journal")
+    .select("content, created_at")
+    .eq("user_id", user.id)
+    .gte("created_at", fromIso)
+    .lte("created_at", toIso)
+    .order("created_at", { ascending: true });
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data || data.length === 0) {
     return NextResponse.json({ error: "No hay entradas en ese rango." }, { status: 400 });
   }
 
-  const feed = data.map(e => `${e.entry_date} [${e.slot}]${e.is_pinned ? "★" : ""} ${e.content}`).join("\n");
+  // Construimos feed: YYYY-MM-DD texto
+  const feed = data.map(e => `${ymd(e.created_at)} ${e.content}`).join("\n");
   const prompt = buildPrompt(feed, from, to, opt, feed.length);
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
+  try {
+    let story = "";
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    if (genAI) {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const resp = await model.generateContent(prompt);
+      story = (resp?.response?.text?.() ?? "").trim();
+      if (!story) {
+        // fallback si viene vacío
+        story = feed.replace(/^(?=\S)/gm, "- ");
+      }
+    } else {
+      // Fallback local (sin GEMINI_API_KEY)
+      const joined = data.map(d => `[${ymd(d.created_at)}] ${d.content}`).join(" ");
+      const brief = joined.length > 1500 ? joined.slice(0, 1500) + "…" : joined;
+      story =
+        "### Tu historia del periodo\n\n" +
+        brief +
+        "\n\n---\n*Nota: añade GEMINI_API_KEY para una historia más pulida.*";
+    }
 
-  const resp = await model.generateContent(prompt);
-  const story = (resp.response.text() ?? "").trim();
-
-  return NextResponse.json({
-    from, to, options: opt,
-    words: story ? story.split(/\s+/).length : 0,
-    story,
-  });
+    return NextResponse.json({
+      from, to, options: opt,
+      words: story ? story.split(/\s+/).length : 0,
+      story,
+    });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? "generation failed" }, { status: 500 });
+  }
 }
