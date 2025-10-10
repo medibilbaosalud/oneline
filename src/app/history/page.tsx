@@ -1,35 +1,50 @@
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import EntryCard from "./EntryCard";
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
-export const dynamic = "force-dynamic";
+type Entry = { id: string; day: string; content: string; created_at: string };
 
-export default async function HistoryPage() {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return <div className="text-zinc-300 p-6">Please sign in</div>;
+export default function HistoryPage() {
+  const sb = useMemo(() => createClientComponentClient(), []);
+  const [items, setItems] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data } = await supabase
-    .from("journal")
-    .select("id, content, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) { setItems([]); setLoading(false); return; }
+      const { data } = await sb
+        .from('journal')
+        .select('id, day, content, created_at')
+        .eq('user_id', user.id)
+        .order('day', { ascending: false })
+        .limit(200);
+      setItems((data ?? []) as Entry[]);
+      setLoading(false);
+    })();
+  }, [sb]);
 
   return (
-    <main className="min-h-screen bg-black">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <h1 className="text-3xl font-semibold text-zinc-100">History</h1>
-        <p className="mt-1 text-zinc-400">Your past entries.</p>
+    <main className="min-h-dvh bg-neutral-950 text-neutral-50">
+      <div className="mx-auto max-w-3xl px-4 py-5 sm:p-6">
+        <h1 className="mb-5 text-2xl font-semibold sm:mb-8 sm:text-3xl">History</h1>
+        {loading && <p className="text-neutral-400">Loading…</p>}
+        {!loading && items.length === 0 && <p className="text-neutral-400">No entries yet.</p>}
 
-        <section
-          className="
-            mt-8 grid gap-6
-            sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
-            auto-rows-[minmax(240px,1fr)]
-          "
-        >
-          {data?.map((e) => <EntryCard key={e.id} entry={e as any} />)}
-        </section>
+        <ul className="grid gap-3 sm:gap-4">
+          {items.map(e => (
+            <li key={e.id} className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4 ring-1 ring-white/10">
+              <div className="flex items-center justify-between gap-3">
+                <time className="text-xs font-medium text-neutral-300 sm:text-sm">
+                  {new Date(e.day || e.created_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </time>
+                {/* Aquí podrías poner Edit/Delete más adelante */}
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-200">{e.content}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </main>
   );

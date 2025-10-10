@@ -18,6 +18,12 @@ export const metadata: Metadata = {
   description: "A single honest line, every day.",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
