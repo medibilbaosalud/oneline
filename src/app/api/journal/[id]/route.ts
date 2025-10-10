@@ -6,13 +6,13 @@ export const dynamic = "force-dynamic";
 // export const runtime = "nodejs"; // opcional
 
 export async function PATCH(req: NextRequest, context: any) {
-  // Compatibilidad: params puede venir como objeto o como Promise del objeto
+  // Compatibilidad: params puede venir como objeto o Promise del objeto
   let id = "";
   try {
     const p = context?.params;
     id = p && typeof p.then === "function" ? (await p).id : (p?.id as string);
   } catch {
-    /* id se quedará "" si no se puede leer */
+    // si falla, id quedará vacío
   }
 
   if (!id) {
@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest, context: any) {
 
   const { data, error } = await supabase
     .from("journal")
-    .update({ content })
+    .update({ content, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("user_id", user.id)
     .select("id, content, created_at")
