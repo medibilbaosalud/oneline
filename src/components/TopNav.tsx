@@ -46,14 +46,7 @@ export default function TopNav() {
   }, [open]);
 
   return (
-    <header
-      className="
-        sticky top-0 z-50
-        border-b border-white/10
-        bg-neutral-950/70 backdrop-blur
-        supports-[backdrop-filter]:bg-neutral-950/60
-      "
-    >
+    <header className="sticky top-0 z-[100] border-b border-white/10 bg-neutral-950">
       <nav className="mx-auto flex h-12 max-w-6xl items-center justify-between px-3">
         {/* Brand + Desktop nav */}
         <div className="flex items-center gap-2">
@@ -88,21 +81,21 @@ export default function TopNav() {
 
       {/* Mobile sheet */}
       {open && (
-        <div className="fixed inset-0 z-[60] md:hidden">
-          {/* Overlay con blur y oscurecido para que SIEMPRE se lea */}
+        <div className="fixed inset-0 z-[120] md:hidden">
+          {/* Overlay opaco (tapa completamente el fondo) */}
           <div
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+            className="absolute inset-0 bg-black"
             onClick={() => setOpen(false)}
+            role="presentation"
           />
-          {/* Panel */}
+          {/* Panel opaco */}
           <div
-            className="
-              absolute right-0 top-0 h-full w-[82%] max-w-sm
-              bg-neutral-950/95 backdrop-blur-md
-              ring-1 ring-white/10 shadow-2xl
-            "
+            className="absolute right-0 top-0 h-full w-[82%] max-w-sm bg-neutral-950 ring-1 ring-white/10 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation menu"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-neutral-950">
               <span className="text-sm font-semibold text-white">OneLine</span>
               <button
                 aria-label="Close menu"
@@ -120,7 +113,7 @@ export default function TopNav() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-1 p-3">
+            <div className="flex flex-col gap-1 p-3 bg-neutral-950">
               <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
               <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
               <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
@@ -135,3 +128,7 @@ export default function TopNav() {
     </header>
   );
 }
+```0
+
+
+//fin
