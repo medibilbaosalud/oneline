@@ -1,3 +1,4 @@
+// src/components/TopNav.tsx
 'use client';
 
 import Link from 'next/link';
@@ -5,15 +6,13 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AuthButton from './AuthButton';
 
-function NavLink({
-  href,
-  label,
-  onClick,
-}: {
+type NavLinkProps = {
   href: string;
   label: string;
   onClick?: () => void;
-}) {
+};
+
+function NavLink({ href, label, onClick }: NavLinkProps) {
   const pathname = usePathname();
   const active = pathname === href || pathname?.startsWith(href + '/');
   const base = 'rounded-md px-3 py-2 text-sm transition';
@@ -35,7 +34,7 @@ function NavLink({
 export default function TopNav() {
   const [open, setOpen] = useState(false);
 
-  // Evita scroll del body con el menú abierto
+  // Bloquea el scroll del body cuando el menú está abierto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -82,20 +81,19 @@ export default function TopNav() {
       {/* Mobile sheet */}
       {open && (
         <div className="fixed inset-0 z-[120] md:hidden">
-          {/* Overlay opaco (tapa completamente el fondo) */}
+          {/* Overlay opaco (sin ver el fondo) */}
           <div
             className="absolute inset-0 bg-black"
-            onClick={() => setOpen(false)}
             role="presentation"
+            onClick={() => setOpen(false)}
           />
-          {/* Panel opaco */}
+          {/* Panel */}
           <div
-            className="absolute right-0 top-0 h-full w-[82%] max-w-sm bg-neutral-950 ring-1 ring-white/10 shadow-2xl"
             role="dialog"
             aria-modal="true"
-            aria-label="Navigation menu"
+            className="absolute right-0 top-0 h-full w-[82%] max-w-sm bg-neutral-950 ring-1 ring-white/10"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-neutral-950">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <span className="text-sm font-semibold text-white">OneLine</span>
               <button
                 aria-label="Close menu"
@@ -113,7 +111,7 @@ export default function TopNav() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-1 p-3 bg-neutral-950">
+            <div className="flex flex-col gap-1 p-3">
               <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
               <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
               <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
@@ -128,7 +126,3 @@ export default function TopNav() {
     </header>
   );
 }
-```0
-
-
-//fin
