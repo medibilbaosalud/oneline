@@ -1,28 +1,24 @@
-async function onSignIn(e: React.FormEvent) {
-  e.preventDefault();
-  setMsg(null);
-  setLoading(true);
+// src/lib/requireConsent.ts
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password: pw,
-  });
+/**
+ * Gate de acceso para páginas protegidas.
+ * - Si no hay usuario → /auth
+ * - Si strict=true y el usuario no ha aceptado → /auth
+ * Devuelve el usuario si pasa el gate.
+ */
+export async function requireConsentOrRedirect(strict: boolean = true) {
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (error) {
-    setLoading(false);
-    setMsg(error.message);
-    return;
+  if (!user) redirect("/auth");
+
+  if (strict) {
+    const consent = (user.user_metadata as any)?.has_consented === true;
+    if (!consent) redirect("/auth");
   }
 
-  // 1) Actualiza metadata para pasar el gate de consentimiento
-  await supabase.auth.updateUser({
-    data: { has_consented: true },
-  }).catch(() => { /* ignore */ });
-
-  // 2) Asegura que la sesión esté lista y redirige con fuerza
-  // (a veces la sesión tarda un tick)
-  await supabase.auth.getSession();
-  setLoading(false);
-  router.replace('/today');
-  router.refresh();
+  return user;
 }
