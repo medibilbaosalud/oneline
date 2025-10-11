@@ -1,51 +1,12 @@
 // src/app/page.tsx
 import Link from "next/link";
+import LandingMenu from "@/components/LandingMenu";
 
 export const metadata = {
   title: "OneLine — One honest line a day",
   description:
     "Write one honest line a day. Build a habit in seconds. Private by design. Generate month/quarter/year stories on demand.",
 };
-
-import LandingMenu from "@/components/LandingMenu"; // <-- arriba del todo
-import Link from "next/link";
-
-// ...
-
-<header className="sticky top-0 z-50 border-b border-white/5 bg-[#07080B]/60 backdrop-blur">
-  <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-    <div className="flex items-center gap-3">
-      <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-emerald-400" />
-      <span className="text-sm font-semibold tracking-wide text-zinc-300">
-        OneLine
-      </span>
-    </div>
-
-    {/* Navegación escritorio */}
-    <nav className="hidden items-center gap-6 text-sm text-zinc-400 md:flex">
-      <a href="#benefits" className="transition hover:text-zinc-200">Benefits</a>
-      <a href="#how" className="transition hover:text-zinc-200">How it works</a>
-      <a href="#privacy" className="transition hover:text-zinc-200">Privacy</a>
-      <Link
-        href="/today"
-        className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400"
-      >
-        Go to Today
-      </Link>
-    </nav>
-
-    {/* CTA + Menú móvil */}
-    <div className="flex items-center gap-2 md:hidden">
-      <Link
-        href="/today"
-        className="rounded-lg bg-indigo-600/90 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500"
-      >
-        Go to Today
-      </Link>
-      <LandingMenu />
-    </div>
-  </div>
-</header>
 
 export default function Landing() {
   return (
@@ -54,7 +15,40 @@ export default function Landing() {
       <Aurora />
 
       {/* NAV */}
-     
+      <header className="sticky top-0 z-50 border-b border-white/5 bg-[#07080B]/60 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-emerald-400" />
+            <span className="text-sm font-semibold tracking-wide text-zinc-300">
+              OneLine
+            </span>
+          </div>
+
+          {/* Navegación escritorio */}
+          <nav className="hidden items-center gap-6 text-sm text-zinc-400 md:flex">
+            <a href="#benefits" className="transition hover:text-zinc-200">Benefits</a>
+            <a href="#how" className="transition hover:text-zinc-200">How it works</a>
+            <a href="#privacy" className="transition hover:text-zinc-200">Privacy</a>
+            <Link
+              href="/today"
+              className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-400"
+            >
+              Go to Today
+            </Link>
+          </nav>
+
+          {/* CTA + Menú móvil */}
+          <div className="flex items-center gap-2 md:hidden">
+            <Link
+              href="/today"
+              className="rounded-lg bg-indigo-600/90 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500"
+            >
+              Go to Today
+            </Link>
+            <LandingMenu />
+          </div>
+        </div>
+      </header>
 
       {/* HERO */}
       <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
@@ -266,7 +260,6 @@ function ShinyCTA({
 }
 
 /* ---------- Aurora (CSS classes are in globals.css) ---------- */
-
 function Aurora() {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10">
@@ -279,6 +272,3 @@ function Aurora() {
     </div>
   );
 }
-
-
-//FIINNN
