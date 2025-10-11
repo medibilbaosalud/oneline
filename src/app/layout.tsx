@@ -1,38 +1,25 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import TopNav from "./_components/TopNav";
+// src/app/layout.tsx
+import './globals.css';
+import { Inter } from 'next/font/google';
+import TopNav from '@/components/TopNav';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ['latin'] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "OneLine",
-  description: "A single honest line, every day.",
-};
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover',
+export const metadata = {
+  title: 'OneLine',
+  description: 'One honest line a day.',
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-neutral-950 text-neutral-50`}>
-        {/* Barra superior de navegación (client component) */}
+    <html lang="en" className="h-full bg-neutral-950">
+      <body className={`${inter.className} min-h-screen bg-neutral-950 text-zinc-100`}>
+        {/* NAV global en todas las páginas */}
         <TopNav />
-        {/* Contenido de cada página */}
         {children}
       </body>
     </html>
