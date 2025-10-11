@@ -1,12 +1,13 @@
-// src/app/today/TodayClient.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 
-type Q = { t: string; a: string };
 const MAX = 300;
-const QUOTES: Q[] = [
+const QUOTES = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
+  { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
+  // … deja tu lista
+    { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
   { t: 'The only way to do great work is to love what you do.', a: 'Steve Jobs' },
   { t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.', a: 'Steve Jobs' },
@@ -34,119 +35,103 @@ const QUOTES: Q[] = [
   { t: 'No zero days. One line is enough.', a: 'OneLine' },
 ];
 
-function prettyDate(d = new Date()) {
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-function quoteOfToday(): Q {
+function quoteOfToday() {
   const key = Number(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
   return QUOTES[key % QUOTES.length];
 }
 
 export default function TodayClient() {
   const [text, setText] = useState('');
-  const [status, setStatus] = useState<'idle'|'saving'|'saved'|'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState<string|undefined>();
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [needLogin, setNeedLogin] = useState(false);
   const quote = useMemo(() => quoteOfToday(), []);
 
-  // Carga el entry existente (si lo hay)
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/journal/today', { cache: 'no-store' });
-        const json = await res.json();
-        if (typeof json?.content === 'string') setText(json.content);
+        const r = await fetch('/api/journal/today', { cache: 'no-store' });
+        if (r.status === 401) {
+          setNeedLogin(true);
+          return;
+        }
+        const j = await r.json();
+        if (typeof j?.content === 'string') setText(j.content);
       } catch {}
     })();
   }, []);
 
-  async function handleSave() {
+  async function save() {
     if (!text.trim()) return;
-    setStatus('saving');
-    setErrorMsg(undefined);
-
+    setSaving(true);
+    setMsg(null);
     try {
-      const res = await fetch('/api/journal/today', {
+      const r = await fetch('/api/journal/today', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ content: text })
       });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setStatus('error');
-        setErrorMsg(j?.error ?? 'Could not save. Please try again.');
+      if (r.status === 401) {
+        setNeedLogin(true);
+        setMsg('Please sign in to save.');
         return;
       }
-      setStatus('saved');
-      setTimeout(() => setStatus('idle'), 2000);
-    } catch (e) {
-      setStatus('error');
-      setErrorMsg('Network error. Please try again.');
+      if (!r.ok) throw new Error('Failed to save');
+      setMsg('Saved ✓');
+      setTimeout(() => setMsg(null), 1500);
+    } catch (e: any) {
+      setMsg(e?.message || 'Network error');
+    } finally {
+      setSaving(false);
     }
   }
 
-  const count = text.length;
-
   return (
-    <main className="min-h-screen bg-gradient-to-b from-neutral-950 via-neutral-900 to-neutral-950 text-neutral-50">
-      <div className="mx-auto max-w-3xl p-6">
-        <header className="mb-8">
-          <p className="text-xs uppercase tracking-widest text-neutral-400">Today</p>
-          <h1 className="mt-1 text-3xl font-semibold md:text-4xl">{prettyDate()}</h1>
-          <p className="mt-4 italic text-neutral-300">
-            “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
-          </p>
-        </header>
+    <section className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+      <p className="mb-4 italic text-neutral-300">
+        “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
+      </p>
 
-        <section className="rounded-2xl bg-neutral-900/60 p-5 ring-1 ring-white/10 backdrop-blur">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={MAX}
-            placeholder="One line that captures your day…"
-            className="h-48 w-full resize-none bg-transparent leading-relaxed outline-none placeholder:text-neutral-500"
-          />
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        maxLength={MAX}
+        placeholder="One line that captures your day…"
+        className="h-48 w-full resize-none bg-transparent leading-relaxed outline-none placeholder:text-neutral-500"
+      />
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <span className={`text-sm ${count === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
-              {count}/{MAX}
-            </span>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
+          {text.length}/{MAX}
+        </span>
 
-            <div className="flex items-center gap-3">
-              {status === 'saved' && (
-                <span className="text-emerald-400 text-sm">Saved ✓</span>
-              )}
-              {status === 'error' && (
-                <span className="text-rose-400 text-sm">{errorMsg}</span>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setText('')}
-                className="rounded-lg bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!text.trim() || status === 'saving'}
-                className="rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
-              >
-                {status === 'saving' ? 'Saving…' : 'Save entry'}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <p className="mt-6 text-center text-xs text-neutral-500">
-          Tip: one honest sentence beats a perfect paragraph.
-        </p>
+        <div className="flex items-center gap-3">
+          {msg && <span className="text-sm text-emerald-400">{msg}</span>}
+          {needLogin && (
+            <a
+              href="/auth"
+              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              Sign in to save
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => setText('')}
+            className="rounded-lg bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!text.trim() || saving}
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+          >
+            {saving ? 'Saving…' : 'Save entry'}
+          </button>
+        </div>
       </div>
-    </main>
+    </section>
   );
 }
