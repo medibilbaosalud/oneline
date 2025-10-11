@@ -1,6 +1,16 @@
+import { requireConsentOrRedirect } from "@/lib/requireConsent";
+
+export default async function TodayPage() {
+  await requireConsentOrRedirect();
+
+  // ...tu código actual de Today
+
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+
+
 
 type Q = { t: string; a: string };
 const MAX = 300;
@@ -152,3 +162,7 @@ export default function TodayPage() {
     </main>
   );
 }
+}
+
+
+//Hola
