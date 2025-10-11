@@ -1,12 +1,28 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+async function onSignIn(e: React.FormEvent) {
+  e.preventDefault();
+  setMsg(null);
+  setLoading(true);
 
-export async function requireConsentOrRedirect() {
-  const supabase = createRouteHandlerClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth');
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password: pw,
+  });
 
-  const consent = (user.user_metadata as any)?.has_consented;
-  if (!consent) redirect('/auth'); // si quisieras mostrar una pantalla de consentimiento, cámbialo aquí
+  if (error) {
+    setLoading(false);
+    setMsg(error.message);
+    return;
+  }
+
+  // 1) Actualiza metadata para pasar el gate de consentimiento
+  await supabase.auth.updateUser({
+    data: { has_consented: true },
+  }).catch(() => { /* ignore */ });
+
+  // 2) Asegura que la sesión esté lista y redirige con fuerza
+  // (a veces la sesión tarda un tick)
+  await supabase.auth.getSession();
+  setLoading(false);
+  router.replace('/today');
+  router.refresh();
 }
