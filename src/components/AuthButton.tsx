@@ -1,68 +1,71 @@
-'use client';
+// src/components/AuthButton.tsx
+"use client";
 
-import { useEffect, useState } from 'react';
-
-type AuthState =
-  | { status: 'loading' }
-  | { status: 'signedOut' }
-  | { status: 'signedIn'; email: string };
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function AuthButton() {
-  const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let alive = true;
     (async () => {
       try {
-        const r = await fetch('/api/auth/user', { cache: 'no-store' });
-        const j = await r.json();
-        if (j?.email) setAuth({ status: 'signedIn', email: j.email });
-        else setAuth({ status: 'signedOut' });
+        const res = await fetch("/api/auth/user", { cache: "no-store" });
+        const j = await res.json();
+        if (!alive) return;
+        setEmail(j?.email ?? null);
       } catch {
-        setAuth({ status: 'signedOut' });
+        if (!alive) return;
+        setEmail(null);
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
+    return () => { alive = false; };
   }, []);
 
-  async function signOut() {
+  async function handleSignOut() {
     try {
-      await fetch('/api/auth/signout', { method: 'POST' });
-    } finally {
-      location.href = '/';
-    }
+      await fetch("/api/auth/signout", { method: "POST" });
+      // recargar estado UI
+      setEmail(null);
+      // opcional: volver al home
+      window.location.href = "/";
+    } catch {}
   }
 
-  if (auth.status === 'loading') {
+  if (loading) {
     return (
-      <div className="rounded-md bg-neutral-800/80 px-3 py-2 text-xs text-neutral-300">
+      <div className="rounded-md px-3 py-2 text-sm text-zinc-300/70">
         …
       </div>
     );
   }
 
-  if (auth.status === 'signedOut') {
+  if (email) {
     return (
-      <a
-        href="/auth"
-        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-      >
-        Sign in
-      </a>
+      <div className="flex items-center gap-2">
+        <span className="rounded-md bg-neutral-800 px-2 py-1 text-xs text-zinc-200">
+          {email}
+        </span>
+        <button
+          onClick={handleSignOut}
+          className="rounded-md bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white"
+        >
+          Sign out
+        </button>
+      </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="hidden truncate text-sm text-neutral-300 md:block">
-        {auth.email}
-      </span>
-      <button
-        type="button"
-        onClick={signOut}
-        className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2 text-sm font-medium text-white shadow hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        title="Sign out"
-      >
-        Sign out
-      </button>
-    </div>
+    <Link
+      href="/auth"
+      className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+    >
+      Sign in
+    </Link>
   );
 }

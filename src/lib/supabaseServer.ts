@@ -1,19 +1,18 @@
 // src/lib/supabaseServer.ts
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-/**
- * Fábrica ligera para crear un cliente Supabase válido en server routes.
- * Exportamos varias formas (named + alias + default) para que las rutas
- * existentes puedan importar el nombre que ya están usando.
- */
-
 export function supabase() {
-  return createRouteHandlerClient({ cookies });
+  const cookieStore = cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 }
-
-// Alias por compatibilidad con imports que esperan `supabaseServer`
-export const supabaseServer = supabase;
-
-// Export por defecto también (opcional)
-export default supabase;
