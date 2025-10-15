@@ -1,32 +1,29 @@
 // src/app/api/history/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseServer";
+import { supabaseServer } from "@/lib/supabaseServer";
 
+// Opcional (pero útil si usas caché):
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
+/**
+ * PATCH /api/history/[id]
+ * body: { content: string }
+ */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
-  const body = await req.json().catch(() => ({}));
-  const content = typeof body?.content === "string" ? body.content.trim() : "";
-  if (!content) {
-    return NextResponse.json({ error: "Content is required" }, { status: 400 });
-    }
-
-  const sb = supabase();
-  const { data: { user }, error: authErr } = await sb.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  const { id } = await ctx.params;
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const { error } = await sb
-    .from("entries") // <-- tabla correcta
-    .update({ content })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+  const body = await req.json().catch(() => ({}));
+  const content = String(body?.content ?? "").slice(0, 300);
+
+  const sb = supabaseServer();
+  const { error } = await sb.from("entries").update({ content }).eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -34,23 +31,20 @@ export async function PATCH(
   return NextResponse.json({ ok: true });
 }
 
+/**
+ * DELETE /api/history/[id]
+ */
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params;
-
-  const sb = supabase();
-  const { data: { user }, error: authErr } = await sb.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  const { id } = await ctx.params;
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  const { error } = await sb
-    .from("entries") // <-- tabla correcta
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  const sb = supabaseServer();
+  const { error } = await sb.from("entries").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
