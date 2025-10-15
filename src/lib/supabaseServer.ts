@@ -3,38 +3,28 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Crea un cliente de Supabase para entornos server (Route Handlers / Server Components)
- * usando las cookies de Next para la sesión.
+ * Cliente de Supabase para Route Handlers / Server Components (Next 15).
+ * Nota: es ASÍNCRONO porque en RH `cookies()` puede ser una Promise.
  */
-export function supabaseServer() {
-  const cookieStore = cookies();
+export async function supabaseServer() {
+  const cookieStore = await cookies();
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: any) {
-          // En Route Handlers esto puede lanzar si la respuesta ya fue enviada;
-          // lo envolvemos en try por seguridad.
-          try {
-            // @ts-ignore - next/headers set API
-            cookieStore.set({ name, value, ...options });
-          } catch {}
-        },
-        remove(name: string, options: any) {
-          try {
-            // @ts-ignore
-            cookieStore.set({ name, value: "", ...options, maxAge: 0 });
-          } catch {}
-        },
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  return createServerClient(url, anon, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value;
       },
-    }
-  );
+      set(name: string, value: string, options: any) {
+        // En RH puede lanzar si ya se envió respuesta; pero este patrón
+        // es el recomendado por @supabase/ssr para Next 15.
+        (cookies() as any).set(name, value, options);
+      },
+      remove(name: string, options: any) {
+        (cookies() as any).delete(name, options);
+      },
+    },
+  });
 }
-
-// Alias para compatibilidad con imports antiguos { supabase }
-export const supabase = supabaseServer;
