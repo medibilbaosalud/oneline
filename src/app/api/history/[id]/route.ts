@@ -2,52 +2,63 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
-// Opcional (pero útil si usas caché):
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * PATCH /api/history/[id]
- * body: { content: string }
- */
+// PATCH /api/history/:id  -> actualizar contenido
 export async function PATCH(
   req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
+  context:
+    | { params: { id: string } }
+    | { params: Promise<{ id: string }> }
 ) {
-  const { id } = await ctx.params;
-  if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
-  }
+  const p: any = (context as any).params;
+  const { id } = p && typeof p.then === "function" ? await p : p;
 
-  const body = await req.json().catch(() => ({}));
+  const sb = await supabaseServer();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {}
   const content = String(body?.content ?? "").slice(0, 300);
 
-  const sb = supabaseServer();
-  const { error } = await sb.from("entries").update({ content }).eq("id", id);
+  const { error } = await sb
+    .from("journal")
+    .update({ content, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
 
-/**
- * DELETE /api/history/[id]
- */
+// DELETE /api/history/:id  -> borrar entrada
 export async function DELETE(
   _req: NextRequest,
-  ctx: { params: Promise<{ id: string }> }
+  context:
+    | { params: { id: string } }
+    | { params: Promise<{ id: string }> }
 ) {
-  const { id } = await ctx.params;
-  if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
-  }
+  const p: any = (context as any).params;
+  const { id } = p && typeof p.then === "function" ? await p : p;
 
-  const sb = supabaseServer();
-  const { error } = await sb.from("entries").delete().eq("id", id);
+  const sb = await supabaseServer();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const { error } = await sb
+    .from("journal")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
