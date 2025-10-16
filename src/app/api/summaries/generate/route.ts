@@ -1,47 +1,72 @@
+// src/app/api/summaries/generate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
-  const sb = supabaseServer();
-  const { data: { user }, error: authErr } = await sb.auth.getUser();
-  if (authErr || !user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  // ✅ obtener el cliente REAL, no la Promesa
+  const sb = await supabaseServer();
 
-  // Ventana mensual (UTC)
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
-  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString();
+  const {
+    data: { user },
+    error: authErr,
+  } = await sb.auth.getUser();
 
-  // Cuenta usos del mes
-  const { count, error: countErr } = await sb
-    .from("summary_usage")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("created_at", monthStart)
-    .lt("created_at", monthEnd);
-
-  if (countErr) return NextResponse.json({ error: countErr.message }, { status: 500 });
-
-  const LIMIT = 10;
-  if ((count ?? 0) >= LIMIT) {
-    return NextResponse.json(
-      { error: "Monthly limit reached", remaining: 0, limit: LIMIT },
-      { status: 429 }
-    );
+  if (authErr || !user) {
+    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  // --- aquí generas tu resumen como ya lo hacías ---
-  // const body = await req.json(); // e.g. { from, to }
-  // const result = await generateSummary(body)
+  // ...tu lógica existente (límite mensual, generación, etc.)
+  // devuelve NextResponse.json(...)
+}
+  // Ventana mensual
+  const { startDate, endDate, startISO, endISO } = monthWindow(new Date());
 
-  // Registra el uso
-  const { error: insErr } = await sb.from("summary_usage").insert({ user_id: user.id });
+  // Límite: 10 resúmenes en el mes actual
+  const { data: existing, error: selErr } = await sb
+    .from("summaries")
+    .select("id, created_at")
+    .eq("user_id", user.id)
+    .gte("created_at", startISO)
+    .lte("created_at", endISO);
+
+  if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
+  if ((existing?.length ?? 0) >= 10) {
+    return NextResponse.json({ error: "Monthly limit reached (10)." }, { status: 429 });
+  }
+
+  // Entradas del mes desde tu tabla 'journal'
+  const { data: entries, error: jErr } = await sb
+    .from("journal")
+    .select("day, content")
+    .eq("user_id", user.id)
+    .gte("day", startDate)
+    .lte("day", endDate)
+    .order("day", { ascending: true });
+
+  if (jErr) return NextResponse.json({ error: jErr.message }, { status: 500 });
+  if (!entries || entries.length === 0) {
+    return NextResponse.json({ error: "No entries this month." }, { status: 400 });
+  }
+
+  // Resumen simple en HTML (pre) si no usas Gemini aquí
+  const plain = entries.map((e) => `${e.day}: ${e.content ?? ""}`).join("\n");
+  const html = `<pre>${escapeHtml(plain)}</pre>`;
+
+  const { data: inserted, error: insErr } = await sb
+    .from("summaries")
+    .insert({
+      user_id: user.id,
+      period: "monthly",
+      start_date: startDate,
+      end_date: endDate,
+      html,
+    })
+    .select()
+    .single();
+
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
 
-  // Devuelve tu resultado real
-  return NextResponse.json({
-    ok: true,
-    // summary: result,
-    remaining: LIMIT - ((count ?? 0) + 1),
-    limit: LIMIT,
-  });
+  return NextResponse.json({ ok: true, summary: inserted });
 }
