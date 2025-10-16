@@ -3,9 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+// Ventana mensual en UTC
+function monthWindowUTC(d = new Date()) {
+  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
+  const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0));
+  return { start, end };
+}
 
 export async function POST(req: NextRequest) {
-  // ✅ obtener el cliente REAL, no la Promesa
   const sb = await supabaseServer();
 
   const {
@@ -17,56 +24,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  // ...tu lógica existente (límite mensual, generación, etc.)
-  // devuelve NextResponse.json(...)
-}
-  // Ventana mensual
-  const { startDate, endDate, startISO, endISO } = monthWindow(new Date());
+  const { start, end } = monthWindowUTC();
 
-  // Límite: 10 resúmenes en el mes actual
-  const { data: existing, error: selErr } = await sb
-    .from("summaries")
-    .select("id, created_at")
+  // Límite: 10 resúmenes por usuario y mes
+  const { count, error: countErr } = await sb
+    .from("summaries") // <-- si tu tabla se llama distinto, cámbiala aquí
+    .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .gte("created_at", startISO)
-    .lte("created_at", endISO);
+    .gte("created_at", start.toISOString())
+    .lt("created_at", end.toISOString());
 
-  if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
-  if ((existing?.length ?? 0) >= 10) {
-    return NextResponse.json({ error: "Monthly limit reached (10)." }, { status: 429 });
+  if (countErr) {
+    return NextResponse.json({ error: countErr.message }, { status: 400 });
+  }
+  if ((count ?? 0) >= 10) {
+    return NextResponse.json({ error: "monthly-limit-reached" }, { status: 429 });
   }
 
-  // Entradas del mes desde tu tabla 'journal'
-  const { data: entries, error: jErr } = await sb
-    .from("journal")
-    .select("day, content")
-    .eq("user_id", user.id)
-    .gte("day", startDate)
-    .lte("day", endDate)
-    .order("day", { ascending: true });
-
-  if (jErr) return NextResponse.json({ error: jErr.message }, { status: 500 });
-  if (!entries || entries.length === 0) {
-    return NextResponse.json({ error: "No entries this month." }, { status: 400 });
+  // Cuerpo de la petición (opciones de generación)
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {
+    // cuerpo vacío o inválido -> body se queda como {}
   }
 
-  // Resumen simple en HTML (pre) si no usas Gemini aquí
-  const plain = entries.map((e) => `${e.day}: ${e.content ?? ""}`).join("\n");
-  const html = `<pre>${escapeHtml(plain)}</pre>`;
+  // TODO: aquí generas la historia real; de momento acepto `body.story` si viene
+  const story: string = typeof body.story === "string" ? body.story : "";
 
-  const { data: inserted, error: insErr } = await sb
-    .from("summaries")
+  // Guardar el resumen
+  const { data: inserted, error: insertErr } = await sb
+    .from("summaries") // <-- mismo nombre que arriba
     .insert({
       user_id: user.id,
-      period: "monthly",
-      start_date: startDate,
-      end_date: endDate,
-      html,
+      story,
+      payload: body ?? {},
     })
     .select()
     .single();
 
-  if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+  if (insertErr) {
+    return NextResponse.json({ error: insertErr.message }, { status: 400 });
+  }
 
   return NextResponse.json({ ok: true, summary: inserted });
 }
