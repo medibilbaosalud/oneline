@@ -1,64 +1,130 @@
 // src/app/history/HistoryClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type Entry = { id: string; content: string; created_at: string };
 
-export default function HistoryClient() {
-  const [items, setItems] = useState<Entry[] | null>(null);
+export default function HistoryClient({
+  initialEntries,
+}: {
+  initialEntries: Entry[];
+}) {
+  const [items, setItems] = useState<Entry[]>(initialEntries);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
 
-  async function load() {
-    const res = await fetch("/api/history", { cache: "no-store" });
-    const j = await res.json();
-    setItems(j?.entries ?? []);
+  function fmtDate(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    });
   }
 
-  useEffect(() => { load(); }, []);
+  async function onEdit(id: string, content: string) {
+    setEditingId(id);
+    setDraft(content);
+  }
 
-  async function edit(id: string) {
-    const current = items?.find(i => i.id === id)?.content ?? "";
-    const next = window.prompt("Edit entry:", current);
-    if (next == null || next.trim() === current) return;
+  async function onCancel() {
+    setEditingId(null);
+    setDraft("");
+  }
+
+  async function onSave(id: string) {
     const res = await fetch(`/api/history/${id}`, {
       method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ content: next.trim() }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: draft }),
+      cache: "no-store",
     });
-    if (res.ok) load();
-    else alert((await res.json()).error ?? "Failed");
+    if (!res.ok) {
+      alert("Could not update entry.");
+      return;
+    }
+    setItems((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, content: draft } : e))
+    );
+    setEditingId(null);
+    setDraft("");
   }
 
-  async function remove(id: string) {
+  async function onDelete(id: string) {
     if (!confirm("Delete this entry?")) return;
-    const res = await fetch(`/api/history/${id}`, { method: "DELETE" });
-    if (res.ok) setItems(prev => prev?.filter(i => i.id !== id) ?? []);
-    else alert((await res.json()).error ?? "Failed");
+    const res = await fetch(`/api/history/${id}`, {
+      method: "DELETE",
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      alert("Could not delete entry.");
+      return;
+    }
+    setItems((prev) => prev.filter((e) => e.id !== id));
   }
-
-  if (items === null) return <div className="text-zinc-400">Loading…</div>;
-  if (!items.length) return <div className="text-zinc-400">No entries yet.</div>;
 
   return (
     <div className="space-y-4">
-      {items.map((e) => (
-        <article key={e.id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div className="text-sm text-zinc-400">
-            {new Date(e.created_at).toLocaleDateString("en-US", {
-              weekday: "short", month: "short", day: "numeric", year: "numeric",
-            })}
-          </div>
-          <div className="mt-2 text-lg text-zinc-100">{e.content}</div>
-          <div className="mt-3 flex gap-3">
-            <button onClick={() => edit(e.id)} className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-700">
-              Edit
-            </button>
-            <button onClick={() => remove(e.id)} className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm text-white hover:bg-rose-500">
-              Delete
-            </button>
-          </div>
-        </article>
-      ))}
+      {items.map((e) => {
+        const isEditing = editingId === e.id;
+        return (
+          <article
+            key={e.id}
+            className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-sm"
+          >
+            <div className="mb-2 text-sm text-zinc-400">{fmtDate(e.created_at)}</div>
+
+            {!isEditing ? (
+              <p className="whitespace-pre-wrap text-lg leading-relaxed text-zinc-100">
+                {e.content}
+              </p>
+            ) : (
+              <textarea
+                value={draft}
+                onChange={(ev) => setDraft(ev.target.value)}
+                rows={4}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            )}
+
+            <div className="mt-4 flex gap-2">
+              {!isEditing ? (
+                <>
+                  <button
+                    onClick={() => onEdit(e.id, e.content)}
+                    className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => onDelete(e.id)}
+                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500"
+                  >
+                    Delete
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => onSave(e.id)}
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={onCancel}
+                    className="rounded-lg bg-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-600"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
