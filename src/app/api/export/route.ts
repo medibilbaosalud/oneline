@@ -1,56 +1,34 @@
-'use client';
+// src/app/api/export/route.ts
+import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabaseServer";
 
-import Link from 'next/link';
-import AuthButton from './AuthButton';
-import MobileMenu from './MobileMenu';
+export const runtime = "nodejs";
 
-function NavLink({
-  href,
-  label,
-}: {
-  href: string;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60"
-    >
-      {label}
-    </Link>
-  );
-}
+export async function GET() {
+  const s = await supabaseServer();
 
-export default function SiteHeader() {
-  return (
-    <header className="sticky top-0 z-[100] border-b border-white/10 bg-neutral-950">
-      <nav className="mx-auto flex h-12 max-w-6xl items-center justify-between px-3">
-        {/* Marca + nav escritorio */}
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="rounded-md px-2 py-1 text-sm font-semibold text-white hover:bg-neutral-800/60"
-          >
-            OneLine
-          </Link>
-          <div className="ml-2 hidden gap-1 md:flex">
-            <NavLink href="/today" label="Today" />
-            <NavLink href="/history" label="History" />
-            <NavLink href="/summaries" label="Summaries" />
-            <NavLink href="/settings" label="Settings" />
-          </div>
-        </div>
+  const {
+    data: { user },
+    error: authErr,
+  } = await s.auth.getUser();
+  if (authErr || !user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
 
-        {/* Auth en escritorio */}
-        <div className="hidden md:flex">
-          <AuthButton />
-        </div>
+  // OJO: usa el nombre real de tu tabla.
+  // Si tu tabla se llama "entries" cámbialo aquí.
+  const { data, error } = await s
+    .from("journal")
+    .select("id, content, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
-        {/* Menú móvil (se autogestiona, NO props) */}
-        <div className="md:hidden">
-          <MobileMenu />
-        </div>
-      </nav>
-    </header>
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(
+    { entries: data ?? [] },
+    { headers: { "cache-control": "no-store" } }
   );
 }
