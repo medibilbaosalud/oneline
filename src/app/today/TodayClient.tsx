@@ -35,67 +35,31 @@ function quoteOfToday() {
   return QUOTES[key % QUOTES.length];
 }
 
-type Msg = { text: string; kind: 'ok' | 'error' };
-
 export default function TodayClient() {
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<Msg | null>(null);
-  const [authed, setAuthed] = useState<boolean>(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [needLogin, setNeedLogin] = useState(false);
   const quote = useMemo(() => quoteOfToday(), []);
 
-  // Helper para chequear sesión
-  async function checkAuth(): Promise<boolean> {
-    try {
-      const r = await fetch('/api/auth/user', { cache: 'no-store' });
-      const j = await r.json().catch(() => ({}));
-      return Boolean(j?.user || j?.email || j?.id);
-    } catch {
-      return false;
-    }
-  }
-
-  // Carga inicial: detecta sesión y, si hay, trae el entry de hoy
   useEffect(() => {
-    let active = true;
-
-    const boot = async () => {
-      const isAuthed = await checkAuth();
-      if (!active) return;
-      setAuthed(isAuthed);
-
-      if (isAuthed) {
-        try {
-          const r = await fetch('/api/journal/today', { cache: 'no-store' });
-          if (r.ok) {
-            const j = await r.json();
-            if (typeof j?.content === 'string') setText(j.content);
-          }
-        } catch {}
+    (async () => {
+      try {
+        const r = await fetch('/api/journal/today', { cache: 'no-store' });
+        if (r.status === 401) {
+          setNeedLogin(true);
+          return;
+        }
+        const j = await r.json();
+        if (typeof j?.content === 'string') setText(j.content);
+      } catch {
+        // silencio
       }
-    };
-
-    boot();
-
-    // Rechequear al volver a la pestaña/ventana
-    const onVis = () => boot();
-    window.addEventListener('focus', onVis);
-    document.addEventListener('visibilitychange', onVis);
-
-    return () => {
-      active = false;
-      window.removeEventListener('focus', onVis);
-      document.removeEventListener('visibilitychange', onVis);
-    };
+    })();
   }, []);
 
   async function save() {
-    if (!authed) {
-      setMsg({ text: 'Please sign in to save.', kind: 'error' });
-      return;
-    }
     if (!text.trim()) return;
-
     setSaving(true);
     setMsg(null);
     try {
@@ -103,20 +67,17 @@ export default function TodayClient() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content: text }),
-        cache: 'no-store',
       });
-
       if (r.status === 401) {
-        setAuthed(false);
-        setMsg({ text: 'Please sign in to save.', kind: 'error' });
+        setNeedLogin(true);
+        setMsg('Please sign in to save.');
         return;
       }
       if (!r.ok) throw new Error('Failed to save');
-
-      setMsg({ text: 'Saved ✓', kind: 'ok' });
+      setMsg('Saved ✓');
       setTimeout(() => setMsg(null), 1500);
     } catch (e: any) {
-      setMsg({ text: e?.message || 'Network error', kind: 'error' });
+      setMsg(e?.message || 'Network error');
     } finally {
       setSaving(false);
     }
@@ -133,7 +94,7 @@ export default function TodayClient() {
         onChange={(e) => setText(e.target.value)}
         maxLength={MAX}
         placeholder="One line that captures your day…"
-        className="h-48 w-full resize-none bg-transparent leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500"
+        className="h-48 w-full resize-none bg-transparent leading-relaxed outline-none placeholder:text-neutral-500"
       />
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -142,40 +103,32 @@ export default function TodayClient() {
         </span>
 
         <div className="flex items-center gap-3">
-          {msg && (
-            <span className={`text-sm ${msg.kind === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {msg.text}
-            </span>
-          )}
-
-          {!authed ? (
+          {msg && <span className="text-sm text-emerald-400">{msg}</span>}
+          {needLogin && (
             <a
               href="/auth"
               className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
             >
               Sign in to save
             </a>
-          ) : (
-            <button
-              type="button"
-              onClick={save}
-              disabled={!text.trim() || saving}
-              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
-            >
-              {saving ? 'Saving…' : 'Save entry'}
-            </button>
           )}
-
           <button
             type="button"
             onClick={() => setText('')}
-            className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-100 hover:bg-neutral-700"
+            className="rounded-lg bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
           >
             Clear
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!text.trim() || saving || needLogin}
+            className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+          >
+            {saving ? 'Saving…' : 'Save entry'}
           </button>
         </div>
       </div>
     </section>
   );
 }
-```0
