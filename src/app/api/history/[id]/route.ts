@@ -5,60 +5,40 @@ import { supabaseServer } from "@/lib/supabaseServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// PATCH /api/history/:id  -> actualizar contenido
-export async function PATCH(
-  req: NextRequest,
-  context:
-    | { params: { id: string } }
-    | { params: Promise<{ id: string }> }
-) {
-  const p: any = (context as any).params;
-  const { id } = p && typeof p.then === "function" ? await p : p;
+type Ctx = { params: { id: string } };
 
-  const sb = await supabaseServer();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+// EDITAR
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const s = supabaseServer();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-  let body: any = {};
-  try {
-    body = await req.json();
-  } catch {}
-  const content = String(body?.content ?? "").slice(0, 300);
+  const { content } = await req.json();
 
-  const { error } = await sb
-    .from("journal")
-    .update({ content, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("user_id", user.id);
+  async function upd(table: "entries" | "journal") {
+    return s.from(table).update({ content }).eq("id", params.id).eq("user_id", user.id).select("id").single();
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let { error } = await upd("entries");
+  if (error) ({ error } = await upd("journal"));
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
   return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/history/:id  -> borrar entrada
-export async function DELETE(
-  _req: NextRequest,
-  context:
-    | { params: { id: string } }
-    | { params: Promise<{ id: string }> }
-) {
-  const p: any = (context as any).params;
-  const { id } = p && typeof p.then === "function" ? await p : p;
+// BORRAR
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const s = supabaseServer();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-  const sb = await supabaseServer();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  async function del(table: "entries" | "journal") {
+    return s.from(table).delete().eq("id", params.id).eq("user_id", user.id);
+  }
 
-  const { error } = await sb
-    .from("journal")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  let { error } = await del("entries");
+  if (error) ({ error } = await del("journal"));
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

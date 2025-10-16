@@ -2,70 +2,62 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 export default function AuthButton() {
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function load() {
+    try {
+      const res = await fetch("/api/auth/user", { cache: "no-store" });
+      const j = await res.json().catch(() => ({}));
+      setEmail(j?.email ?? null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/user", { cache: "no-store" });
-        const j = await res.json();
-        if (!alive) return;
-        setEmail(j?.email ?? null);
-      } catch {
-        if (!alive) return;
-        setEmail(null);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
+    load();
+    const onVis = () => document.visibilityState === "visible" && load();
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  async function handleSignOut() {
-    try {
-      await fetch("/api/auth/signout", { method: "POST" });
-      // recargar estado UI
-      setEmail(null);
-      // opcional: volver al home
-      window.location.href = "/";
-    } catch {}
+  async function signOut() {
+    await fetch("/api/auth/signout", { method: "POST" });
+    setEmail(null);
+    // Si prefieres refrescar: location.reload();
   }
 
   if (loading) {
     return (
-      <div className="rounded-md px-3 py-2 text-sm text-zinc-300/70">
+      <button className="rounded-md bg-zinc-800 px-3 py-2 text-sm text-zinc-300 opacity-60">
         …
-      </div>
+      </button>
     );
   }
 
-  if (email) {
+  if (!email) {
     return (
-      <div className="flex items-center gap-2">
-        <span className="rounded-md bg-neutral-800 px-2 py-1 text-xs text-zinc-200">
-          {email}
-        </span>
-        <button
-          onClick={handleSignOut}
-          className="rounded-md bg-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white"
-        >
-          Sign out
-        </button>
-      </div>
+      <a
+        href="/auth" // tu página de login con email/contraseña
+        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+      >
+        Sign in
+      </a>
     );
   }
 
   return (
-    <Link
-      href="/auth"
-      className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-    >
-      Sign in
-    </Link>
+    <div className="flex items-center gap-2">
+      <span className="hidden text-sm text-zinc-300 md:inline">{email}</span>
+      <button
+        onClick={signOut}
+        className="rounded-xl bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-700"
+      >
+        Sign out
+      </button>
+    </div>
   );
 }

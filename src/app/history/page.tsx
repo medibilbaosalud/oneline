@@ -7,8 +7,8 @@ export const metadata = {
 
 export default function HistoryPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl p-6">
-      <h1 className="mb-6 text-4xl font-bold text-white">History</h1>
+    <main className="mx-auto w-full max-w-3xl px-6 py-8">
+      <h1 className="mb-6 text-4xl font-semibold text-white">History</h1>
       <HistoryClient />
     </main>
   );
