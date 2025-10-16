@@ -6,24 +6,35 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const s = supabaseServer();
-  const { data: { user } } = await s.auth.getUser();
-  if (!user) return NextResponse.json({ entries: [] });
+  const sb = await supabaseServer();
 
-  async function q(table: "entries" | "journal") {
-    return s
-      .from(table)
-      .select("id, content, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+  const {
+    data: { user },
+    error: authErr,
+  } = await sb.auth.getUser();
+
+  // Si no hay usuario, devolvemos lista vacía y salimos.
+  if (authErr || !user) {
+    return NextResponse.json({ entries: [] });
   }
 
-  // intenta entries -> si viene vacío o error, prueba journal
-  let { data, error } = await q("entries");
-  if (error || !data?.length) {
-    const alt = await q("journal");
-    if (!alt.error && alt.data) data = alt.data;
+  const table = process.env.NEXT_PUBLIC_SUPABASE_TABLE || "journal";
+
+  const { data, error } = await sb
+    .from(table)
+    .select("id, content, created_at")
+    .eq("user_id", user.id) // <- ahora TS sabe que user no es null
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ entries: [], error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ entries: data ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({
+    entries: (data || []).map((r) => ({
+      id: r.id,
+      content: r.content,
+      created_at: r.created_at,
+    })),
+  });
 }
