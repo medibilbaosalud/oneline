@@ -1,201 +1,82 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-
-type Mode = 'signin' | 'signup';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<Mode>('signin');
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [pw2, setPw2] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [accepted, setAccepted] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  const supabase = createClientComponentClient();
   const router = useRouter();
 
-async function onSignIn(e: React.FormEvent) {
-  e.preventDefault();
-  setMsg(null);
-  setLoading(true);
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password: pw,
-  });
-
-  if (error) {
-    setLoading(false);
-    setMsg(error.message);
-    return;
-  }
-
-  // 1) Actualiza metadata para pasar el gate de consentimiento
-  await supabase.auth.updateUser({
-    data: { has_consented: true },
-  }).catch(() => { /* ignore */ });
-
-  // 2) Asegura que la sesión esté lista y redirige con fuerza
-  // (a veces la sesión tarda un tick)
-  await supabase.auth.getSession();
-  setLoading(false);
-  router.replace('/today');
-  router.refresh();
-}
-
-  async function onSignUp(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(null);
-
-    if (!accepted) {
-      setMsg('Please accept the Privacy Policy and Terms to continue.');
-      return;
-    }
-    if (pw.length < 8) {
-      setMsg('Password must be at least 8 characters.');
-      return;
-    }
-    if (pw !== pw2) {
-      setMsg('Passwords do not match.');
-      return;
-    }
-
+    setErr(null);
     setLoading(true);
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: pw,
-      options: {
-        emailRedirectTo: `${origin}/today?welcome=1`,
-        data: { has_consented: true },
-      },
+    const res = await fetch("/api/auth/signin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, mode }),
     });
+    const json = await res.json();
     setLoading(false);
-
-    if (error) { setMsg(error.message); return; }
-
-    // Si tu proyecto exige confirmación por email, no tendrás session todavía.
-    if (!data.session) {
-      setMsg('We sent you a confirmation email. Open it to finish and you’ll land on Today.');
+    if (!res.ok) {
+      setErr(json?.error || "Failed");
       return;
     }
-    router.push('/today');
+    router.push("/today");
+    router.refresh();
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-zinc-100">
-      <div className="mx-auto max-w-md px-6 py-10">
-        <h1 className="mb-6 text-2xl font-semibold">Sign in</h1>
+    <div className="mx-auto max-w-sm p-6">
+      <h1 className="mb-4 text-xl font-semibold text-white">
+        {mode === "signin" ? "Sign in" : "Create account"}
+      </h1>
 
-        <div className="mb-4 inline-flex rounded-lg bg-neutral-900 p-1 ring-1 ring-white/10">
-          <button
-            onClick={() => setMode('signin')}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode==='signin' ? 'bg-neutral-800' : 'text-zinc-300 hover:bg-neutral-800/60'}`}
-          >
-            Sign in
-          </button>
-          <button
-            onClick={() => setMode('signup')}
-            className={`rounded-md px-3 py-1.5 text-sm ${mode==='signup' ? 'bg-neutral-800' : 'text-zinc-300 hover:bg-neutral-800/60'}`}
-          >
-            Create account
-          </button>
-        </div>
+      <form onSubmit={onSubmit} className="space-y-3">
+        <input
+          className="w-full rounded-md bg-neutral-900 px-3 py-2 text-white"
+          type="email"
+          placeholder="Email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          className="w-full rounded-md bg-neutral-900 px-3 py-2 text-white"
+          type="password"
+          placeholder="Password"
+          autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {err && <p className="text-sm text-rose-400">{err}</p>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-md bg-indigo-600 py-2 font-medium text-white hover:bg-indigo-500 disabled:opacity-60"
+        >
+          {loading ? "Working…" : mode === "signin" ? "Sign in" : "Sign up"}
+        </button>
+      </form>
 
-        <form onSubmit={mode==='signin' ? onSignIn : onSignUp} className="space-y-3">
-          <div>
-            <label className="mb-1 block text-sm text-zinc-300">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e=>setEmail(e.target.value)}
-              className="w-full rounded-md bg-neutral-900 px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
-              placeholder="you@email.com"
-            />
-          </div>
+      <button
+        className="mt-3 text-xs text-zinc-400 underline"
+        onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+      >
+        Switch to {mode === "signin" ? "sign up" : "sign in"}
+      </button>
 
-          <div>
-            <label className="mb-1 block text-sm text-zinc-300">Password</label>
-            <div className="flex items-center gap-2">
-              <input
-                type={showPw ? 'text' : 'password'}
-                required
-                value={pw}
-                onChange={e=>setPw(e.target.value)}
-                className="w-full rounded-md bg-neutral-900 px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
-                placeholder="********"
-                autoComplete={mode==='signin' ? 'current-password' : 'new-password'}
-              />
-              <button
-                type="button"
-                onClick={()=>setShowPw(s=>!s)}
-                className="shrink-0 rounded-md bg-neutral-800 px-3 py-2 text-sm text-zinc-300 hover:bg-neutral-700"
-              >
-                {showPw ? 'Hide' : 'Show'}
-              </button>
-            </div>
-          </div>
-
-          {mode==='signup' && (
-            <div>
-              <label className="mb-1 block text-sm text-zinc-300">Confirm password</label>
-              <input
-                type={showPw ? 'text' : 'password'}
-                required
-                value={pw2}
-                onChange={e=>setPw2(e.target.value)}
-                className="w-full rounded-md bg-neutral-900 px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
-                placeholder="********"
-                autoComplete="new-password"
-              />
-            </div>
-          )}
-
-          {mode==='signup' && (
-            <label className="mt-2 flex items-start gap-2 text-sm text-zinc-300">
-              <input
-                type="checkbox"
-                checked={accepted}
-                onChange={e=>setAccepted(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-white/20 bg-neutral-900 text-indigo-500"
-              />
-              <span>
-                I accept the{' '}
-                <Link href="/legal/privacy" className="text-indigo-400 hover:underline">Privacy Policy</Link>
-                {' '}and{' '}
-                <Link href="/legal/terms" className="text-indigo-400 hover:underline">Terms</Link>.
-              </span>
-            </label>
-          )}
-
-          {msg && <p className="rounded-md bg-rose-900/30 p-2 text-sm text-rose-200">{msg}</p>}
-
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={loading || (mode==='signup' && !accepted)}
-              className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
-            >
-              {loading ? 'Working…' : mode==='signin' ? 'Sign in' : 'Create account'}
-            </button>
-          </div>
-
-          {mode==='signin' && (
-            <div className="pt-2 text-right">
-              <Link href="/auth/reset" className="text-sm text-zinc-400 hover:text-zinc-200">
-                Forgot your password?
-              </Link>
-            </div>
-          )}
-        </form>
-      </div>
-    </main>
+      <p className="mt-6 text-xs text-zinc-500">
+        By continuing you agree to our{" "}
+        <a className="underline" href="/terms">Terms</a> and{" "}
+        <a className="underline" href="/privacy">Privacy Policy</a>.
+      </p>
+    </div>
   );
 }

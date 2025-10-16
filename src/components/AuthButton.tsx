@@ -1,63 +1,44 @@
-// src/components/AuthButton.tsx
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function AuthButton() {
   const [email, setEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  async function load() {
+  async function refreshUser() {
     try {
       const res = await fetch("/api/auth/user", { cache: "no-store" });
-      const j = await res.json().catch(() => ({}));
+      const j = await res.json();
       setEmail(j?.email ?? null);
-    } finally {
-      setLoading(false);
+    } catch {
+      setEmail(null);
     }
   }
 
-  useEffect(() => {
-    load();
-    const onVis = () => document.visibilityState === "visible" && load();
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
-
-  async function signOut() {
-    await fetch("/api/auth/signout", { method: "POST" });
-    setEmail(null);
-    // Si prefieres refrescar: location.reload();
-  }
-
-  if (loading) {
-    return (
-      <button className="rounded-md bg-zinc-800 px-3 py-2 text-sm text-zinc-300 opacity-60">
-        …
-      </button>
-    );
-  }
+  useEffect(() => { refreshUser(); }, []);
 
   if (!email) {
     return (
-      <a
-        href="/auth" // tu página de login con email/contraseña
-        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+      <Link
+        href="/auth"
+        className="rounded-lg bg-indigo-600/90 px-4 py-2 text-white hover:bg-indigo-500"
       >
         Sign in
-      </a>
+      </Link>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="hidden text-sm text-zinc-300 md:inline">{email}</span>
-      <button
-        onClick={signOut}
-        className="rounded-xl bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-700"
-      >
-        Sign out
-      </button>
-    </div>
+    <button
+      onClick={async () => {
+        await fetch("/api/auth/signout", { method: "POST" });
+        location.href = "/"; // limpio y forzado
+      }}
+      className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-white hover:bg-neutral-700"
+      title={email}
+    >
+      Sign out
+    </button>
   );
 }
