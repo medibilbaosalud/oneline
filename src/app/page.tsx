@@ -25,10 +25,19 @@ export default function Landing() {
             </span>
           </h1>
 
-          <div className="mt-6 space-y-3 text-pretty text-base leading-relaxed text-zinc-400 md:text-lg">
-            <p>Write one tight, 300-character reflection while the day is still vivid.</p>
-            <p>Your words stay private, but they sync across devices and keep your streak glowing.</p>
-            <p>When you need perspective, OneLine turns the entries into a narrative that sounds like you.</p>
+          <div className="mt-6 grid w-full max-w-3xl gap-3 text-left text-sm text-zinc-300 sm:grid-cols-3 sm:text-base">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+              <p className="font-medium text-white">Write in under a minute</p>
+              <p className="mt-2 text-zinc-400">Capture up to 300 characters while the day is still vivid.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+              <p className="font-medium text-white">Stay private, stay synced</p>
+              <p className="mt-2 text-zinc-400">Entries live in the EU, sync across devices, and fuel your streak glow.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+              <p className="font-medium text-white">See the story build</p>
+              <p className="mt-2 text-zinc-400">Automatic recaps turn your lines into a narrative that sounds like you.</p>
+            </div>
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -50,7 +59,7 @@ export default function Landing() {
       </section>
 
       {/* METHOD EXPLAINER */}
-      <section className="relative mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
+      <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 pb-16 md:mt-28 md:pb-20">
         <div className="grid items-start gap-10 md:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-6 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
             <h2 className="text-left text-2xl font-semibold text-white">Exactly how OneLine works</h2>
@@ -74,7 +83,7 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-200 backdrop-blur">
+          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-200 backdrop-blur md:mt-0">
             <h3 className="text-lg font-semibold text-white">Inside the daily loop</h3>
             <ul className="mt-4 space-y-3 text-left text-zinc-300">
               <li className="flex gap-3">
@@ -104,7 +113,7 @@ export default function Landing() {
       </section>
 
       {/* STREAK + COMPANIONS */}
-      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
+      <section className="mx-auto mt-20 w-full max-w-6xl px-6 pb-16 md:mt-28 md:pb-20">
         <div className="grid items-center gap-12 md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4 text-left text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
             <h2 className="text-2xl font-semibold text-white">Keep your streak — unlock your companion</h2>
