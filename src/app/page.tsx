@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata = {
   title: "OneLine — One honest line a day",
   description:
-    "Write one honest line a day. Build a habit in seconds. Private by design. Generate month/quarter/year stories on demand.",
+    "Write up to 300 characters about your day, every day. Build a science-backed reflection habit and generate month, quarter, or year stories that read like you.",
 };
 
 export default function Landing() {
@@ -16,7 +16,7 @@ export default function Landing() {
       {/* HERO */}
       <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <Badge>Private • Fast • Addictive (in a good way)</Badge>
+          <Badge>Private • 300 characters • Growth mindset</Badge>
 
           <h1 className="mt-4 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
             One honest line a day.
@@ -26,9 +26,10 @@ export default function Landing() {
           </h1>
 
           <p className="mt-6 text-pretty text-base leading-relaxed text-zinc-400 md:text-lg">
-            Capture one line in seconds. No friction. Your notes stay yours. When
-            you’re ready, generate a story of your last month, quarter, or year in
-            a single click.
+            Capture a candid line under 300 characters in seconds. OneLine threads
+            those micro-entries into long-form stories — monthly, quarterly, and
+            automatically every 1 January — so you can see progress, celebrate
+            wins, and course-correct with clarity.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -49,12 +50,64 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* METHOD EXPLAINER */}
+      <section className="relative mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
+        <div className="grid items-start gap-10 md:grid-cols-[1.2fr_1fr]">
+          <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+            <h2 className="text-left text-2xl font-semibold text-white">Exactly how OneLine works</h2>
+            <p>
+              Every evening (or whenever the day ends for you) open the <strong>Today</strong>
+              screen and write one true line — up to 300 characters. That constraint keeps the
+              habit effortless while forcing sharp thinking.
+            </p>
+            <p>
+              OneLine timestamps each entry, learns your highlights, and stores everything under
+              EU-grade privacy. When you trigger a summary — or when the calendar flips to a new
+              year — we stitch your lines into a narrative that covers achievements, lessons,
+              emotions, and intentions for what comes next.
+            </p>
+            <p>
+              The result is a living archive of who you’re becoming. It’s short enough to keep the
+              streak alive and rich enough to power founder updates, performance reviews, or
+              deeply personal reflections.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-200 backdrop-blur">
+            <h3 className="text-lg font-semibold text-white">Inside the daily loop</h3>
+            <ul className="mt-4 space-y-3 text-left text-zinc-300">
+              <li className="flex gap-3">
+                <span className="mt-0.5 text-emerald-400">•</span>
+                <span>
+                  <strong>Reflect fast:</strong> Type 2–3 sentences, tag the mood if you want, hit
+                  save.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 text-emerald-400">•</span>
+                <span>
+                  <strong>Stay accountable:</strong> See streaks, gentle nudges, and your most used
+                  themes build over time.
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 text-emerald-400">•</span>
+                <span>
+                  <strong>Unlock the story:</strong> Summaries refresh monthly, quarterly, and on
+                  1 January automatically — ready to share or keep private.
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* BENEFITS */}
       <section id="benefits" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
         <div className="grid gap-5 md:grid-cols-3">
           <FeatureCard
             title="Designed for daily momentum"
-            desc="Micro-entries keep you honest without draining your energy. Every pixel is tuned to get you in and out in under ten seconds."
+            desc="Micro-entries under 300 characters keep you honest without draining your energy. Every pixel is tuned to get you in and out in under ten seconds."
             emoji="🧭"
           />
           <FeatureCard
@@ -64,7 +117,7 @@ export default function Landing() {
           />
           <FeatureCard
             title="Narratives that feel like you"
-            desc="Generate a month, quarter, or year in review with tone, voice, and highlights tuned to your entries — no generic summaries."
+            desc="Generate a month, quarter, or year in review — plus the automatic New Year recap — with tone, voice, and highlights tuned to your entries."
             emoji="✨"
           />
         </div>
@@ -73,13 +126,13 @@ export default function Landing() {
       <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
         <div className="grid gap-5 md:grid-cols-3">
           <StepCard n="01" title="Week one">
-            Feel the relief of closing each day with one honest sentence. The streak builds momentum, not pressure.
+            Feel the relief of closing each day with one honest, sub-300-character reflection. The streak builds momentum, not pressure.
           </StepCard>
           <StepCard n="02" title="Day 30">
-            Patterns surface. You spot repeatable wins and friction before they snowball.
+            Patterns surface. You spot repeatable wins, mindset shifts, and friction before they snowball.
           </StepCard>
           <StepCard n="03" title="Quarter’s end">
-            One click gives you an investor update, founder memo, or personal recap that reads like you wrote it.
+            One click — or the automatic 1 January generation — gives you a founder update, performance recap, or personal story that sounds like you wrote it.
           </StepCard>
         </div>
       </section>
@@ -88,16 +141,47 @@ export default function Landing() {
       <section id="how" className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
         <h2 className="mb-6 text-xl font-semibold text-zinc-200">How OneLine fits your day</h2>
         <div className="grid gap-5 md:grid-cols-3">
-          <StepCard n="1" title="Write one line">
-            Open <b>Today</b> and drop a single honest sentence. 5–10 seconds.
+          <StepCard n="1" title="Write under 300 characters">
+            Open <b>Today</b> and capture the highlight, tension, or lesson in two short sentences. Five to ten seconds is all you need.
           </StepCard>
-          <StepCard n="2" title="Keep the streak">
-            Tomorrow, do it again. Tiny daily investment → big clarity dividend.
+          <StepCard n="2" title="Keep the streak (and grow)">
+            Tomorrow, do it again. The constraint builds growth-mindset reflection: what worked, what changed, what to try next.
           </StepCard>
           <StepCard n="3" title="Generate a story">
             When you want perspective, create a summary for the last month,
-            quarter or year. Clean, faithful, readable.
+            quarter or year — or let OneLine produce your year-in-review the moment January arrives. Clean, faithful, readable.
           </StepCard>
+        </div>
+      </section>
+
+      {/* SCIENCE */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-24">
+        <div className="grid gap-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-8 backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">Why the science backs micro-journaling</h2>
+            <p className="mt-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+              OneLine stands on decades of behavioural research. Keeping the ritual short means
+              you actually do it; weaving stories from your own words gives you insight without the
+              blank-page anxiety.
+            </p>
+          </div>
+          <ul className="space-y-4 text-sm leading-relaxed text-zinc-300">
+            <li className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <strong>Expressive writing boosts wellbeing.</strong> Dr. James Pennebaker’s studies
+              show that brief, honest reflection improves immune function and emotional processing.
+              OneLine’s daily constraint mirrors that proven cadence.
+            </li>
+            <li className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <strong>Gratitude + growth mindsets compound.</strong> Research from Emmons &
+              McCullough and Carol Dweck links consistent gratitude and growth-focused journaling
+              to higher resilience, motivation, and long-term goal attainment.
+            </li>
+            <li className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <strong>Reviewing wins fuels performance.</strong> Harvard Business School findings on
+              the “progress principle” show that documenting small wins increases engagement and
+              creativity. Your automatic stories spotlight those wins for you.
+            </li>
+          </ul>
         </div>
       </section>
 
