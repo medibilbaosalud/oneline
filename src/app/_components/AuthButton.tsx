@@ -51,14 +51,19 @@ export default function AuthButton() {
         href={`/auth?next=${next}`}
         className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
       >
-        Sign in
+        Sign in / Sign up
       </Link>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-neutral-300 hidden sm:inline">{email}</span>
+    <div className="flex items-center gap-3 rounded-md bg-neutral-900/50 px-3 py-1.5">
+      <div className="flex flex-col leading-tight">
+        <span className="text-[11px] uppercase tracking-wide text-neutral-500">Signed in</span>
+        <span className="text-sm font-medium text-neutral-100 truncate max-w-[10rem] sm:max-w-none">
+          {email}
+        </span>
+      </div>
       <button
         onClick={async () => {
           await supabase.auth.signOut();
