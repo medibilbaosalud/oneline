@@ -25,12 +25,11 @@ export default function Landing() {
             </span>
           </h1>
 
-          <p className="mt-6 text-pretty text-base leading-relaxed text-zinc-400 md:text-lg">
-            Capture a candid line under 300 characters in seconds. OneLine threads
-            those micro-entries into long-form stories — monthly, quarterly, and
-            automatically every 1 January — so you can see progress, celebrate
-            wins, and course-correct with clarity.
-          </p>
+          <div className="mt-6 space-y-3 text-pretty text-base leading-relaxed text-zinc-400 md:text-lg">
+            <p>Write one tight, 300-character reflection while the day is still vivid.</p>
+            <p>Your words stay private, but they sync across devices and keep your streak glowing.</p>
+            <p>When you need perspective, OneLine turns the entries into a narrative that sounds like you.</p>
+          </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <ShinyCTA href="/today">Start now — go to Today</ShinyCTA>
@@ -52,25 +51,27 @@ export default function Landing() {
 
       {/* METHOD EXPLAINER */}
       <section className="relative mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
-        <div className="grid items-start gap-10 md:grid-cols-[1.2fr_1fr]">
-          <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+        <div className="grid items-start gap-10 md:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-6 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
             <h2 className="text-left text-2xl font-semibold text-white">Exactly how OneLine works</h2>
-            <p>
-              Every evening (or whenever the day ends for you) open the <strong>Today</strong>
-              screen and write one true line — up to 300 characters. That constraint keeps the
-              habit effortless while forcing sharp thinking.
-            </p>
-            <p>
-              OneLine timestamps each entry, learns your highlights, and stores everything under
-              EU-grade privacy. When you trigger a summary — or when the calendar flips to a new
-              year — we stitch your lines into a narrative that covers achievements, lessons,
-              emotions, and intentions for what comes next.
-            </p>
-            <p>
-              The result is a living archive of who you’re becoming. It’s short enough to keep the
-              streak alive and rich enough to power founder updates, performance reviews, or
-              deeply personal reflections.
-            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <ExplainerCard
+                title="Capture the signal"
+                body="End each day in the Today screen with one true line. The 300-character cap keeps it sharp and easy to sustain."
+              />
+              <ExplainerCard
+                title="Stitch the story"
+                body="Entries are timestamped, tagged, and stored with EU-grade privacy. Summaries refresh monthly, quarterly, and every 1 January automatically."
+              />
+              <ExplainerCard
+                title="See yourself clearly"
+                body="OneLine becomes a living archive of your wins, lessons, and mindset shifts — ready for founder updates or personal check-ins."
+              />
+              <ExplainerCard
+                title="Own your words"
+                body="Export or delete anytime. You control your data; we simply help you build a habit that compounds."
+              />
+            </div>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-200 backdrop-blur">
@@ -98,6 +99,68 @@ export default function Landing() {
                 </span>
               </li>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* STREAK + COMPANIONS */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
+        <div className="grid items-center gap-12 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4 text-left text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+            <h2 className="text-2xl font-semibold text-white">Keep your streak — unlock your companion</h2>
+            <p>Consistency matters more than word count. OneLine keeps the daily ritual friendly so you can show up again tomorrow.</p>
+            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span><strong>See the streak glow:</strong> Celebrate consecutive days without anxiety — miss once and you start fresh, no shaming.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                <span><strong>Meet your guide:</strong> A digital companion evolves as you log more days, mirroring your growth mindset.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                <span><strong>Unlock rewards:</strong> New companions and ambient themes appear at 7, 21, 60, and 120-day streaks.</span>
+              </li>
+            </ul>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm text-zinc-200 shadow-2xl shadow-indigo-500/10 backdrop-blur">
+            <div className="absolute -inset-24 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(129,140,248,0.22),transparent_55%)]" />
+            <header className="flex items-center justify-between">
+              <span className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">Today’s momentum</span>
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">Syncs across devices</span>
+            </header>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-5">
+              <div className="flex items-center justify-between text-xs text-zinc-400">
+                <span>Current streak</span>
+                <span>Longest</span>
+              </div>
+              <div className="mt-2 flex items-end justify-between">
+                <div>
+                  <div className="text-4xl font-semibold text-white">12<span className="text-lg text-zinc-500"> days</span></div>
+                  <p className="mt-1 text-xs text-zinc-400">Next badge at 21 days</p>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-emerald-300">41 days</div>
+              </div>
+              <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full w-[57%] rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-indigo-500" />
+              </div>
+            </div>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Companion</p>
+                  <p className="mt-1 text-lg font-semibold text-white">Lumen the Fox</p>
+                </div>
+                <span className="text-3xl">🦊</span>
+              </div>
+              <p className="mt-3 text-xs text-zinc-400">Unlocked at 7 days. Keep logging to evolve your guide and reveal new environments.</p>
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center text-[11px] text-zinc-400">
+                <CompanionBadge icon="🦊" label="Lumen" unlocked />
+                <CompanionBadge icon="🦉" label="Atlas" unlocked={false} />
+                <CompanionBadge icon="🐋" label="Nami" unlocked={false} />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -301,6 +364,21 @@ function StepCard({
   );
 }
 
+function ExplainerCard({
+  title,
+  body,
+}: {
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur">
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
+    </div>
+  );
+}
+
 function ShinyCTA({
   href,
   children,
@@ -316,6 +394,30 @@ function ShinyCTA({
       <span className="sweep absolute inset-0 overflow-hidden rounded-xl" />
       {children}
     </Link>
+  );
+}
+
+function CompanionBadge({
+  icon,
+  label,
+  unlocked,
+}: {
+  icon: string;
+  label: string;
+  unlocked: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center gap-1 rounded-xl border border-white/10 px-3 py-2 ${
+        unlocked ? "bg-white/10 text-zinc-200" : "bg-black/20 text-zinc-500"
+      }`}
+    >
+      <span className="text-2xl">{unlocked ? icon : "🔒"}</span>
+      <span className="text-[11px] font-medium tracking-wide uppercase">{label}</span>
+      <span className="text-[10px] text-zinc-500">
+        {unlocked ? "Active" : "Locked"}
+      </span>
+    </div>
   );
 }
 
