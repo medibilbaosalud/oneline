@@ -19,7 +19,7 @@ export const POST: any = async (req: NextRequest, context: any) => {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL(`/login?next=/history/${day}`, req.url));
+    return NextResponse.redirect(new URL(`/auth?next=/history/${day}`, req.url));
   }
 
   // Form: application/x-www-form-urlencoded

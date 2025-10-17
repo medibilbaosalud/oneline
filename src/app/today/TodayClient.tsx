@@ -51,6 +51,7 @@ export default function TodayClient() {
           return;
         }
         const j = await r.json();
+        setNeedLogin(false);
         if (typeof j?.content === 'string') setText(j.content);
       } catch {
         // silencio
@@ -74,10 +75,12 @@ export default function TodayClient() {
         return;
       }
       if (!r.ok) throw new Error('Failed to save');
+      setNeedLogin(false);
       setMsg('Saved ✓');
       setTimeout(() => setMsg(null), 1500);
-    } catch (e: any) {
-      setMsg(e?.message || 'Network error');
+    } catch (e) {
+      const message = e instanceof Error && e.message ? e.message : 'Network error';
+      setMsg(message);
     } finally {
       setSaving(false);
     }

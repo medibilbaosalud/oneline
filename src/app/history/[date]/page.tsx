@@ -14,7 +14,7 @@ export default async function EditDayPage({ params }: Props) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=/history/${day}`);
+  if (!user) redirect(`/auth?next=/history/${day}`);
 
   const { data: entry, error } = await supabase
     .from("journal")
