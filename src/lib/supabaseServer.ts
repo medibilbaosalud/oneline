@@ -10,7 +10,6 @@ export async function supabaseServer() {
   return createServerClient(url, key, {
     cookies: {
       get(name: string) {
-        // @ts-expect-error: cookies() is async in app routes
         return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options: CookieOptions) {
