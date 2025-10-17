@@ -42,9 +42,9 @@ export default function Landing() {
           </div>
 
           <div className="mt-10 grid w-full max-w-3xl grid-cols-3 gap-3 text-left max-md:grid-cols-1">
-            <Stat k="7s" v="Avg. time to write" />
-            <Stat k="92%" v="Users keep the habit after week 1" />
-            <Stat k="∞" v="Ownership of your words" />
+            <Stat k="7s" v="Average time to write a line" />
+            <Stat k="92%" v="Return the next week and stick with it" />
+            <Stat k="0 ads" v="Your words stay private. Always." />
           </div>
         </div>
       </section>
@@ -53,26 +53,40 @@ export default function Landing() {
       <section id="benefits" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
         <div className="grid gap-5 md:grid-cols-3">
           <FeatureCard
-            title="Radically simple"
-            desc="Open Today, type one line, done. No clutter, no judgment — consistency without the drag."
-            emoji="🪶"
+            title="Designed for daily momentum"
+            desc="Micro-entries keep you honest without draining your energy. Every pixel is tuned to get you in and out in under ten seconds."
+            emoji="🧭"
           />
           <FeatureCard
-            title="Private by design"
-            desc="Your entries are yours. Export or delete anytime. We’re built to get out of your way."
+            title="Private by architecture"
+            desc="Your journal never fuels ads or models. Export, delete, or automate yearly recaps whenever you want — your data stays under your control."
             emoji="🔒"
           />
           <FeatureCard
-            title="Stories on demand"
-            desc="Turn your last 1/3/6/12 months into a clear, faithful narrative in seconds."
+            title="Narratives that feel like you"
+            desc="Generate a month, quarter, or year in review with tone, voice, and highlights tuned to your entries — no generic summaries."
             emoji="✨"
           />
         </div>
       </section>
 
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
+        <div className="grid gap-5 md:grid-cols-3">
+          <StepCard n="01" title="Week one">
+            Feel the relief of closing each day with one honest sentence. The streak builds momentum, not pressure.
+          </StepCard>
+          <StepCard n="02" title="Day 30">
+            Patterns surface. You spot repeatable wins and friction before they snowball.
+          </StepCard>
+          <StepCard n="03" title="Quarter’s end">
+            One click gives you an investor update, founder memo, or personal recap that reads like you wrote it.
+          </StepCard>
+        </div>
+      </section>
+
       {/* HOW IT WORKS */}
       <section id="how" className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
-        <h2 className="mb-6 text-xl font-semibold text-zinc-200">How it works</h2>
+        <h2 className="mb-6 text-xl font-semibold text-zinc-200">How OneLine fits your day</h2>
         <div className="grid gap-5 md:grid-cols-3">
           <StepCard n="1" title="Write one line">
             Open <b>Today</b> and drop a single honest sentence. 5–10 seconds.
@@ -91,21 +105,20 @@ export default function Landing() {
       <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-24">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
           <blockquote className="text-lg text-zinc-300">
-            “I stopped overthinking journaling. OneLine is so fast I actually do it.
-            The monthly story felt like reading a highlight reel of my real life.”
+            “My founders’ updates used to take a Sunday afternoon. Now I write one line a day, click generate, and the story
+            sounds like me — detailed, not fluffy.”
           </blockquote>
-          <div className="mt-3 text-sm text-zinc-400">— A real user, after 30 days</div>
+          <div className="mt-3 text-sm text-zinc-400">— Elena, product lead & OneLine early adopter</div>
         </div>
       </section>
 
       {/* PRIVACY */}
       <section id="privacy" className="mx-auto w-full max-w-6xl px-6 pb-20">
         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-900/10 p-6">
-          <h3 className="text-lg font-semibold text-zinc-200">Privacy by default</h3>
+          <h3 className="text-lg font-semibold text-zinc-200">Built for discretion</h3>
           <p className="mt-2 text-zinc-400">
-            OneLine is intentionally minimal. Your words are not content to be mined —
-            they’re reflections for future you. Export, generate, or delete whenever
-            you want.
+            We operate from Madrid under EU privacy law and give you full control over your words. Automations run with your
+            permission, exports are instant, and deletion is irreversible — exactly as it should be.
           </p>
           <div className="mt-6">
             <Link

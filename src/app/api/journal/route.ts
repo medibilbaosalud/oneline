@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const to   = url.searchParams.get('to');   // YYYY-MM-DD
   const limit = Number(url.searchParams.get('limit') ?? '100');
 
-  // Puedes añadir paginación por cursor si lo necesitas más adelante
+  // Add cursor pagination here in the future if needed
   try {
     const supabase = createRouteHandlerClient({ cookies });
 

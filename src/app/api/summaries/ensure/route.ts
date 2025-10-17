@@ -8,7 +8,7 @@ function startEndOfCurrent(period: "weekly"|"monthly"|"yearly") {
 
   if (period === "weekly") {
     const day = now.getUTCDay(); // 0..6
-    const diffToMonday = (day + 6) % 7; // lunes = 0
+    const diffToMonday = (day + 6) % 7; // Monday = 0
     start.setUTCDate(now.getUTCDate() - diffToMonday);
     start.setUTCHours(0,0,0,0);
     end = new Date(start);
@@ -29,7 +29,7 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
 
-  // 1) lee frecuencia
+  // 1) read the configured frequency
   const { data: settings } = await supabase
     .from("user_settings")
     .select("frequency")
@@ -40,7 +40,7 @@ export async function POST() {
 
   const { start, end } = startEndOfCurrent(period);
 
-  // 2) obtiene entradas del periodo
+  // 2) fetch entries for the period
   const { data: entries, error: jErr } = await supabase
     .from("journal")
     .select("content, created_at")
@@ -55,14 +55,14 @@ export async function POST() {
     return NextResponse.json({ ok: true, created: false, reason: "No entries" });
   }
 
-  // 3) compone HTML muy simple
+  // 3) compose a very simple HTML payload
   const list = entries.map(e => {
     const d = new Date(e.created_at).toISOString().slice(0,10);
     return `<li><strong>${d}</strong>: ${escapeHtml(e.content)}</li>`;
   }).join("");
   const html = `<h2>${period} summary</h2><ul>${list}</ul>`;
 
-  // 4) guarda summary
+  // 4) save the summary
   const { error: sErr } = await supabase.from("summaries").insert({
     user_id: user.id,
     period, start_date: start.toISOString().slice(0,10), end_date: end.toISOString().slice(0,10),

@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
 
-  // Si ya hay sesión, redirige directo a /today
+  // Redirect to /today if the user already has an active session
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) router.replace('/today');

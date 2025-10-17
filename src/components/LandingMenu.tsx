@@ -7,7 +7,7 @@ import AuthButton from './AuthButton';
 export default function LandingMenu() {
   const [open, setOpen] = useState(false);
 
-  // Bloquear scroll cuando el menú está abierto
+  // Prevent body scroll when the overlay menu is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -17,7 +17,7 @@ export default function LandingMenu() {
 
   return (
     <>
-      {/* Botón menú (móvil) */}
+      {/* Mobile menu button */}
       <button
         onClick={() => setOpen(true)}
         className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-200 ring-1 ring-white/10 hover:bg-white/10 md:hidden"
@@ -26,7 +26,7 @@ export default function LandingMenu() {
         Menu
       </button>
 
-      {/* Sheet móvil */}
+      {/* Mobile sheet */}
       {open && (
         <div className="fixed inset-0 z-[60] md:hidden">
           {/* Overlay  */}

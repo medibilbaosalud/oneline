@@ -1,18 +1,18 @@
 // src/app/api/cron/due-summaries/route.ts
 import { NextResponse } from 'next/server';
 
-// Si quieres forzar a que sea función Node.js en Vercel:
+// Opt into the Node.js runtime on Vercel when needed
 export const runtime = 'nodejs';
 // Para que no se cachee:
 export const dynamic = 'force-dynamic';
 
 /**
- * Cron (GET) — sólo devuelve OK por ahora.
- * Aquí dentro luego pondremos la lógica real de "due summaries".
+ * Cron (GET) — placeholder that currently returns OK.
+ * Add your "due summaries" logic here later.
  */
 export async function GET() {
   try {
-    // TODO: tu lógica para comprobar qué usuarios tienen “summary” tocando y generarlo
+    // TODO: implement logic to find which users are due for a summary and generate it
     // Por ahora devolvemos un OK para que el build no falle.
     return NextResponse.json({ ok: true });
   } catch (err: any) {

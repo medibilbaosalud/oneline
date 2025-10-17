@@ -13,7 +13,7 @@ export async function GET() {
     error: authErr,
   } = await sb.auth.getUser();
 
-  // Si no hay usuario, devolvemos lista vacía y salimos.
+  // If the user is missing, return an empty list and exit early.
   if (authErr || !user) {
     return NextResponse.json({ entries: [] });
   }

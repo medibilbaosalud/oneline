@@ -4,8 +4,8 @@
 import { useMemo, useState } from "react";
 
 type Length = "short" | "medium" | "long";
-type Tone = "auto" | "calido" | "neutro" | "poetico" | "directo";
-type Pov = "auto" | "primera" | "tercera";
+type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
+type Pov = "auto" | "first" | "third";
 type Preset = "30" | "90" | "180" | "year" | "custom";
 
 function ymd(d: Date) {
@@ -42,7 +42,7 @@ export default function StoryGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
 
-  // Resolver rango según preset
+  // Resolve the date range according to the preset
   const { from, to } = useMemo(() => {
     if (preset === "custom") {
       return { from: customFrom, to: customTo };
@@ -81,15 +81,15 @@ export default function StoryGenerator() {
         method: "GET",
       });
 
-      let json: any = null;
+      let json: { story?: string; error?: string } | null = null;
       const isJson = res.headers.get("content-type")?.includes("application/json");
       if (isJson) {
-        json = await res.json();
+        json = (await res.json()) as { story?: string; error?: string };
       } else {
-        // fallback por si el server devuelve texto
+      // Fallback in case the server responds with plain text
         const txt = await res.text();
         try {
-          json = JSON.parse(txt);
+          json = JSON.parse(txt) as { story?: string; error?: string };
         } catch {
           json = { error: txt || "Unexpected response" };
         }
@@ -99,8 +99,8 @@ export default function StoryGenerator() {
         throw new Error(json?.error || res.statusText || "Failed");
       }
       setStory(json?.story || "");
-    } catch (e: any) {
-      setError(e?.message || "Failed to generate");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to generate");
     } finally {
       setLoading(false);
     }
@@ -174,10 +174,10 @@ export default function StoryGenerator() {
               className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="auto">Auto</option>
-              <option value="calido">Warm</option>
-              <option value="neutro">Neutral</option>
-              <option value="poetico">Poetic</option>
-              <option value="directo">Direct</option>
+              <option value="warm">Warm</option>
+              <option value="neutral">Neutral</option>
+              <option value="poetic">Poetic</option>
+              <option value="direct">Direct</option>
             </select>
           </label>
 
@@ -190,8 +190,8 @@ export default function StoryGenerator() {
               className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="auto">Auto</option>
-              <option value="primera">First person</option>
-              <option value="tercera">Third person</option>
+              <option value="first">First person</option>
+              <option value="third">Third person</option>
             </select>
           </label>
 
@@ -238,7 +238,7 @@ export default function StoryGenerator() {
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-sm">
         {story ? (
           <article className="prose prose-invert max-w-none">
-            {/* Render simple; si usas MDX/markdown parser cámbialo */}
+            {/* Simple rendering; pipe through a markdown parser if desired */}
             <pre className="whitespace-pre-wrap break-words text-zinc-100">{story}</pre>
           </article>
         ) : (

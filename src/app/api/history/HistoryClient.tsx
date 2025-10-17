@@ -41,7 +41,7 @@ export default function HistoryClient() {
       body: JSON.stringify({ content: newContent }),
     });
     if (!res.ok) {
-      // revertir si falló
+      // Revert the optimistic update if the request failed
       setItems(prev => prev.map(it => it.id === e.id ? { ...it, content: e.content } : it));
       const j = await res.json().catch(() => ({}));
       alert(j?.error || "Could not update");
