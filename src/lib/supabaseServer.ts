@@ -4,6 +4,10 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function supabaseServer() {
   const cookieStore = await cookies(); // in App Router this returns a Promise-like
+  const mutableCookies = cookieStore as unknown as {
+    get(name: string): { value?: string } | undefined;
+    set?(options: { name: string; value: string } & CookieOptions): void;
+  };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -15,14 +19,12 @@ export async function supabaseServer() {
       set(name: string, value: string, options: CookieOptions) {
         // Some route handlers may not allow setting cookies post-response; that's fine.
         try {
-          // @ts-expect-error: mutate async cookie store in app router
-          cookieStore.set({ name, value, ...options });
+          mutableCookies.set?.({ name, value, ...options });
         } catch {}
       },
       remove(name: string, options: CookieOptions) {
         try {
-          // @ts-expect-error: mutate async cookie store in app router
-          cookieStore.set({ name, value: '', ...options });
+          mutableCookies.set?.({ name, value: '', ...options });
         } catch {}
       },
     },
