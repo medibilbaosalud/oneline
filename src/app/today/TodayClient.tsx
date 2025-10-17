@@ -134,7 +134,7 @@ export default function TodayClient() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-      <section className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+      <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
         <p className="mb-4 italic text-neutral-300">
           “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
         </p>
@@ -144,10 +144,10 @@ export default function TodayClient() {
           onChange={(e) => setText(e.target.value)}
           maxLength={MAX}
           placeholder="One line that captures your day…"
-          className="h-48 w-full resize-none bg-transparent leading-relaxed outline-none placeholder:text-neutral-500"
+          className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60"
         />
 
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
             {text.length}/{MAX}
           </span>
