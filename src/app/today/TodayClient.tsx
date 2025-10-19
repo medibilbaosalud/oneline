@@ -69,6 +69,11 @@ function quoteOfToday() {
   return QUOTES[key % QUOTES.length];
 }
 
+function ymdUTC(date = new Date()) {
+  const iso = new Date(date).toISOString();
+  return iso.slice(0, 10);
+}
+
 type EntryPayload = {
   id?: string;
   content_cipher?: string | null;
@@ -87,7 +92,29 @@ export default function TodayClient() {
   const [pendingEntry, setPendingEntry] = useState<EntryPayload | null>(null);
   const [legacyReadOnly, setLegacyReadOnly] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(true);
+  const todayString = useMemo(() => ymdUTC(), []);
+  const [selectedDay, setSelectedDay] = useState(todayString);
+  const isToday = selectedDay === todayString;
+  const yesterdayString = useMemo(() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 1);
+    return ymdUTC(d);
+  }, []);
   const quote = useMemo(() => quoteOfToday(), []);
+  const displayDate = useMemo(() => {
+    try {
+      const parsed = new Date(`${selectedDay}T00:00:00.000Z`);
+      if (Number.isNaN(parsed.getTime())) return selectedDay;
+      return new Intl.DateTimeFormat('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(parsed);
+    } catch {
+      return selectedDay;
+    }
+  }, [selectedDay]);
 
   const loadStreak = useCallback(async () => {
     try {
@@ -109,8 +136,14 @@ export default function TodayClient() {
     let active = true;
     (async () => {
       setLoadingEntry(true);
+      setMsg(null);
+      setPendingEntry(null);
+      setEntryId(null);
+      setLegacyReadOnly(false);
+      setText('');
       try {
-        const r = await fetch('/api/journal/today', { cache: 'no-store' });
+        const endpoint = isToday ? '/api/journal/today' : `/api/journal/day/${selectedDay}`;
+        const r = await fetch(endpoint, { cache: 'no-store' });
         if (!active) return;
         if (r.status === 401) {
           setNeedLogin(true);
@@ -123,7 +156,9 @@ export default function TodayClient() {
         setNeedLogin(false);
         setPendingEntry(j);
         setEntryId(j?.id ?? null);
-        loadStreak();
+        if (isToday) {
+          loadStreak();
+        }
       } catch {
         if (!active) return;
         setPendingEntry(null);
@@ -134,7 +169,7 @@ export default function TodayClient() {
     return () => {
       active = false;
     };
-  }, [loadStreak]);
+  }, [isToday, loadStreak, selectedDay]);
 
   useEffect(() => {
     if (!pendingEntry) {
@@ -183,7 +218,8 @@ export default function TodayClient() {
     setMsg(null);
     try {
       const enc = await encryptText(dataKey, trimmed);
-      const r = await fetch('/api/journal/today', {
+      const endpoint = isToday ? '/api/journal/today' : `/api/journal/day/${selectedDay}`;
+      const r = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id: entryId, content_cipher: enc.cipher_b64, iv: enc.iv_b64 }),
@@ -199,8 +235,10 @@ export default function TodayClient() {
       setEntryId(newId ?? null);
       setPendingEntry({ id: newId ?? undefined, content_cipher: enc.cipher_b64, iv: enc.iv_b64 });
       setLegacyReadOnly(false);
-      setMsg('Saved ✓');
-      loadStreak();
+      setMsg(isToday ? 'Saved ✓' : `Saved for ${selectedDay} ✓`);
+      if (isToday) {
+        loadStreak();
+      }
       setTimeout(() => setMsg(null), 1500);
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Network error';
@@ -235,6 +273,46 @@ export default function TodayClient() {
     <VaultGate>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">{displayDate}</h2>
+              {!isToday && (
+                <p className="text-xs text-neutral-400">Use the exact same passphrase — older entries stay locked without it.</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                max={todayString}
+                value={selectedDay}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(next)) {
+                    const capped = next > todayString ? todayString : next;
+                    setSelectedDay(capped);
+                  }
+                }}
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedDay(todayString)}
+                disabled={isToday}
+                className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDay(yesterdayString)}
+                disabled={selectedDay === yesterdayString}
+                className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
+              >
+                Yesterday
+              </button>
+            </div>
+          </div>
           <p className="mb-4 italic text-neutral-300">
             “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
           </p>
@@ -247,6 +325,12 @@ export default function TodayClient() {
             placeholder="One line that captures your day…"
             className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
           />
+
+          {!loadingEntry && !legacyReadOnly && !text && !pendingEntry?.content_cipher && (
+            <p className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-300">
+              No entry saved for this date yet — write up to 300 characters to backfill it securely.
+            </p>
+          )}
 
           {legacyReadOnly && (
             <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
