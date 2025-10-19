@@ -56,7 +56,10 @@ export async function GET(_req: NextRequest, context: { params: RouteParams | Pr
   }
 
   const { client, user, response } = await assertAuthenticated();
-  if (!user || response) return response;
+  if (!user) {
+    return response ?? NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+  }
+  if (response) return response;
 
   const today = ymdUTC();
   if (day > today) {
@@ -85,7 +88,10 @@ export async function POST(req: NextRequest, context: { params: RouteParams | Pr
   }
 
   const { client, user, response } = await assertAuthenticated();
-  if (!user || response) return response;
+  if (!user) {
+    return response ?? NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+  }
+  if (response) return response;
 
   const today = ymdUTC();
   if (day > today) {
