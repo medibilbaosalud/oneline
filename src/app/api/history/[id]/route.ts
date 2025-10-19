@@ -9,8 +9,21 @@ export const dynamic = 'force-dynamic';
 
 type Params = { id: string };
 
-export async function PATCH(req: NextRequest, context: { params: Promise<Params> }) {
-  const { id } = await context.params;
+async function resolveParams(params: Params | Promise<Params> | undefined): Promise<Params | null> {
+  if (!params) return null;
+  try {
+    return await Promise.resolve(params);
+  } catch {
+    return null;
+  }
+}
+
+export async function PATCH(req: NextRequest, context: { params?: Params | Promise<Params> }) {
+  const params = await resolveParams(context.params);
+  if (!params?.id) {
+    return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  }
+  const { id } = params;
   const sb = await supabaseServer();
   const {
     data: { user },
@@ -28,22 +41,31 @@ export async function PATCH(req: NextRequest, context: { params: Promise<Params>
     return NextResponse.json({ error: 'missing_cipher' }, { status: 400 });
   }
 
-  const { error } = await sb
+  const { error, data } = await sb
     .from('journal')
     .update({ content_cipher: contentCipher, iv, content: '' })
     .eq('id', id)
     .eq('user_id', user.id)
-    .limit(1);
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  if (!data) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
 }
 
-export async function DELETE(_req: NextRequest, context: { params: Promise<Params> }) {
-  const { id } = await context.params;
+export async function DELETE(_req: NextRequest, context: { params?: Params | Promise<Params> }) {
+  const params = await resolveParams(context.params);
+  if (!params?.id) {
+    return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  }
+  const { id } = params;
   const sb = await supabaseServer();
   const {
     data: { user },
@@ -54,10 +76,20 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<Param
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { error } = await sb.from('journal').delete().eq('id', id).eq('user_id', user.id).limit(1);
+  const { error, data } = await sb
+    .from('journal')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
