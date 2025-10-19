@@ -15,10 +15,20 @@ export function toB64(bytes: Uint8Array): B64 {
   return btoa(binary);
 }
 
+function toArrayBufferView(bytes: Uint8Array): ArrayBuffer {
+  if (bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
+    return bytes.buffer;
+  }
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 /** Decode a base64 string back into a Uint8Array. */
 export function fromB64(b64: B64): Uint8Array {
   const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
+  const backing = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(backing);
   for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.charCodeAt(i);
   }
@@ -48,15 +58,16 @@ export async function deriveKeyFromPassword(
     false,
     ['deriveKey', 'deriveBits'],
   );
+  const saltBuffer = toArrayBufferView(salt);
   const derivedKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: saltBuffer, iterations, hash: 'SHA-256' },
     baseKey,
     { name: 'AES-GCM', length: 256 },
     true,
     ['encrypt', 'decrypt'],
   );
   const rawBits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: saltBuffer, iterations, hash: 'SHA-256' },
     baseKey,
     256,
   );
@@ -109,8 +120,9 @@ export async function generateDataKey(): Promise<CryptoKey> {
  */
 export async function deriveKEKFromPassphrase(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey('raw', textEncoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const saltBuffer = toArrayBufferView(salt);
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 200_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: saltBuffer, iterations: 200_000, hash: 'SHA-256' },
     base,
     { name: 'AES-GCM', length: 256 },
     false,
