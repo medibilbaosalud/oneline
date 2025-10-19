@@ -47,8 +47,10 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       }
       setPassphrase('');
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unable to unlock';
-      setFormError(message);
+      const fallback =
+        'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.';
+      const message = err instanceof Error && err.message ? err.message : fallback;
+      setFormError(hasBundle ? fallback : message);
     } finally {
       setBusy(false);
     }

@@ -47,7 +47,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
           } catch {
             if (!cancelled) {
               markDecryptionFailure(
-                'We could not decrypt your history. The passphrase must match the original code exactly — unlock again with that same phrase.',
+                'Decryption error — the passphrase you entered is different from the original code you used on day one. Unlock again with that exact code to regain access.',
               );
             }
             return;

@@ -189,11 +189,21 @@ export function useVault() {
       }
     }
     if (!bundle) throw new Error('No encrypted vault found. Create one first.');
-    sharedKey = await unwrapDataKey(bundle, passphrase);
-    cachedBundle = bundle;
-    hasStoredBundle = true;
-    lastVaultError = null;
-    notify();
+    try {
+      sharedKey = await unwrapDataKey(bundle, passphrase);
+      cachedBundle = bundle;
+      hasStoredBundle = true;
+      lastVaultError = null;
+      notify();
+    } catch (error) {
+      sharedKey = null;
+      lastVaultError =
+        'Decryption error: the passphrase you entered is different from the one you used when you created your vault. Enter the exact original code to recover access.';
+      notify();
+      throw new Error(
+        'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.',
+      );
+    }
   }, []);
 
   const lock = useCallback(async (wipeLocal: boolean) => {

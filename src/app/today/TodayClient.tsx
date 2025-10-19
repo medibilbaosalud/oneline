@@ -150,11 +150,13 @@ export default function TodayClient() {
           setLegacyReadOnly(false);
         })
         .catch(() => {
-          setMsg('Unable to decrypt — check your passphrase.');
+          setMsg(
+            'Decryption error — the passphrase you entered is different from the original code. Re-enter the same code to unlock your journal.',
+          );
           setText('');
           setLegacyReadOnly(false);
           markDecryptionFailure(
-            'Decryption failed. The passphrase you entered does not match the original code — unlock again with the exact phrase you set on day one.',
+            'Decryption error — the passphrase you entered is different from the original code you used on day one. Unlock again with that exact code to regain access.',
           );
         });
     } else if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
