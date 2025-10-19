@@ -3,7 +3,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,26 +94,20 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  try {
-    const admin = supabaseAdmin();
-    const { error: deleteErr } = await admin.from('journal').delete().eq('id', id).eq('user_id', user.id);
-    if (deleteErr) {
-      return NextResponse.json({ error: deleteErr.message }, { status: 500 });
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'delete_failed';
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-
-  const { data: confirm } = await sb
+  const { data: deleted, error: deleteErr } = await sb
     .from('journal')
-    .select('id')
+    .delete()
     .eq('id', id)
     .eq('user_id', user.id)
+    .select('id')
     .maybeSingle();
 
-  if (confirm) {
-    return NextResponse.json({ error: 'delete_not_confirmed' }, { status: 500 });
+  if (deleteErr) {
+    return NextResponse.json({ error: deleteErr.message }, { status: 500 });
+  }
+
+  if (!deleted) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
