@@ -6,14 +6,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { decryptText, encryptText, generateDataKey, unwrapDataKey, wrapDataKey, type WrappedBundle } from '@/lib/crypto';
 import { idbDel, idbGet, idbSet } from '@/lib/localVault';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-const BUNDLE_KEY = 'oneline.v1.bundle';
+const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
 let initialized = false;
+let currentUserId: string | null = null;
+let cachedBundle: WrappedBundle | null = null;
 const listeners = new Set<() => void>();
-let initPromise: Promise<void> | null = null;
+let loadingPromise: Promise<void> | null = null;
+
+function bundleKeyForUser(userId: string) {
+  return `${BUNDLE_KEY_PREFIX}.${userId}`;
+}
 
 function notify() {
   listeners.forEach((listener) => {
@@ -25,19 +32,98 @@ function notify() {
   });
 }
 
-async function ensureInitialized() {
-  if (!initPromise) {
-    initPromise = (async () => {
-      try {
-        const bundle = await idbGet<WrappedBundle>(BUNDLE_KEY);
-        hasStoredBundle = !!bundle;
-      } finally {
-        initialized = true;
-        notify();
-      }
-    })();
+async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
+  try {
+    const res = await fetch('/api/vault', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const payload = (await res.json()) as { bundle?: WrappedBundle | null };
+    return payload?.bundle ?? null;
+  } catch {
+    return null;
   }
-  await initPromise;
+}
+
+async function saveRemoteBundle(bundle: WrappedBundle | null) {
+  try {
+    await fetch('/api/vault', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ bundle }),
+    });
+  } catch {
+    // best-effort persistence; if offline, the local copy still exists.
+  }
+}
+
+async function ensureInitialized() {
+  if (loadingPromise) {
+    await loadingPromise;
+    return;
+  }
+
+  initialized = false;
+  notify();
+
+  loadingPromise = (async () => {
+    try {
+      const supabase = supabaseBrowser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const userId = user?.id ?? null;
+
+      if (userId !== currentUserId) {
+        currentUserId = userId;
+        cachedBundle = null;
+        hasStoredBundle = false;
+        sharedKey = null;
+      }
+
+      if (!currentUserId) {
+        initialized = true;
+        return;
+      }
+
+      const key = bundleKeyForUser(currentUserId);
+      const localBundle = await idbGet<WrappedBundle>(key);
+      if (localBundle) {
+        cachedBundle = localBundle;
+        hasStoredBundle = true;
+        return;
+      }
+
+      const remoteBundle = await fetchRemoteBundle();
+      if (remoteBundle) {
+        cachedBundle = remoteBundle;
+        hasStoredBundle = true;
+        await idbSet(key, remoteBundle).catch(() => {});
+      } else {
+        cachedBundle = null;
+        hasStoredBundle = false;
+      }
+    } finally {
+      initialized = true;
+      notify();
+      loadingPromise = null;
+    }
+  })();
+
+  await loadingPromise;
+}
+
+async function persistBundle(bundle: WrappedBundle | null) {
+  if (!currentUserId) return;
+  const key = bundleKeyForUser(currentUserId);
+  if (bundle) {
+    cachedBundle = bundle;
+    hasStoredBundle = true;
+    await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
+  } else {
+    cachedBundle = null;
+    hasStoredBundle = false;
+    await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
+  }
+  notify();
 }
 
 export function useVault() {
@@ -60,32 +146,50 @@ export function useVault() {
 
   const createWithPassphrase = useCallback(async (passphrase: string, rememberDevice: boolean) => {
     if (!passphrase) throw new Error('Passphrase required');
+    await ensureInitialized();
+    if (!currentUserId) throw new Error('Sign in before creating your vault');
     const key = await generateDataKey();
     sharedKey = key;
+    const bundle = await wrapDataKey(key, passphrase);
     if (rememberDevice) {
-      const bundle = await wrapDataKey(key, passphrase);
-      await idbSet(BUNDLE_KEY, bundle);
-      hasStoredBundle = true;
+      await persistBundle(bundle);
     } else {
-      await idbDel(BUNDLE_KEY).catch(() => {});
-      hasStoredBundle = false;
+      // Keep the remote copy for recovery, but wipe local storage on this device.
+      cachedBundle = bundle;
+      hasStoredBundle = true;
+      await saveRemoteBundle(bundle);
+      await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
     }
     notify();
   }, []);
 
   const unlockWithPassphrase = useCallback(async (passphrase: string) => {
     if (!passphrase) throw new Error('Passphrase required');
-    const bundle = await idbGet<WrappedBundle>(BUNDLE_KEY);
-    if (!bundle) throw new Error('No saved key on this device');
+    await ensureInitialized();
+    if (!currentUserId) throw new Error('Sign in before unlocking your vault');
+    let bundle = cachedBundle;
+    if (!bundle) {
+      const key = bundleKeyForUser(currentUserId);
+      bundle = await idbGet<WrappedBundle>(key);
+      if (!bundle) {
+        bundle = await fetchRemoteBundle();
+        if (bundle) {
+          await idbSet(key, bundle).catch(() => {});
+        }
+      }
+    }
+    if (!bundle) throw new Error('No encrypted vault found. Create one first.');
     sharedKey = await unwrapDataKey(bundle, passphrase);
+    cachedBundle = bundle;
+    hasStoredBundle = true;
     notify();
   }, []);
 
   const lock = useCallback(async (wipeLocal: boolean) => {
     sharedKey = null;
-    if (wipeLocal) {
-      await idbDel(BUNDLE_KEY).catch(() => {});
-      hasStoredBundle = false;
+    if (wipeLocal && currentUserId) {
+      await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
+      hasStoredBundle = !!cachedBundle;
     }
     notify();
   }, []);
@@ -103,4 +207,5 @@ export function useVault() {
   };
 }
 
-// SECURITY NOTE: Consider integrating an Argon2id-based derive flow for high-risk users; PBKDF2 iteration count is set high for baseline protection.
+// SECURITY NOTE: Vault bundles are synced to the server encrypted with the user's passphrase-derived KEK. Without that phrase,
+// the wrapped key remains useless. Losing the passphrase still makes ciphertext unrecoverable.
