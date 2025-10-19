@@ -99,10 +99,12 @@ export async function encryptText(
 export async function decryptText(key: CryptoKey, cipher_b64: B64, iv_b64: B64): Promise<string> {
   const cipherBytes = fromB64(cipher_b64);
   const ivBytes = fromB64(iv_b64);
+  const ivForDecrypt = new Uint8Array(toArrayBufferView(ivBytes));
+  const cipherForDecrypt = new Uint8Array(toArrayBufferView(cipherBytes));
   const plainBuffer = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: ivBytes },
+    { name: 'AES-GCM', iv: ivForDecrypt },
     key,
-    cipherBytes,
+    cipherForDecrypt,
   );
   return textDecoder.decode(plainBuffer);
 }
