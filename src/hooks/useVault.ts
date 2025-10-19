@@ -215,12 +215,6 @@ export function useVault() {
     notify();
   }, []);
 
-  const markDecryptionFailure = useCallback((message: string) => {
-    sharedKey = null;
-    lastVaultError = message;
-    notify();
-  }, []);
-
   return {
     dataKey: sharedKey,
     hasBundle: hasStoredBundle,
@@ -228,7 +222,6 @@ export function useVault() {
     createWithPassphrase,
     unlockWithPassphrase,
     lock,
-    markDecryptionFailure,
     vaultError: lastVaultError,
     encryptText,
     decryptText,

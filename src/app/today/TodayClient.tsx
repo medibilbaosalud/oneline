@@ -82,7 +82,7 @@ type EntryPayload = {
 };
 
 export default function TodayClient() {
-  const { dataKey, markDecryptionFailure } = useVault();
+  const { dataKey } = useVault();
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -185,14 +185,19 @@ export default function TodayClient() {
           setLegacyReadOnly(false);
         })
         .catch(() => {
-          setMsg(
-            'Decryption error — the passphrase you entered is different from the original code. Re-enter the same code to unlock your journal.',
-          );
-          setText('');
-          setLegacyReadOnly(false);
-          markDecryptionFailure(
-            'Decryption error — the passphrase you entered is different from the original code you used on day one. Unlock again with that exact code to regain access.',
-          );
+          if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
+            setText(pendingEntry.content);
+            setLegacyReadOnly(true);
+            setMsg(
+              'Encrypted copy could not be unlocked — showing legacy text. Press “Save entry” to re-encrypt it with your vault.',
+            );
+          } else {
+            setMsg(
+              'We could not decrypt this entry. Confirm you are using the original passphrase and try again.',
+            );
+            setText('');
+            setLegacyReadOnly(false);
+          }
         });
     } else if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
       setText(pendingEntry.content);

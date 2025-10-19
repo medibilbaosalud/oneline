@@ -22,7 +22,7 @@ type DecryptedEntry = EntryPayload & {
 };
 
 export default function HistoryClient({ initialEntries }: { initialEntries: EntryPayload[] }) {
-  const { dataKey, markDecryptionFailure } = useVault();
+  const { dataKey } = useVault();
   const [rawEntries, setRawEntries] = useState<EntryPayload[]>(initialEntries);
   const [items, setItems] = useState<DecryptedEntry[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -46,11 +46,12 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
             }
           } catch {
             if (!cancelled) {
-              markDecryptionFailure(
-                'Decryption error — the passphrase you entered is different from the original code you used on day one. Unlock again with that exact code to regain access.',
-              );
+              if (entry.content) {
+                next.push({ ...entry, text: entry.content, legacy: true, error: 'Encrypted copy could not be unlocked. Re-save to encrypt with your current vault.' });
+              } else {
+                next.push({ ...entry, text: '', legacy: false, error: 'Could not decrypt this entry with the current passphrase.' });
+              }
             }
-            return;
           }
         } else if (entry.content) {
           next.push({ ...entry, text: entry.content, legacy: true, error: null });
