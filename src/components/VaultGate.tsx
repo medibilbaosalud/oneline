@@ -10,7 +10,6 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
   const { dataKey, hasBundle, loading, createWithPassphrase, unlockWithPassphrase } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
-  const [mode, setMode] = useState<'unlock' | 'create'>(hasBundle ? 'unlock' : 'create');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -34,7 +33,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     setError(null);
     try {
-      if (mode === 'unlock' && hasBundle) {
+      if (hasBundle) {
         await unlockWithPassphrase(passphrase.trim());
       } else {
         await createWithPassphrase(passphrase.trim(), remember);
@@ -56,8 +55,20 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             {hasBundle ? 'Unlock your encrypted journal' : 'Create your encrypted vault'}
           </h2>
           <p className="text-neutral-400">
-            Only this passphrase can decrypt your entries. We cannot recover it if it is lost.
+            {hasBundle
+              ? 'Enter the exact passphrase you created before. A different phrase will fail and your encrypted entries will remain unreadable.'
+              : 'Choose a strong passphrase. You must reuse it every time you unlock OneLine.'}
           </p>
+          {!hasBundle && (
+            <p className="text-xs text-amber-300">
+              Set it once and never change it — losing or altering this passphrase permanently locks all existing entries.
+            </p>
+          )}
+          {hasBundle && (
+            <p className="text-xs text-amber-300">
+              We never store your passphrase. If you forget it, we cannot recover or reset your data.
+            </p>
+          )}
         </header>
 
         <div className="space-y-3">
@@ -85,19 +96,6 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             </label>
           )}
 
-          {hasBundle && (
-            <button
-              type="button"
-              onClick={() => {
-                setMode((prev) => (prev === 'unlock' ? 'create' : 'unlock'));
-                setError(null);
-              }}
-              className="text-xs font-medium text-indigo-300 hover:text-indigo-200"
-            >
-              {mode === 'unlock' ? 'Use a new passphrase on this device' : 'Unlock with existing passphrase'}
-            </button>
-          )}
-
           {error && <p className="text-sm text-rose-400">{error}</p>}
         </div>
 
@@ -107,10 +105,10 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
           disabled={busy}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
         >
-          {busy ? 'Working…' : hasBundle && mode === 'unlock' ? 'Unlock vault' : 'Create & continue'}
+          {busy ? 'Working…' : hasBundle ? 'Unlock vault' : 'Create & continue'}
         </button>
         <p className="text-xs text-neutral-500">
-          Tip: Prefer a long passphrase you can remember. For hardware-backed protection consider a password manager or FIDO key.
+          Tip: Prefer a long passphrase you can remember. Store it in a password manager — if it changes or is lost, the encrypted data stays locked forever.
         </p>
       </div>
     </div>
