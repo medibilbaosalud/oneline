@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata = {
   title: "OneLine — One honest line a day",
   description:
-    "Write up to 300 characters about your day, every day. Build a science-backed reflection habit and generate month, quarter, or year stories that read like you.",
+    "Write up to 300 characters about your day, encrypted end to end by a passphrase only you know. Build a science-backed reflection habit and generate stories that read like you.",
 };
 
 export default function Landing() {
@@ -31,8 +31,10 @@ export default function Landing() {
               <p className="mt-2 text-zinc-400">Capture up to 300 characters while the day is still vivid.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="font-medium text-white">Stay private, stay synced</p>
-              <p className="mt-2 text-zinc-400">Entries live in the EU, sync across devices, and fuel your streak glow.</p>
+              <p className="font-medium text-white">Encrypted with your passphrase</p>
+              <p className="mt-2 text-zinc-400">
+                Unlock the vault with a code only you know. Without it, even we just see ciphertext.
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
               <p className="font-medium text-white">See the story build</p>
@@ -58,6 +60,60 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ENCRYPTION PROMISE */}
+      <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 md:mt-24">
+        <div className="grid gap-10 md:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-5 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+            <h2 className="text-left text-2xl font-semibold text-white">Locked with a passphrase only you know</h2>
+            <p>
+              OneLine is now fully end-to-end encrypted. You pick the passphrase; your browser derives the key and encrypts every
+              line with AES-GCM before anything leaves your device.
+            </p>
+            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span><strong>No passphrase, no access:</strong> We never see or store it. Without your code, the vault stays locked.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                <span><strong>Unlock before you write or read:</strong> Saving, streaks, and history all require the vault to be open locally.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                <span><strong>Lose the passphrase, lose the data:</strong> That&rsquo;s the trade-off of true privacy. Use a password manager if you need backup.</span>
+              </li>
+            </ul>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm text-zinc-200 backdrop-blur">
+            <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_60%)] blur-3xl" />
+            <header className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-indigo-200/80">
+              <span>Encryption walkthrough</span>
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">Client-side only</span>
+            </header>
+            <div className="mt-4 space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-left">
+                <h3 className="text-sm font-semibold text-white">1. Derive your key locally</h3>
+                <p className="mt-2 text-xs text-zinc-400">passphrase + salt → PBKDF2 (200k iterations) → AES-256 key</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-left">
+                <h3 className="text-sm font-semibold text-white">2. Encrypt every entry</h3>
+                <p className="mt-2 text-xs text-zinc-400">AES-GCM(key, 96-bit IV) → ciphertext stored in Supabase</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-left">
+                <h3 className="text-sm font-semibold text-white">3. Server only sees this</h3>
+                <pre className="mt-2 overflow-hidden rounded-xl bg-black/60 p-3 text-[11px] text-emerald-200">
+{`{
+  "content_cipher": "b64...",
+  "iv": "b64..."
+}`}
+                </pre>
+                <p className="mt-2 text-xs text-zinc-400">Plain text never reaches our servers or logs.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* METHOD EXPLAINER */}
       <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 pb-16 md:mt-28 md:pb-20">
         <div className="grid items-start gap-10 md:grid-cols-[1.15fr_0.85fr]">
@@ -70,7 +126,7 @@ export default function Landing() {
               />
               <ExplainerCard
                 title="Stitch the story"
-                body="Entries are timestamped, tagged, and stored with EU-grade privacy. Summaries refresh monthly, quarterly, and every 1 January automatically."
+                body="Entries are timestamped, encrypted client-side, and stored under EU-grade privacy. Summaries refresh monthly, quarterly, and every 1 January automatically."
               />
               <ExplainerCard
                 title="See yourself clearly"
@@ -184,7 +240,7 @@ export default function Landing() {
           />
           <FeatureCard
             title="Private by architecture"
-            desc="Your journal never fuels ads or models. Export, delete, or automate yearly recaps whenever you want — your data stays under your control."
+            desc="Entries are encrypted with a key derived from your passphrase, so servers only keep ciphertext. Export, delete, or automate yearly recaps whenever you want — your data stays under your control."
             emoji="🔒"
           />
           <FeatureCard
@@ -273,8 +329,9 @@ export default function Landing() {
         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-900/10 p-6">
           <h3 className="text-lg font-semibold text-zinc-200">Built for discretion</h3>
           <p className="mt-2 text-zinc-400">
-            We operate from Madrid under EU privacy law and give you full control over your words. Automations run with your
-            permission, exports are instant, and deletion is irreversible — exactly as it should be.
+            We operate from Madrid under EU privacy law and give you full control over your words. The vault stays locked behind
+            the passphrase you choose — we can&rsquo;t reset it, and we never transmit it. Automations run with your permission,
+            exports are instant, and deletion is irreversible — exactly as it should be.
           </p>
           <div className="mt-6">
             <Link
