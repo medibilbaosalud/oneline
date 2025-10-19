@@ -1,4 +1,5 @@
 // src/app/history/page.tsx
+import { getJournalTable } from "@/lib/getJournalTable";
 import { supabaseServer } from "@/lib/supabaseServer";
 import HistoryClient from "./HistoryClient";
 
@@ -20,8 +21,9 @@ export default async function HistoryPage() {
     | undefined = [];
 
   if (user) {
+    const table = getJournalTable();
     const { data } = await sb
-      .from("journal")
+      .from(table)
       .select("id, content, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
