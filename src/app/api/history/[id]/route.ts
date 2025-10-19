@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     return NextResponse.json({ error: 'missing_cipher' }, { status: 400 });
   }
 
-  const { error, count } = await sb
+  const { data, error } = await sb
     .from('journal')
     .update({
       content_cipher: contentCipher,
@@ -50,13 +50,13 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     })
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id', { count: 'exact', head: true });
+    .select('id');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!count) {
+  if (!data || data.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -79,17 +79,18 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { error, count } = await sb
+  const { data, error } = await sb
     .from('journal')
-    .delete({ count: 'exact' })
+    .delete()
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('id');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!count) {
+  if (!data || data.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
