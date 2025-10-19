@@ -41,17 +41,18 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     return NextResponse.json({ error: 'missing_cipher' }, { status: 400 });
   }
 
-  const { error, count } = await sb
+  const { data, error } = await sb
     .from('journal')
-    .update({ content_cipher: contentCipher, iv, content: '' }, { count: 'exact', returning: 'minimal' })
+    .update({ content_cipher: contentCipher, iv, content: '' })
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('id');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!count) {
+  if (!data || data.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
