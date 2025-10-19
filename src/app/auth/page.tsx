@@ -8,6 +8,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -19,8 +20,13 @@ export default function AuthPage() {
     setErr(null);
 
     try {
-      if (mode === 'signup' && !acceptedTerms) {
-        throw new Error('Please accept the Terms of Service and Privacy Policy to create an account.');
+      if (mode === 'signup') {
+        if (!acceptedTerms) {
+          throw new Error('Please accept the Terms of Service and Privacy Policy to create an account.');
+        }
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match. Please re-enter them.');
+        }
       }
       const sb = supabaseBrowser();
 
@@ -96,6 +102,20 @@ export default function AuthPage() {
               </label>
 
               {mode === 'signup' && (
+                <label className="block">
+                  <span className="mb-1 block text-sm text-zinc-300">Confirm password</span>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Repeat your password"
+                  />
+                </label>
+              )}
+
+              {mode === 'signup' && (
                 <label className="flex items-start gap-2 text-sm text-zinc-300">
                   <input
                     type="checkbox"
@@ -139,6 +159,7 @@ export default function AuthPage() {
                     className="text-indigo-400 hover:text-indigo-300"
                     onClick={() => {
                       setAcceptedTerms(false);
+                      setConfirmPassword('');
                       setMode('signup');
                     }}
                   >
@@ -152,6 +173,7 @@ export default function AuthPage() {
                     className="text-indigo-400 hover:text-indigo-300"
                     onClick={() => {
                       setAcceptedTerms(false);
+                      setConfirmPassword('');
                       setMode('signin');
                     }}
                   >

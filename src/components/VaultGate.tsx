@@ -16,6 +16,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     vaultError,
   } = useVault();
   const [passphrase, setPassphrase] = useState('');
+  const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,19 +34,32 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
   }
 
   async function handleSubmit() {
-    if (!passphrase.trim()) {
+    const trimmed = passphrase.trim();
+    if (!trimmed) {
       setFormError('Enter a passphrase.');
       return;
+    }
+    if (!hasBundle) {
+      const confirmTrimmed = confirmPassphrase.trim();
+      if (!confirmTrimmed) {
+        setFormError('Confirm your passphrase.');
+        return;
+      }
+      if (trimmed !== confirmTrimmed) {
+        setFormError('Passphrases do not match. Use the exact same code twice.');
+        return;
+      }
     }
     setBusy(true);
     setFormError(null);
     try {
       if (hasBundle) {
-        await unlockWithPassphrase(passphrase.trim());
+        await unlockWithPassphrase(trimmed);
       } else {
-        await createWithPassphrase(passphrase.trim(), remember);
+        await createWithPassphrase(trimmed, remember);
       }
       setPassphrase('');
+      setConfirmPassphrase('');
     } catch (err: unknown) {
       const fallback =
         'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.';
@@ -66,7 +80,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
           <p className="text-neutral-400">
             {hasBundle
               ? 'Enter the exact passphrase you created before. A different phrase will fail and your encrypted entries will remain unreadable.'
-              : 'Choose a strong passphrase. You must reuse it every time you unlock OneLine.'}
+              : 'Choose a strong passphrase and type it twice to confirm. You must reuse this exact code every time you unlock OneLine.'}
           </p>
           {!hasBundle && (
             <p className="text-xs text-amber-300">
@@ -100,6 +114,20 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
               autoComplete="current-password"
             />
           </label>
+
+          {!hasBundle && (
+            <label className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wider text-neutral-500">Confirm passphrase</span>
+              <input
+                type="password"
+                value={confirmPassphrase}
+                onChange={(event) => setConfirmPassphrase(event.target.value)}
+                className="rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                placeholder="Repeat your passphrase"
+                autoComplete="new-password"
+              />
+            </label>
+          )}
 
           {!hasBundle && (
             <label className="flex items-center gap-2 text-xs text-neutral-400">
