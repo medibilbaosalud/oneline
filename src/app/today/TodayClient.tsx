@@ -1,13 +1,21 @@
 'use client';
 
+// SECURITY: This client component never sends plaintext to the server; entries are encrypted locally before POSTing.
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import VaultGate from '@/components/VaultGate';
+import { useVault } from '@/hooks/useVault';
+import { encryptText, decryptText } from '@/lib/crypto';
 
 const MAX = 300;
 const QUOTES = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
   { t: 'The only way to do great work is to love what you do.', a: 'Steve Jobs' },
-  { t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.', a: 'Steve Jobs' },
+  {
+    t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.',
+    a: 'Steve Jobs',
+  },
   { t: 'Innovation distinguishes between a leader and a follower.', a: 'Steve Jobs' },
   { t: 'Simple can be harder than complex; you have to work hard to get your thinking clean to make it simple.', a: 'Steve Jobs' },
   { t: 'Design is not just what it looks like and feels like. Design is how it works.', a: 'Steve Jobs' },
@@ -21,7 +29,10 @@ const QUOTES = [
   { t: 'Be faithful in small things because it is in them that your strength lies.', a: 'Mother Teresa' },
   { t: 'What you seek is seeking you.', a: 'Rumi' },
   { t: 'It does not matter how slowly you go as long as you do not stop.', a: 'Confucius' },
-  { t: 'Whatever you can do or dream you can, begin it. Boldness has genius, power and magic in it.', a: 'Johann Wolfgang von Goethe' },
+  {
+    t: 'Whatever you can do or dream you can, begin it. Boldness has genius, power and magic in it.',
+    a: 'Johann Wolfgang von Goethe',
+  },
   { t: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.', a: 'Will Durant' },
   { t: 'You can do anything, but not everything.', a: 'David Allen' },
   { t: 'If you are going through hell, keep going.', a: 'Winston Churchill' },
@@ -58,12 +69,24 @@ function quoteOfToday() {
   return QUOTES[key % QUOTES.length];
 }
 
+type EntryPayload = {
+  id?: string;
+  content_cipher?: string | null;
+  iv?: string | null;
+  content?: string | null;
+};
+
 export default function TodayClient() {
+  const { dataKey } = useVault();
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [needLogin, setNeedLogin] = useState(false);
   const [streak, setStreak] = useState<StreakData | null>(null);
+  const [entryId, setEntryId] = useState<string | null>(null);
+  const [pendingEntry, setPendingEntry] = useState<EntryPayload | null>(null);
+  const [legacyReadOnly, setLegacyReadOnly] = useState(false);
+  const [loadingEntry, setLoadingEntry] = useState(true);
   const quote = useMemo(() => quoteOfToday(), []);
 
   const loadStreak = useCallback(async () => {
@@ -83,32 +106,80 @@ export default function TodayClient() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     (async () => {
+      setLoadingEntry(true);
       try {
         const r = await fetch('/api/journal/today', { cache: 'no-store' });
+        if (!active) return;
         if (r.status === 401) {
           setNeedLogin(true);
+          setPendingEntry(null);
+          setEntryId(null);
+          setText('');
           return;
         }
-        const j = await r.json();
+        const j = (await r.json()) as EntryPayload | null;
         setNeedLogin(false);
-        if (typeof j?.content === 'string') setText(j.content);
+        setPendingEntry(j);
+        setEntryId(j?.id ?? null);
         loadStreak();
       } catch {
-        // silencio
+        if (!active) return;
+        setPendingEntry(null);
+      } finally {
+        if (active) setLoadingEntry(false);
       }
     })();
+    return () => {
+      active = false;
+    };
   }, [loadStreak]);
 
+  useEffect(() => {
+    if (!pendingEntry) {
+      setLegacyReadOnly(false);
+      setText('');
+      return;
+    }
+    if (pendingEntry.content_cipher && pendingEntry.iv) {
+      if (!dataKey) return;
+      decryptText(dataKey, pendingEntry.content_cipher, pendingEntry.iv)
+        .then((plain) => {
+          setText(plain);
+          setLegacyReadOnly(false);
+        })
+        .catch(() => {
+          setMsg('Unable to decrypt — check your passphrase.');
+        });
+    } else if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
+      setText(pendingEntry.content);
+      setLegacyReadOnly(true);
+    } else {
+      setLegacyReadOnly(false);
+      setText('');
+    }
+  }, [pendingEntry, dataKey]);
+
   async function save() {
-    if (!text.trim()) return;
+    if (needLogin) {
+      setMsg('Please sign in to save.');
+      return;
+    }
+    if (!dataKey) {
+      setMsg('Unlock your vault to save.');
+      return;
+    }
+    const trimmed = text.trim();
+    if (!trimmed) return;
     setSaving(true);
     setMsg(null);
     try {
+      const enc = await encryptText(dataKey, trimmed);
       const r = await fetch('/api/journal/today', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ id: entryId, content_cipher: enc.cipher_b64, iv: enc.iv_b64 }),
       });
       if (r.status === 401) {
         setNeedLogin(true);
@@ -116,7 +187,11 @@ export default function TodayClient() {
         return;
       }
       if (!r.ok) throw new Error('Failed to save');
-      setNeedLogin(false);
+      const json = (await r.json()) as { id?: string } | null;
+      const newId = json?.id ?? entryId;
+      setEntryId(newId ?? null);
+      setPendingEntry({ id: newId ?? undefined, content_cipher: enc.cipher_b64, iv: enc.iv_b64 });
+      setLegacyReadOnly(false);
       setMsg('Saved ✓');
       loadStreak();
       setTimeout(() => setMsg(null), 1500);
@@ -128,158 +203,132 @@ export default function TodayClient() {
     }
   }
 
+  if (needLogin) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-neutral-950/70 p-8 text-center text-zinc-100">
+        <p className="text-lg font-semibold">Sign in to keep your streak going.</p>
+        <p className="mt-3 text-sm text-zinc-400">
+          Your entries stay encrypted end-to-end. Once you sign in you can unlock them locally with your passphrase.
+        </p>
+        <a
+          href="/auth"
+          className="mt-6 inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+        >
+          Sign in / Sign up
+        </a>
+      </div>
+    );
+  }
+
   const currentCompanion = companionForStreak(streak?.current ?? 0);
   const upcomingCompanion = nextCompanion(streak?.current ?? 0);
   const progressPercent = Math.round((streak?.progress ?? 0) * 100);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-      <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
-        <p className="mb-4 italic text-neutral-300">
-          “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
-        </p>
+    <VaultGate>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+        <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+          <p className="mb-4 italic text-neutral-300">
+            “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
+          </p>
 
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          maxLength={MAX}
-          placeholder="One line that captures your day…"
-          className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60"
-        />
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={MAX}
+            disabled={legacyReadOnly || saving || loadingEntry}
+            placeholder="One line that captures your day…"
+            className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
+          />
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
-            {text.length}/{MAX}
-          </span>
+          {legacyReadOnly && (
+            <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+              Legacy entry detected. Press “Save entry” once to encrypt it with your new vault.
+            </p>
+          )}
 
-          <div className="flex flex-wrap items-center gap-3">
-            {msg && <span className="text-sm text-emerald-400">{msg}</span>}
-            {needLogin && (
-              <a
-                href="/auth"
-                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
+              {text.length}/{MAX}
+            </span>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {msg && <span className="text-sm text-emerald-400">{msg}</span>}
+              <button
+                type="button"
+                onClick={() => {
+                  setText('');
+                  setLegacyReadOnly(false);
+                }}
+                disabled={saving || loadingEntry}
+                className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-200 transition hover:bg-neutral-700 disabled:opacity-50"
               >
-                Sign in to save
-              </a>
-            )}
-            <button
-              type="button"
-              onClick={() => setText('')}
-              className="rounded-lg bg-neutral-800 px-3 py-2 text-sm hover:bg-neutral-700"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={!text.trim() || saving || needLogin}
-              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
-            >
-              {saving ? 'Saving…' : 'Save entry'}
-            </button>
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                disabled={!text.trim() || saving || loadingEntry}
+                className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
+              >
+                {saving ? 'Saving…' : 'Save entry'}
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <aside className="rounded-2xl border border-white/10 bg-neutral-900/40 p-5 shadow-sm">
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">Your streak & companion</h2>
-          </div>
-          <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
-            {needLogin ? 'Sign in' : 'Auto-synced'}
-          </span>
-        </header>
+        <aside className="rounded-2xl border border-white/10 bg-neutral-900/40 p-5 shadow-sm">
+          <header className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
+              <h2 className="mt-2 text-lg font-semibold text-white">Your streak & companion</h2>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+              Auto-synced
+            </span>
+          </header>
 
-        {needLogin ? (
-          <div className="mt-6 space-y-4 text-sm text-neutral-400">
-            <p>Sign in to start tracking streaks, companions, and rewards.</p>
-            <a
-              href="/auth"
-              className="inline-flex items-center justify-center rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400"
-            >
-              Sign in / Sign up
-            </a>
-          </div>
-        ) : (
-          <div className="mt-6 space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-              <div className="flex items-center justify-between text-xs text-neutral-400">
-                <span>Current streak</span>
-                <span>Longest</span>
+          <div className="mt-6 space-y-4 text-sm text-neutral-300">
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/40 text-2xl">
+                {currentCompanion.emoji}
+              </span>
+              <div>
+                <p className="text-base font-semibold text-white">{currentCompanion.name}</p>
+                <p className="text-neutral-400">{currentCompanion.blurb}</p>
               </div>
-              <div className="mt-2 flex items-end justify-between">
-                <div>
-                  <p className="text-4xl font-semibold text-white">
-                    {streak ? (
-                      <>
-                        {streak.current}
-                        <span className="ml-1 text-lg text-neutral-500">days</span>
-                      </>
-                    ) : (
-                      '—'
-                    )}
-                  </p>
-                  <p className="mt-1 text-xs text-neutral-400">
-                    {streak?.nextMilestone
-                      ? `Next badge at ${streak.nextMilestone} days`
-                      : 'You have unlocked every badge'}
-                  </p>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-emerald-300">
-                  {streak ? `${streak.longest} days` : '—'}
-                </div>
-              </div>
-              <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
+            </div>
+
+            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+              <p className="text-xs uppercase tracking-wider text-neutral-500">Current streak</p>
+              <p className="mt-1 text-3xl font-semibold text-white">{streak?.current ?? 0} days</p>
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-indigo-500"
-                  style={{ width: `${Math.min(100, progressPercent)}%` }}
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-neutral-500">Companion</p>
-                  <p className="mt-1 text-lg font-semibold text-white">{currentCompanion.name}</p>
-                </div>
-                <span className="text-3xl" aria-hidden>{currentCompanion.emoji}</span>
-              </div>
-              <p className="mt-3 text-xs text-neutral-400">{currentCompanion.blurb}</p>
-
-              <div className="mt-4 grid grid-cols-3 gap-3 text-center text-[11px] text-neutral-400">
-                {COMPANIONS.map((companion) => {
-                  const unlocked = (streak?.current ?? 0) >= companion.min;
-                  return (
-                    <div
-                      key={companion.name}
-                      className={`rounded-xl border px-3 py-2 ${
-                        unlocked
-                          ? 'border-white/20 bg-white/10 text-white'
-                          : 'border-white/10 bg-white/[0.04] text-neutral-500'
-                      }`}
-                    >
-                      <span className="text-xl" aria-hidden>
-                        {companion.emoji}
-                      </span>
-                      <p className="mt-1 font-medium">{companion.name.split(' ')[0]}</p>
-                      <p className="text-[10px] uppercase tracking-[0.18em]">{companion.min}d</p>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {upcomingCompanion && (
-                <p className="mt-4 text-[11px] text-neutral-500">
-                  {`Stay steady — ${upcomingCompanion.name} unlocks at ${upcomingCompanion.min} days.`}
+              {upcomingCompanion ? (
+                <p className="mt-3 text-xs text-neutral-400">
+                  {upcomingCompanion.emoji} Unlock {upcomingCompanion.name} at {upcomingCompanion.min} days.
                 </p>
+              ) : (
+                <p className="mt-3 text-xs text-neutral-400">Keep the ritual alive — you’ve met every companion we have.</p>
               )}
             </div>
+
+            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+              <p className="text-xs uppercase tracking-wider text-neutral-500">Longest run</p>
+              <p className="mt-1 text-2xl font-semibold text-white">{streak?.longest ?? 0} days</p>
+              <p className="mt-2 text-xs text-neutral-400">
+                Your encrypted vault ensures only you can read your reflections.
+              </p>
+            </div>
           </div>
-        )}
-      </aside>
-    </div>
+        </aside>
+      </div>
+    </VaultGate>
   );
 }
+
+// SECURITY WARNING: Never share your passphrase. If it is lost, we cannot recover your encrypted entries.

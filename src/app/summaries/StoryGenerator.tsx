@@ -2,6 +2,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useVault } from "@/hooks/useVault";
+import { decryptText } from "@/lib/crypto";
 
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
@@ -34,7 +36,17 @@ type Quota = {
   };
 };
 
+type EntryPayload = {
+  id: string;
+  created_at: string;
+  day?: string | null;
+  content_cipher?: string | null;
+  iv?: string | null;
+  content?: string | null;
+};
+
 export default function StoryGenerator() {
+  const { dataKey, unlockWithPassphrase, getCurrentKey } = useVault();
   // Preset + from/to
   const [preset, setPreset] = useState<Preset>("90");
   const today = useMemo(() => new Date(), []);
@@ -55,6 +67,11 @@ export default function StoryGenerator() {
   const [quota, setQuota] = useState<Quota | null>(null);
   const [quotaError, setQuotaError] = useState<string | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
+  const [showConsent, setShowConsent] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalPassphrase, setModalPassphrase] = useState("");
+  const [modalBusy, setModalBusy] = useState(false);
 
   // Resolve the date range according to the preset
   const { from, to } = useMemo(() => {
@@ -102,49 +119,127 @@ export default function StoryGenerator() {
     refreshQuota();
   }, [refreshQuota]);
 
-  async function handleGenerate() {
+  function openConsent() {
+    setModalError(null);
+    setModalPassphrase("");
+    setConsentChecked(false);
+    setShowConsent(true);
+  }
+
+  async function performGeneration(key: CryptoKey) {
     try {
       setLoading(true);
       setError(null);
       setStory("");
 
-      const params = new URLSearchParams({
-        from,
-        to,
-        length,
-        tone,
-        pov,
-        highlights: String(includeHighlights),
-      });
-      if (notes.trim()) params.set("notes", notes.trim());
+      const params = new URLSearchParams({ from, to });
+      const historyRes = await fetch(`/api/history?${params.toString()}`, { cache: "no-store" });
+      if (historyRes.status === 401) {
+        throw new Error("Please sign in to access your history.");
+      }
+      const historyJson = (await historyRes.json().catch(() => ({}))) as {
+        entries?: EntryPayload[];
+        error?: string;
+      };
+      if (historyJson.error) {
+        throw new Error(historyJson.error);
+      }
+      const entries = historyJson.entries ?? [];
+      if (entries.length === 0) {
+        throw new Error("No entries available in that range.");
+      }
 
-      const res = await fetch(`/api/year-story?${params.toString()}`, {
-        method: "GET",
-      });
-
-      let json: { story?: string; error?: string } | null = null;
-      const isJson = res.headers.get("content-type")?.includes("application/json");
-      if (isJson) {
-        json = (await res.json()) as { story?: string; error?: string };
-      } else {
-      // Fallback in case the server responds with plain text
-        const txt = await res.text();
-        try {
-          json = JSON.parse(txt) as { story?: string; error?: string };
-        } catch {
-          json = { error: txt || "Unexpected response" };
+      const decrypted: { content: string; created_at: string; day?: string | null }[] = [];
+      for (const entry of entries) {
+        if (entry.content_cipher && entry.iv) {
+          try {
+            const text = await decryptText(key, entry.content_cipher, entry.iv);
+            if (text.trim()) {
+              decrypted.push({ content: text, created_at: entry.created_at, day: entry.day });
+            }
+          } catch {
+            throw new Error("Unable to decrypt some entries. Unlock with the correct passphrase.");
+          }
+        } else if (entry.content) {
+          decrypted.push({ content: entry.content, created_at: entry.created_at, day: entry.day });
         }
       }
 
-      if (!res.ok) {
-        throw new Error(json?.error || res.statusText || "Failed");
+      if (decrypted.length === 0) {
+        throw new Error("No decryptable entries in that range.");
       }
+
+      const payload = {
+        consent: true,
+        from,
+        to,
+        options: {
+          length,
+          tone,
+          pov,
+          includeHighlights,
+          notes: notes.trim() || undefined,
+        },
+        entries: decrypted,
+      };
+
+      const res = await fetch("/api/generate-story", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = (await res.json().catch(() => null)) as { story?: string; error?: string } | null;
+      if (!res.ok) {
+        throw new Error(json?.error || res.statusText || "Failed to generate story");
+      }
+
       setStory(json?.story || "");
       refreshQuota();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to generate");
     } finally {
       setLoading(false);
+      setModalBusy(false);
+    }
+  }
+
+  async function confirmConsent() {
+    if (!consentChecked) {
+      setModalError("Please confirm you consent to sharing your decrypted entries.");
+      return;
+    }
+    setModalBusy(true);
+    setModalError(null);
+
+    try {
+      let key = dataKey ?? null;
+      if (!key) {
+        const passphrase = modalPassphrase.trim();
+        if (!passphrase) {
+          setModalError("Enter your passphrase to unlock the vault.");
+          setModalBusy(false);
+          return;
+        }
+        try {
+          await unlockWithPassphrase(passphrase);
+        } catch (err) {
+          setModalError(err instanceof Error ? err.message : "Unable to unlock with that passphrase.");
+          setModalBusy(false);
+          return;
+        }
+        key = getCurrentKey();
+        if (!key) {
+          setModalError("Vault is still locked. Try again.");
+          setModalBusy(false);
+          return;
+        }
+      }
+
+      setShowConsent(false);
+      await performGeneration(key);
+    } finally {
+      setModalPassphrase("");
     }
   }
 
@@ -302,7 +397,7 @@ export default function StoryGenerator() {
         {/* Action */}
         <div className="mt-5 flex items-center gap-3">
           <button
-            onClick={handleGenerate}
+            onClick={openConsent}
             disabled={loading}
             className="rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -323,6 +418,70 @@ export default function StoryGenerator() {
           <p className="text-zinc-400">Your story will appear here.</p>
         )}
       </div>
+
+      {showConsent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-950 p-6 text-zinc-100 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white">Share decrypted entries with Gemini</h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              To generate this story we will send your decrypted journal lines to our backend and to Google Gemini. Nothing is stored once the story is produced.
+            </p>
+
+            <label className="mt-4 flex items-start gap-3 text-sm text-zinc-300">
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(e) => setConsentChecked(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-zinc-600 bg-neutral-900 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
+              />
+              <span>I consent to send my decrypted entries to Gemini for this request.</span>
+            </label>
+
+            {!dataKey && (
+              <div className="mt-4">
+                <label className="flex flex-col gap-2 text-sm text-zinc-300">
+                  <span>Passphrase</span>
+                  <input
+                    type="password"
+                    value={modalPassphrase}
+                    onChange={(e) => setModalPassphrase(e.target.value)}
+                    className="rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40"
+                    placeholder="Unlock your vault"
+                  />
+                </label>
+              </div>
+            )}
+
+            {modalError && <p className="mt-4 text-sm text-rose-400">{modalError}</p>}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConsent(false);
+                  setModalBusy(false);
+                  setModalPassphrase('');
+                }}
+                className="rounded-lg bg-neutral-800 px-4 py-2 text-sm text-zinc-200 hover:bg-neutral-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmConsent}
+                disabled={modalBusy}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+              >
+                {modalBusy ? 'Preparing…' : 'Confirm & generate'}
+              </button>
+            </div>
+
+            <p className="mt-4 text-xs text-zinc-500">
+              SECURITY: This action temporarily exposes your decrypted text to our server and Gemini. We never store your passphrase, and losing it means we cannot recover your data.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
