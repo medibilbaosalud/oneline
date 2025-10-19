@@ -34,7 +34,7 @@ function NavLink({ href, label, onClick }: NavLinkProps) {
 export default function TopNav() {
   const [open, setOpen] = useState(false);
 
-  // Bloquea el scroll del body cuando el menú está abierto
+  // Prevent body scroll when the menu is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;

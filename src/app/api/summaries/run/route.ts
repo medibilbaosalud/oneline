@@ -7,7 +7,7 @@ export async function GET() {
   return NextResponse.json({ ok: true });
 }
 
-// Si tu cron hace POST, añade también:
+// Add POST handler if your cron uses it
 // export async function POST() {
 //   return NextResponse.json({ ok: true });
 // }

@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full bg-neutral-950">
       <body className={`${inter.className} min-h-screen bg-neutral-950 text-zinc-100`}>
-        {/* NAV global en todas las páginas */}
+        {/* Global navigation across all pages */}
         <TopNav />
         {children}
       </body>

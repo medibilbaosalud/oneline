@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         .select("id, content, created_at, day")
         .single();
     } else {
-      // upsert único por (user_id, day)
+      // Unique upsert per (user_id, day)
       result = await supabase
         .from("journal")
         .upsert([{ user_id: user.id, content, day }], {

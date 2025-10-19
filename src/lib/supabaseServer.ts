@@ -1,33 +1,32 @@
 // src/lib/supabaseServer.ts
-import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-/**
- * Cliente de Supabase para Route Handlers / Server Components.
- * Compatible con Next 14/15 (cookies() puede ser Promise).
- */
-export async function supabaseServer(): Promise<SupabaseClient> {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export async function supabaseServer() {
+  const cookieStore = await cookies(); // in App Router this returns a Promise-like
+  const mutableCookies = cookieStore as unknown as {
+    get(name: string): { value?: string } | undefined;
+    set?(options: { name: string; value: string } & CookieOptions): void;
+  };
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // En Next 15 los tipos de cookies() son Promise<ReadonlyRequestCookies>
-  // -> lo resolvemos aquí una vez para poder usar get/set/remove síncronos.
-  const cookieStore: any = await (cookies() as any);
-
-  const client = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient(url, key, {
     cookies: {
       get(name: string) {
-        return cookieStore?.get?.(name)?.value;
+        return cookieStore.get(name)?.value;
       },
       set(name: string, value: string, options: CookieOptions) {
-        cookieStore?.set?.({ name, value, ...options });
+        // Some route handlers may not allow setting cookies post-response; that's fine.
+        try {
+          mutableCookies.set?.({ name, value, ...options });
+        } catch {}
       },
       remove(name: string, options: CookieOptions) {
-        cookieStore?.set?.({ name, value: "", ...options, maxAge: 0 });
+        try {
+          mutableCookies.set?.({ name, value: '', ...options });
+        } catch {}
       },
     },
   });
-
-  return client as SupabaseClient;
 }

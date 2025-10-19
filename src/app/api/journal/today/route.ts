@@ -1,87 +1,75 @@
 // src/app/api/journal/today/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+// SECURITY: This route never receives plaintext journal content; it stores only ciphertext + IV per user/day.
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseServer } from '@/lib/supabaseServer';
 
-const TABLE = process.env.SUPABASE_TABLE || "entries";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-function startEndUTC(d = new Date()) {
-  const y = d.getUTCFullYear();
-  const m = d.getUTCMonth();
-  const day = d.getUTCDate();
-  const from = new Date(Date.UTC(y, m, day, 0, 0, 0));
-  const to = new Date(Date.UTC(y, m, day + 1, 0, 0, 0));
-  return { from, to };
+function ymdUTC(d = new Date()) {
+  const iso = new Date(d).toISOString();
+  return iso.slice(0, 10);
 }
 
 export async function GET() {
   const s = await supabaseServer();
-  const { data: { user }, error: authErr } = await s.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
+  const {
+    data: { user },
+    error: authErr,
+  } = await s.auth.getUser();
+  if (authErr || !user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const { from, to } = startEndUTC();
+  const day = ymdUTC();
   const { data, error } = await s
-    .from(TABLE)
-    .select("id, content, created_at")
-    .eq("user_id", user.id)
-    .gte("created_at", from.toISOString())
-    .lt("created_at", to.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1);
+    .from('journal')
+    .select('id, content_cipher, iv, content')
+    .eq('user_id', user.id)
+    .eq('day', day)
+    .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const entry = data?.[0] ?? null;
-  return NextResponse.json(entry ?? {});
+  return NextResponse.json(data ?? {}, { headers: { 'cache-control': 'no-store' } });
 }
 
 export async function POST(req: NextRequest) {
   const s = await supabaseServer();
-  const { data: { user }, error: authErr } = await s.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+  const {
+    data: { user },
+    error: authErr,
+  } = await s.auth.getUser();
+  if (authErr || !user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  const contentCipher = typeof body?.content_cipher === 'string' ? body.content_cipher : '';
+  const iv = typeof body?.iv === 'string' ? body.iv : '';
+  if (!contentCipher || !iv) {
+    return NextResponse.json({ error: 'missing_cipher' }, { status: 400 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const raw = typeof body?.content === "string" ? body.content : "";
-  const content = raw.slice(0, 300);
-  if (!content.trim()) {
-    return NextResponse.json({ error: "empty" }, { status: 400 });
+  const day = ymdUTC();
+  const payload: Record<string, unknown> = {
+    user_id: user.id,
+    day,
+    content_cipher: contentCipher,
+    iv,
+    content: '',
+    version: 1,
+  };
+  if (typeof body?.id === 'string' && body.id) {
+    payload.id = body.id;
   }
 
-  const { from, to } = startEndUTC();
-
-  // ¿Existe entrada hoy? -> update
-  const { data: existing, error: selErr } = await s
-    .from(TABLE)
-    .select("id")
-    .eq("user_id", user.id)
-    .gte("created_at", from.toISOString())
-    .lt("created_at", to.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
-
-  if (existing && existing.length) {
-    const id = existing[0].id;
-    const { error: updErr } = await s.from(TABLE).update({ content }).eq("id", id);
-    if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
-    return NextResponse.json({ ok: true, id, content });
-  }
-
-  // Crear nueva
-  const { data: inserted, error: insErr } = await s
-    .from(TABLE)
-    .insert({ user_id: user.id, content })
-    .select("id, content")
+  const { data, error } = await s
+    .from('journal')
+    .upsert(payload, { onConflict: 'user_id,day' })
+    .select('id')
     .single();
 
-  if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, id: inserted.id, content: inserted.content });
+  return NextResponse.json({ ok: true, id: data?.id }, { headers: { 'cache-control': 'no-store' } });
 }
+
+// SECURITY WARNING: Ciphertext is stored exactly as received. Never attempt to decrypt on the server without explicit user consent.

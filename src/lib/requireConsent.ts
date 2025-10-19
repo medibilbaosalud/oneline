@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
 /**
- * Gate de acceso para páginas protegidas.
- * - Si no hay usuario → /auth
- * - Si strict=true y el usuario no ha aceptado → /auth
- * Devuelve el usuario si pasa el gate.
+ * Access gate for protected pages.
+ * - If no user is found → redirect to /auth
+ * - If strict=true and consent is missing → redirect to /auth
+ * Returns the user when the gate passes.
  */
 export async function requireConsentOrRedirect(strict: boolean = true) {
   const supabase = createServerComponentClient({ cookies });
@@ -16,7 +16,8 @@ export async function requireConsentOrRedirect(strict: boolean = true) {
   if (!user) redirect("/auth");
 
   if (strict) {
-    const consent = (user.user_metadata as any)?.has_consented === true;
+    const metadata = user.user_metadata as { has_consented?: boolean } | undefined;
+    const consent = metadata?.has_consented === true;
     if (!consent) redirect("/auth");
   }
 

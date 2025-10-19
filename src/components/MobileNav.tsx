@@ -16,10 +16,10 @@ export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Cierra al cambiar de ruta
+  // Close the sheet whenever the route changes
   useEffect(() => setOpen(false), [pathname]);
 
-  // Bloquea scroll del body cuando está abierto
+  // Prevent body scroll when the sheet is open
   useEffect(() => {
     const html = document.documentElement;
     if (open) html.style.overflow = "hidden";
@@ -31,7 +31,7 @@ export default function MobileNav() {
 
   return (
     <>
-      {/* Trigger solo en móvil */}
+      {/* Trigger visible only on mobile */}
       <div className="md:hidden">
         <button
           aria-label="Open menu"
@@ -70,7 +70,7 @@ export default function MobileNav() {
               </button>
             </div>
 
-            {/* CTA principal */}
+            {/* Primary call to action */}
             <div className="mt-3">
               <Link
                 href="/today"
@@ -80,7 +80,7 @@ export default function MobileNav() {
               </Link>
             </div>
 
-            {/* Links */}
+            {/* Navigation links */}
             <ul className="mt-6 space-y-1">
               {links.map((l) => {
                 const active = pathname === l.href;
@@ -102,7 +102,7 @@ export default function MobileNav() {
               })}
             </ul>
 
-            {/* Badge/claim opcional */}
+            {/* Optional badge/claim */}
             <div className="mt-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
@@ -110,10 +110,10 @@ export default function MobileNav() {
               </div>
             </div>
 
-            {/* Spacer para empujar el contenido */}
+            {/* Spacer to push footer content */}
             <div className="flex-1" />
 
-            {/* Sign-out / footer opcional */}
+            {/* Optional footer */}
             <div className="pb-4 pt-2 text-center text-xs text-zinc-500">
               © {new Date().getFullYear()} OneLine
             </div>

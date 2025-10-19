@@ -15,8 +15,7 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // OJO: usa el nombre real de tu tabla.
-  // Si tu tabla se llama "entries" cámbialo aquí.
+  // Reminder: adjust the table name if your production schema differs.
   const { data, error } = await s
     .from("journal")
     .select("id, content, created_at")
