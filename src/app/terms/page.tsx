@@ -11,9 +11,9 @@ export default function TermsPage() {
 
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and use of OneLine (the
-        &ldquo;Service&rdquo;), operated by OneLine Labs S.L., a company incorporated in Spain with
-        registered address in Madrid (the &ldquo;Company&rdquo;). By creating an account, accessing, or using
-        the Service you agree to be legally bound by these Terms.
+        &ldquo;Service&rdquo;), operated by the OneLine project team based in Bilbao, Basque Country, Spain
+        (&ldquo;OneLine&rdquo;, &ldquo;we&rdquo;, or &ldquo;us&rdquo;). By creating an account, accessing, or using the Service you
+        agree to be legally bound by these Terms.
       </p>
 
       <h2>Eligibility and Account Registration</h2>
@@ -21,7 +21,9 @@ export default function TermsPage() {
         <li>You must be at least 16 years old or the minimum digital age of consent in your country.</li>
         <li>
           You are responsible for maintaining the confidentiality of your login credentials and for all
-          activity that occurs under your account.
+          activity that occurs under your account, as well as the passphrase that unlocks your encrypted
+          journal. We never store your passphrase; losing or changing it will render previously encrypted
+          entries permanently unreadable.
         </li>
         <li>You must provide accurate and complete information when creating your account.</li>
       </ul>
@@ -44,10 +46,12 @@ export default function TermsPage() {
 
       <h2>Your Content</h2>
       <p>
-        You retain ownership of the text you store in the Service. By submitting content you grant the
-        Company a non-exclusive, revocable, worldwide licence to host, store, back up, and process that
-        content solely for the purpose of providing and improving the Service. We do not use your journal
-        entries for advertising or training third-party models.
+        You retain ownership of the text you store in the Service. By submitting content you grant OneLine a
+        non-exclusive, revocable, worldwide licence to host, store, back up, and process that content solely
+        for the purpose of providing and improving the Service. Journal entries are encrypted on your device
+        with AES-GCM using a passphrase you control before they reach our infrastructure. We store only
+        ciphertext, initialization vectors, and related metadata. We do not use your journal entries for
+        advertising or training third-party models without your explicit consent.
       </p>
 
       <h2>Subscriptions and Payment</h2>
@@ -64,24 +68,33 @@ export default function TermsPage() {
         termination we will delete or anonymise your content unless retention is required by law.
       </p>
 
+      <h2>Security and Encryption</h2>
+      <p>
+        We protect the Service with technical and organisational measures, including TLS, hardened
+        infrastructure, and regular reviews. Journal entries are encrypted on your device using AES-GCM and a
+        passphrase-derived key before they are transmitted to us. We cannot decrypt your journal and do not
+        store your passphrase. You are solely responsible for safeguarding it; if it is lost or altered, we
+        cannot recover your plaintext data.
+      </p>
+
       <h2>Disclaimer and Limitation of Liability</h2>
       <p>
         The Service is provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis without warranties of any kind.
-        To the maximum extent permitted by law, the Company and its affiliates shall not be liable for any
+        To the maximum extent permitted by law, OneLine and its collaborators shall not be liable for any
         indirect, consequential, punitive, or incidental damages, or for loss of profits, revenue, data, or
         goodwill arising out of your use of the Service.
       </p>
 
       <h2>Indemnity</h2>
       <p>
-        You agree to indemnify and hold the Company harmless from any claims, damages, liabilities, or
-        expenses arising out of your content or your breach of these Terms.
+        You agree to indemnify and hold OneLine harmless from any claims, damages, liabilities, or expenses
+        arising out of your content or your breach of these Terms.
       </p>
 
       <h2>Governing Law and Jurisdiction</h2>
       <p>
         These Terms are governed by Spanish law. Any disputes shall be subject to the exclusive
-        jurisdiction of the courts of Madrid, Spain, without prejudice to mandatory rights available to
+        jurisdiction of the courts of Bilbao, Spain, without prejudice to mandatory rights available to
         consumers under applicable EU law.
       </p>
 
@@ -95,7 +108,8 @@ export default function TermsPage() {
       <h2>Contact</h2>
       <p>
         For questions about these Terms, please contact us at
-        <a href="mailto:legal@oneline.app"> legal@oneline.app</a>.
+        <a href="mailto:legal@oneline.app"> legal@oneline.app</a> or by post at OneLine, Apartado de
+        Correos 1234, 48001 Bilbao, Bizkaia, Spain.
       </p>
     </main>
   );

@@ -10,18 +10,17 @@ export default function PrivacyPage() {
       <p>Last updated: {lastUpdated}</p>
 
       <p>
-        This Privacy Policy describes how OneLine Labs S.L., registered in Spain with its principal place
-        of business in Madrid (&ldquo;OneLine&rdquo;, &ldquo;we&rdquo;, or &ldquo;us&rdquo;), collects, uses, and protects your personal
-        data when you access or use the OneLine journaling application (the &ldquo;Service&rdquo;). We process
-        personal data in accordance with Regulation (EU) 2016/679 (GDPR) and applicable Spanish data
-        protection law.
+        This Privacy Policy explains how OneLine (&ldquo;OneLine&rdquo;, &ldquo;we&rdquo;, or &ldquo;us&rdquo;), a privacy-first journaling
+        product built and operated from Bilbao, Basque Country, Spain, collects and protects your personal
+        data when you use the OneLine application (the &ldquo;Service&rdquo;). We process personal data in accordance
+        with Regulation (EU) 2016/679 (GDPR) and applicable Spanish data protection law.
       </p>
 
       <h2>Data Controller and Contact</h2>
       <p>
-        The data controller is OneLine Labs S.L. You can reach us at
-        <a href="mailto:privacy@oneline.app"> privacy@oneline.app</a>. We are registered in Spain and
-        supervised by the Spanish Data Protection Agency (AEPD).
+        The data controller for the Service is the OneLine project team based in Bilbao, Basque Country,
+        Spain. You can reach us at <a href="mailto:privacy@oneline.app">privacy@oneline.app</a>. Our lead
+        supervisory authority is the Spanish Data Protection Agency (AEPD).
       </p>
 
       <h2>Personal Data We Collect</h2>
@@ -31,8 +30,10 @@ export default function PrivacyPage() {
           create and maintain your account.
         </li>
         <li>
-          <strong>Journal content:</strong> the entries you choose to store in the Service. Entries are
-          private by default and only visible to you.
+          <strong>Journal content:</strong> the entries you choose to store in the Service. Journal entries
+          are end-to-end encrypted (E2EE) in your browser using a passphrase only you know before they are
+          transmitted to our infrastructure. We store only ciphertext, encryption metadata (such as IVs and
+          key versions), and optional analytics about streak progress.
         </li>
         <li>
           <strong>Usage and technical data:</strong> log data, IP address, device and browser details, and
@@ -45,7 +46,11 @@ export default function PrivacyPage() {
 
       <h2>How and Why We Use Personal Data</h2>
       <ul>
-        <li>To provide, secure, and maintain the Service, including syncing your entries across devices.</li>
+        <li>
+          To provide, secure, and maintain the Service, including storing your encrypted entries and
+          enabling you to decrypt them with your passphrase. We cannot read your entries because the
+          decryption key never leaves your devices.
+        </li>
         <li>To authenticate you, prevent fraud, and enforce our Terms of Service.</li>
         <li>To communicate with you about updates, features, or legal notices.</li>
         <li>To comply with legal obligations and respond to lawful requests from authorities.</li>
@@ -91,11 +96,22 @@ export default function PrivacyPage() {
         data from children. If we learn that a child has provided us with personal data, we will delete it.
       </p>
 
-      <h2>Security</h2>
+      <h2>Security and End-to-End Encryption</h2>
       <p>
-        We implement technical and organisational measures, including encryption in transit and at rest,
-        access controls, and regular security reviews, to protect personal data against unauthorised access,
-        loss, or disclosure.
+        We implement technical and organisational measures, including TLS in transit, hardened
+        infrastructure, and regular reviews, to protect personal data. Journal entries are additionally
+        protected with end-to-end encryption: your passphrase derives a key locally, entries are encrypted
+        with AES-GCM before leaving your device, and only ciphertext is stored. We do not store or have
+        access to your passphrase. If you forget your passphrase you will lose access to encrypted entries,
+        so please keep it safe.
+      </p>
+
+      <h2>Optional AI Summaries</h2>
+      <p>
+        We will only process decrypted journal content for AI-powered summaries when you provide explicit
+        consent in the application and confirm the passphrase locally to decrypt the data. The decrypted
+        text is sent to our servers solely for that request and shared with the selected AI provider. You
+        may withdraw consent at any time.
       </p>
 
       <h2>Changes to This Policy</h2>
