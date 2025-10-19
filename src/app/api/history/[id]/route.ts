@@ -83,32 +83,27 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { error: deleteError } = await sb
+  const { data: deleted, error: deleteError } = await sb
     .from('journal')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('id')
+    .maybeSingle();
 
   if (deleteError) {
-    if ((deleteError as { code?: string }).code === 'PGRST116') {
+    const code = (deleteError as { code?: string }).code;
+    if (code === 'PGRST116') {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    if (code === '42501') {
+      return NextResponse.json({ error: 'not_authorized' }, { status: 403 });
     }
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
 
-  const { data: verify, error: verifyError } = await sb
-    .from('journal')
-    .select('id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (verifyError && (verifyError as { code?: string }).code !== 'PGRST116') {
-    return NextResponse.json({ error: verifyError.message }, { status: 500 });
-  }
-
-  if (verify) {
-    return NextResponse.json({ error: 'not_deleted' }, { status: 500 });
+  if (!deleted) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
