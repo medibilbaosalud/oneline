@@ -135,7 +135,12 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
     if (!confirm('Delete this entry? This action is permanent.')) return;
     const res = await fetch(`/api/history/${entry.id}`, { method: 'DELETE', cache: 'no-store' });
     if (!res.ok) {
-      alert('Could not delete entry.');
+      if (res.status === 404) {
+        setRawEntries((prev) => prev.filter((row) => row.id !== entry.id));
+        return;
+      }
+      const payload = await res.json().catch(() => null);
+      alert(payload?.error ?? 'Could not delete entry.');
       return;
     }
     setRawEntries((prev) => prev.filter((row) => row.id !== entry.id));

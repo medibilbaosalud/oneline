@@ -34,8 +34,35 @@ export default function VisitorPage() {
           </p>
         </header>
 
-        <div className="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
-          <section className="flex flex-col rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+        <nav className="mb-12 flex flex-wrap gap-3 text-sm">
+          <a
+            href="#today"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:bg-white/10"
+          >
+            Today demo
+          </a>
+          <a
+            href="#history"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:bg-white/10"
+          >
+            History tour
+          </a>
+          <a
+            href="#summaries"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:bg-white/10"
+          >
+            Summaries preview
+          </a>
+          <a
+            href="#settings"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:bg-white/10"
+          >
+            Settings glimpse
+          </a>
+        </nav>
+
+        <section id="today" className="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
+          <div className="flex flex-col rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
             <header className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Today</p>
@@ -76,7 +103,7 @@ export default function VisitorPage() {
             <p className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-200">
               To save for real, create an account, unlock your vault, and your browser will encrypt each line before anything touches our servers.
             </p>
-          </section>
+          </div>
 
           <aside className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
             <div>
@@ -127,7 +154,108 @@ export default function VisitorPage() {
               </div>
             </div>
           </aside>
-        </div>
+        </section>
+
+        <section id="history" className="mt-16 rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">History</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Encrypted memories, unlocked by you</h2>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+              Read-only preview
+            </span>
+          </header>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-neutral-400">
+            Every entry you save is encrypted client-side. When you revisit History, the browser unlocks each line with your passphrase and renders it here. Visitor mode keeps the entries static so you can see the layout without revealing personal data.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {[1, 2, 3].map((idx) => (
+              <article key={idx} className="rounded-2xl border border-white/10 bg-black/30 p-5">
+                <div className="mb-3 flex items-center justify-between text-xs uppercase tracking-[0.24em] text-neutral-500">
+                  <span>Tue, 14 Oct 2025</span>
+                  <span>Unlocked locally</span>
+                </div>
+                <p className="text-base leading-relaxed text-neutral-200">
+                  I wrote one honest line, celebrated a tiny win, and let the vault keep it safe. When I need the full story, I unlock it with the same passphrase.
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <button className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-neutral-400">Edit</button>
+                  <button className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-neutral-400">Delete</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="summaries" className="mt-16 rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Summaries</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Consent-first storytelling</h2>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+              Read-only preview
+            </span>
+          </header>
+          <div className="mt-4 grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
+            <p className="text-sm leading-relaxed text-neutral-400">
+              When you generate a story we decrypt entries locally, ask for your consent, and send plain text only to Gemini for that single request. Visitor mode demonstrates the flow and messaging without sending anything.
+            </p>
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+              <p className="font-medium">Security reminder</p>
+              <p className="mt-2 text-emerald-100/80">
+                Your passphrase never leaves your browser. Decline consent and nothing leaves the encrypted vault.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5 text-sm text-neutral-300">
+            <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Preview</p>
+            <p className="mt-3 text-neutral-200">
+              “A year narrated in your own words. Visitor mode keeps the story placeholder locked until you create an account and unlock your vault.”
+            </p>
+            <button className="mt-4 cursor-not-allowed rounded-lg bg-indigo-500/60 px-4 py-2 text-sm font-medium text-white/70">
+              Generate story (disabled)
+            </button>
+          </div>
+        </section>
+
+        <section id="settings" className="mt-16 rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Settings</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Control without compromise</h2>
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+              Read-only preview
+            </span>
+          </header>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Vault status</p>
+              <p className="mt-2 text-neutral-200">Locked until you enter the same passphrase you chose on day one.</p>
+              <p className="mt-2 text-xs text-neutral-500">Forget it and the encrypted entries stay sealed forever.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Exports</p>
+              <p className="mt-2 text-neutral-200">Download a decrypted copy after unlocking. Visitor mode keeps buttons disabled.</p>
+              <div className="mt-3 flex gap-2">
+                <button className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-neutral-400">Export</button>
+                <button className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-neutral-400">Delete account</button>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Summary cadence</p>
+              <p className="mt-2 text-neutral-200">Switch between monthly, quarterly, or yearly recaps once you&rsquo;re signed in.</p>
+              <p className="mt-2 text-xs text-neutral-500">All settings persist on the encrypted profile.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-neutral-300">
+              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Need help?</p>
+              <p className="mt-2 text-neutral-200">Reach us at oneline.developerteam@gmail.com. We can help if you need guidance—just remember we can&rsquo;t recover lost passphrases.</p>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );

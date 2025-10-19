@@ -46,13 +46,14 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     .update({ content_cipher: contentCipher, iv, content: '' })
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id');
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!data || data.length === 0) {
+  if (!data) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -80,13 +81,14 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     .delete()
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id');
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!data || data.length === 0) {
+  if (!data) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
