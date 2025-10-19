@@ -49,14 +49,14 @@ export async function deriveKeyFromPassword(
     ['deriveKey', 'deriveBits'],
   );
   const derivedKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt.buffer, iterations, hash: 'SHA-256' },
     baseKey,
     { name: 'AES-GCM', length: 256 },
     true,
     ['encrypt', 'decrypt'],
   );
   const rawBits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt.buffer, iterations, hash: 'SHA-256' },
     baseKey,
     256,
   );
@@ -110,7 +110,7 @@ export async function generateDataKey(): Promise<CryptoKey> {
 export async function deriveKEKFromPassphrase(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey('raw', textEncoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 200_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt.buffer, iterations: 200_000, hash: 'SHA-256' },
     base,
     { name: 'AES-GCM', length: 256 },
     false,
