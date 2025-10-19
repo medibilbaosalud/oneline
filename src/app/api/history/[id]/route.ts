@@ -1,5 +1,6 @@
 // src/app/api/history/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getJournalTable } from "@/lib/getJournalTable";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
@@ -30,8 +31,10 @@ export async function PATCH(
     return NextResponse.json({ error: "invalid_content" }, { status: 400 });
   }
 
+  const table = getJournalTable();
+
   const { error } = await sb
-    .from("journal") // <-- cambia a tu nombre real de tabla si es distinto
+    .from(table)
     .update({ content })
     .eq("id", id)
     .eq("user_id", user.id)
@@ -61,16 +64,22 @@ export async function DELETE(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { error } = await sb
-    .from("journal") // <-- cambia si tu tabla es otra
+  const table = getJournalTable();
+
+  const { data, error } = await sb
+    .from(table)
     .delete()
     .eq("id", id)
     .eq("user_id", user.id)
-    .limit(1);
+    .select("id")
+    .single();
 
   if (error) {
+    if (error.code === "PGRST116" || error.code === "PGRST119") {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, id: data?.id ?? id });
 }

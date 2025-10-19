@@ -1,5 +1,6 @@
 // src/app/api/history/route.ts
 import { NextResponse } from "next/server";
+import { getJournalTable } from "@/lib/getJournalTable";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ entries: [] });
   }
 
-  const table = process.env.NEXT_PUBLIC_SUPABASE_TABLE || "journal";
+  const table = getJournalTable();
 
   const { data, error } = await sb
     .from(table)
