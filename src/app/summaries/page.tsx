@@ -1,4 +1,7 @@
 // src/app/summaries/page.tsx
+// SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
+
+import VaultGate from "@/components/VaultGate";
 import StoryGenerator from "./StoryGenerator";
 
 export default function SummariesPage() {
@@ -8,9 +11,13 @@ export default function SummariesPage() {
         <h1 className="text-3xl font-semibold text-zinc-100">Summaries</h1>
         <p className="mt-1 text-zinc-400">Generate a story from your journal.</p>
         <div className="mt-8">
-          <StoryGenerator />
+          <VaultGate>
+            <StoryGenerator />
+          </VaultGate>
         </div>
       </div>
     </main>
   );
 }
+
+// SECURITY WARNING: Without unlocking the vault, no plaintext is ever sent to the server for summaries.

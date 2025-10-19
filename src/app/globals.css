@@ -84,12 +84,12 @@ body {
   }
 }
 
-/* Afinar aurora en móviles (menos blur => mejor perf/lectura) */
+/* Tweak aurora on mobile (less blur => better perf/readability) */
 @media (max-width: 640px) {
   .aurora { filter: blur(38px); opacity: .95; }
 }
 
-/* Inputs cómodos en táctil */
+/* Comfortable inputs on touch devices */
 textarea, input, button {
   -webkit-tap-highlight-color: transparent;
 }

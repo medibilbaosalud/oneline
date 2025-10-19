@@ -17,7 +17,7 @@ export const QUOTES: Quote[] = [
 ];
 
 export function quoteOfToday(date = new Date()): Quote {
-  // Determinístico por día: YYYY-MM-DD -> índice
+  // Deterministic per day: YYYY-MM-DD -> index
   const key = date.toISOString().slice(0, 10);
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
