@@ -50,17 +50,13 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     })
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id')
-    .maybeSingle();
+    .select('id');
 
   if (error) {
-    if ((error as { code?: string }).code === 'PGRST116') {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!data) {
+  if (!Array.isArray(data) || data.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -88,21 +84,13 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     .delete()
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id')
-    .maybeSingle();
+    .select('id');
 
   if (deleteError) {
-    const code = (deleteError as { code?: string }).code;
-    if (code === 'PGRST116') {
-      return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    }
-    if (code === '42501') {
-      return NextResponse.json({ error: 'not_authorized' }, { status: 403 });
-    }
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
 
-  if (!deleted) {
+  if (!Array.isArray(deleted) || deleted.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
