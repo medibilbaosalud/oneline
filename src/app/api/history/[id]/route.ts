@@ -50,13 +50,14 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     })
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id');
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!Array.isArray(data) || data.length === 0) {
+  if (!data?.id) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -79,19 +80,29 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { data: deleted, error: deleteError } = await sb
+  const { data: existing, error: fetchError } = await sb
+    .from('journal')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  }
+
+  if (!existing?.id) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  const { error: deleteError } = await sb
     .from('journal')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id)
-    .select('id');
+    .eq('user_id', user.id);
 
   if (deleteError) {
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
-  }
-
-  if (!Array.isArray(deleted) || deleted.length === 0) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
