@@ -85,7 +85,7 @@ async function ensureInitialized() {
       }
 
       const key = bundleKeyForUser(currentUserId);
-      const localBundle = await idbGet<WrappedBundle>(key);
+      const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
@@ -170,7 +170,7 @@ export function useVault() {
     let bundle = cachedBundle;
     if (!bundle) {
       const key = bundleKeyForUser(currentUserId);
-      bundle = await idbGet<WrappedBundle>(key);
+      bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
         bundle = await fetchRemoteBundle();
         if (bundle) {
