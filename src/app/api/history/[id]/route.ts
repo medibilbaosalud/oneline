@@ -43,9 +43,14 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
 
   const { data, error } = await sb
     .from('journal')
-    .select('id')
+    .update({
+      content_cipher: contentCipher,
+      iv,
+      content: '',
+    })
     .eq('id', id)
     .eq('user_id', user.id)
+    .select('id')
     .maybeSingle();
 
   if (error) {
@@ -54,16 +59,6 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
 
   if (!data) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
-  const { error: updateError } = await sb
-    .from('journal')
-    .update({ content_cipher: contentCipher, iv, content: '' })
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
@@ -87,9 +82,10 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
 
   const { data, error } = await sb
     .from('journal')
-    .select('id')
+    .delete()
     .eq('id', id)
     .eq('user_id', user.id)
+    .select('id')
     .maybeSingle();
 
   if (error) {
@@ -98,16 +94,6 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
 
   if (!data) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
-  const { error: deleteError } = await sb
-    .from('journal')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', user.id);
-
-  if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
