@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic';
 
 type Params = { id: string };
 
-export async function PATCH(req: NextRequest, { params }: { params: Params }) {
+export async function PATCH(req: NextRequest, context: { params: Promise<Params> }) {
+  const { id } = await context.params;
   const sb = await supabaseServer();
   const {
     data: { user },
@@ -30,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const { error } = await sb
     .from('journal')
     .update({ content_cipher: contentCipher, iv, content: '' })
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .limit(1);
 
@@ -41,7 +42,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Params }) {
+export async function DELETE(_req: NextRequest, context: { params: Promise<Params> }) {
+  const { id } = await context.params;
   const sb = await supabaseServer();
   const {
     data: { user },
@@ -52,7 +54,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Params }) 
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { error } = await sb.from('journal').delete().eq('id', params.id).eq('user_id', user.id).limit(1);
+  const { error } = await sb.from('journal').delete().eq('id', id).eq('user_id', user.id).limit(1);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
