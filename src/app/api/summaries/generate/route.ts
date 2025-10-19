@@ -5,7 +5,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Ventana mensual en UTC
+// Monthly window in UTC
 function monthWindowUTC(d = new Date()) {
   const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
   const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0));
@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
 
   const { start, end } = monthWindowUTC();
 
-  // Límite: 10 resúmenes por usuario y mes
+  // Limit: 10 summaries per user per month
   const { count, error: countErr } = await sb
-    .from("summaries") // <-- si tu tabla se llama distinto, cámbiala aquí
+    .from("summaries") // Adjust if your production table has a different name
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
     .gte("created_at", start.toISOString())
@@ -41,20 +41,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "monthly-limit-reached" }, { status: 429 });
   }
 
-  // Cuerpo de la petición (opciones de generación)
+  // Parse generation options from the request body
   let body: any = {};
   try {
     body = await req.json();
   } catch {
-    // cuerpo vacío o inválido -> body se queda como {}
+    // Keep defaults on empty or invalid bodies
   }
 
-  // TODO: aquí generas la historia real; de momento acepto `body.story` si viene
+  // TODO: plug actual story generation here; for now accept `body.story` if present
   const story: string = typeof body.story === "string" ? body.story : "";
 
-  // Guardar el resumen
+  // Store the summary
   const { data: inserted, error: insertErr } = await sb
-    .from("summaries") // <-- mismo nombre que arriba
+    .from("summaries") // Same table name as above
     .insert({
       user_id: user.id,
       story,
