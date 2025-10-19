@@ -21,7 +21,7 @@ export default function LoginClient() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  // Si ya estás logueado, vete directo a "next"
+  // If already authenticated, redirect to the `next` route
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) router.replace(next);
@@ -38,14 +38,13 @@ export default function LoginClient() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.replace(next); // ✅ redirección inmediata
+        router.replace(next); // Redirect immediately
       } else {
         // Sign Up
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // Para setups sin confirmación de email activada,
-        // el usuario ya entra; si tu proyecto requiere confirmación,
-        // mostramos un mensaje y no redirigimos aún.
+        // For setups without email confirmation we allow immediate entry.
+        // If your project requires confirmation, show a message instead of redirecting now.
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           router.replace(next);

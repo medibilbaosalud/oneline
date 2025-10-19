@@ -30,7 +30,7 @@ function NavLink({
 export default function TopNav() {
   const [open, setOpen] = useState(false);
 
-  // Bloquea el scroll cuando el menú está abierto
+  // Prevent body scroll when the menu is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -38,7 +38,7 @@ export default function TopNav() {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // Render del sheet móvil vía Portal
+  // Render the mobile sheet through a portal
   const canUseDOM = typeof window !== 'undefined';
   const portalRoot = useMemo(() => (canUseDOM ? document.body : null), [canUseDOM]);
 
@@ -104,7 +104,7 @@ export default function TopNav() {
           <AuthButton />
         </div>
 
-        {/* Botón hamburguesa (móvil) */}
+            {/* Mobile hamburger button */}
         <button
           aria-label="Open menu"
           className="md:hidden rounded-md p-2 text-zinc-200 hover:bg-neutral-800/60"
@@ -116,7 +116,7 @@ export default function TopNav() {
         </button>
       </nav>
 
-      {/* Sheet móvil (portal) */}
+      {/* Mobile sheet rendered in a portal */}
       {Sheet}
     </header>
   );

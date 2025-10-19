@@ -17,6 +17,6 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  // Si todo va bien, la cookie de sesión ya quedó puesta por supabaseServer()
+  // On success the session cookie has already been set by supabaseServer()
   return NextResponse.json({ ok: true, user: data.user ?? null });
 }
