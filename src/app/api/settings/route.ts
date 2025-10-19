@@ -15,7 +15,7 @@ export async function GET() {
 
   if (error) return NextResponse.json({ ok: false, error }, { status: 500 });
 
-  // Si no existe, devuelve por defecto
+  // Fallback to defaults when no row exists yet
   return NextResponse.json({
     ok: true,
     settings: data ?? { user_id: user.id, frequency: "weekly" },

@@ -21,7 +21,7 @@ export default function LegalConsentPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || "Failed to save consent");
       }
-      // Vuelve a Today después de aceptar
+      // Navigate back to Today after accepting
       router.replace("/today");
     } catch (e: any) {
       setErr(e.message || "Something went wrong");

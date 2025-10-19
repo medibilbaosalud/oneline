@@ -1,19 +1,29 @@
 // src/app/api/history/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+// SECURITY: PATCH accepts only ciphertext + IV; DELETE removes the entire encrypted row.
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseServer } from '@/lib/supabaseServer';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 type Params = { id: string };
 
-// PATCH /api/history/:id  -> actualizar contenido
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<Params> }
-) {
-  const { id } = await params;
+async function resolveParams(params: Params | Promise<Params> | undefined): Promise<Params | null> {
+  if (!params) return null;
+  try {
+    return await Promise.resolve(params);
+  } catch {
+    return null;
+  }
+}
 
+export async function PATCH(req: NextRequest, context: { params?: Params | Promise<Params> }) {
+  const params = await resolveParams(context.params);
+  if (!params?.id) {
+    return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  }
+  const { id } = params;
   const sb = await supabaseServer();
   const {
     data: { user },
@@ -21,36 +31,44 @@ export async function PATCH(
   } = await sb.auth.getUser();
 
   if (authErr || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const content = typeof body?.content === "string" ? body.content.trim() : "";
-  if (!content) {
-    return NextResponse.json({ error: "invalid_content" }, { status: 400 });
+  const body = await req.json().catch(() => null);
+  const contentCipher = typeof body?.content_cipher === 'string' ? body.content_cipher : '';
+  const iv = typeof body?.iv === 'string' ? body.iv : '';
+  if (!contentCipher || !iv) {
+    return NextResponse.json({ error: 'missing_cipher' }, { status: 400 });
   }
 
-  const { error } = await sb
-    .from("journal") // <-- cambia a tu nombre real de tabla si es distinto
-    .update({ content })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .limit(1);
+  const { error, count } = await sb
+    .from('journal')
+    .update({
+      content_cipher: contentCipher,
+      iv,
+      content: '',
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .select('id', { count: 'exact', head: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  if (!count) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
 }
 
-// DELETE /api/history/:id  -> borrar entrada
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<Params> }
-) {
-  const { id } = await params;
-
+export async function DELETE(_req: NextRequest, context: { params?: Params | Promise<Params> }) {
+  const params = await resolveParams(context.params);
+  if (!params?.id) {
+    return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
+  }
+  const { id } = params;
   const sb = await supabaseServer();
   const {
     data: { user },
@@ -58,19 +76,24 @@ export async function DELETE(
   } = await sb.auth.getUser();
 
   if (authErr || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { error } = await sb
-    .from("journal") // <-- cambia si tu tabla es otra
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .limit(1);
+  const { error, count } = await sb
+    .from('journal')
+    .delete({ count: 'exact' })
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  if (!count) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
 }
+
+// SECURITY WARNING: Server never sees decrypted text; clients must handle passphrase safety.

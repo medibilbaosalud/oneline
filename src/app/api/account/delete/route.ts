@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  // OJO: hay que AWAIT aquí
+  // Await here to ensure the server client is ready
   const sb = await supabaseServer();
 
   const {
@@ -17,14 +17,14 @@ export async function POST() {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  // Borra todos los datos del usuario (ajusta tablas si necesitas)
+  // Remove all user data (adjust table names if needed)
   const delJournal = await sb.from("journal").delete().eq("user_id", user.id);
   if (delJournal.error) {
     return NextResponse.json({ error: delJournal.error.message }, { status: 500 });
   }
 
-  // Si además quieres eliminar al usuario de auth, eso se hace desde el dashboard de Supabase
-  // con service key (admin). Aquí sólo cerramos sesión.
+  // To delete the auth user entirely, call the admin API with the service key outside this handler.
+  // Here we only clear the current session.
   await sb.auth.signOut();
 
   return NextResponse.json({ ok: true });
