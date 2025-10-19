@@ -19,7 +19,8 @@ export default function PrivacyPage() {
       <h2>Data Controller and Contact</h2>
       <p>
         The data controller for the Service is the OneLine project team based in Bilbao, Basque Country,
-        Spain. You can reach us at <a href="mailto:privacy@oneline.app">privacy@oneline.app</a>. Our lead
+        Spain. You can reach us at
+        <a href="mailto:oneline.developerteam@gmail.com"> oneline.developerteam@gmail.com</a>. Our lead
         supervisory authority is the Spanish Data Protection Agency (AEPD).
       </p>
 
@@ -86,8 +87,8 @@ export default function PrivacyPage() {
         You have the right to access, rectify, erase, and port your data, to restrict or object to certain
         processing, and to withdraw consent at any time without affecting the lawfulness of processing based
         on consent before its withdrawal. To exercise your rights, contact us at
-        <a href="mailto:privacy@oneline.app"> privacy@oneline.app</a>. You also have the right to lodge a
-        complaint with the AEPD or your local supervisory authority.
+        <a href="mailto:oneline.developerteam@gmail.com"> oneline.developerteam@gmail.com</a>. You also have
+        the right to lodge a complaint with the AEPD or your local supervisory authority.
       </p>
 
       <h2>Children</h2>

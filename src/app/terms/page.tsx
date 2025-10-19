@@ -12,8 +12,8 @@ export default function TermsPage() {
       <p>
         These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and use of OneLine (the
         &ldquo;Service&rdquo;), operated by the OneLine project team based in Bilbao, Basque Country, Spain
-        (&ldquo;OneLine&rdquo;, &ldquo;we&rdquo;, or &ldquo;us&rdquo;). By creating an account, accessing, or using the Service you
-        agree to be legally bound by these Terms.
+        (&ldquo;OneLine&rdquo;, &ldquo;we&rdquo;, or &ldquo;us&rdquo;). By creating an account, checking the acceptance box during
+        signup, or using the Service you agree to be legally bound by these Terms.
       </p>
 
       <h2>Eligibility and Account Registration</h2>
@@ -107,9 +107,8 @@ export default function TermsPage() {
 
       <h2>Contact</h2>
       <p>
-        For questions about these Terms, please contact us at
-        <a href="mailto:legal@oneline.app"> legal@oneline.app</a> or by post at OneLine, Apartado de
-        Correos 1234, 48001 Bilbao, Bizkaia, Spain.
+        For questions about these Terms, contact us at
+        <a href="mailto:oneline.developerteam@gmail.com"> oneline.developerteam@gmail.com</a>.
       </p>
     </main>
   );

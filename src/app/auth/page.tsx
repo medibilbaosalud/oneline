@@ -9,6 +9,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const router = useRouter();
 
@@ -18,6 +19,9 @@ export default function AuthPage() {
     setErr(null);
 
     try {
+      if (mode === 'signup' && !acceptedTerms) {
+        throw new Error('Please accept the Terms of Service and Privacy Policy to create an account.');
+      }
       const sb = supabaseBrowser();
 
       if (mode === 'signin') {
@@ -91,11 +95,36 @@ export default function AuthPage() {
                 />
               </label>
 
+              {mode === 'signup' && (
+                <label className="flex items-start gap-2 text-sm text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(event) => setAcceptedTerms(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-white/20 bg-neutral-900 text-indigo-500"
+                    required
+                  />
+                  <span>
+                    I have read and accept the
+                    <a href="/terms" className="mx-1 text-indigo-300 underline hover:text-indigo-200">
+                      Terms of Service
+                    </a>
+                    and
+                    <a href="/privacy" className="ml-1 text-indigo-300 underline hover:text-indigo-200">
+                      Privacy Policy
+                    </a>
+                    . Use the same passphrase every time you unlock your encrypted vault.
+                  </span>
+                </label>
+              )}
+
               {err && <p className="text-sm text-rose-400">{err}</p>}
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={
+                  loading || (mode === 'signup' && !acceptedTerms)
+                }
                 className="mt-2 w-full rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
               >
                 {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -108,7 +137,10 @@ export default function AuthPage() {
                   New here?{' '}
                   <button
                     className="text-indigo-400 hover:text-indigo-300"
-                    onClick={() => setMode('signup')}
+                    onClick={() => {
+                      setAcceptedTerms(false);
+                      setMode('signup');
+                    }}
                   >
                     Create an account
                   </button>
@@ -118,7 +150,10 @@ export default function AuthPage() {
                   Already have an account?{' '}
                   <button
                     className="text-indigo-400 hover:text-indigo-300"
-                    onClick={() => setMode('signin')}
+                    onClick={() => {
+                      setAcceptedTerms(false);
+                      setMode('signin');
+                    }}
                   >
                     Sign in
                   </button>
