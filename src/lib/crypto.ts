@@ -15,7 +15,7 @@ export function toB64(bytes: Uint8Array): B64 {
   return btoa(binary);
 }
 
-function toArrayBufferView(bytes: Uint8Array): ArrayBuffer {
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   if (bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
     return bytes.buffer;
   }
@@ -58,7 +58,7 @@ export async function deriveKeyFromPassword(
     false,
     ['deriveKey', 'deriveBits'],
   );
-  const saltBuffer = toArrayBufferView(salt);
+  const saltBuffer = toArrayBuffer(salt);
   const derivedKey = await crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: saltBuffer, iterations, hash: 'SHA-256' },
     baseKey,
@@ -99,8 +99,8 @@ export async function encryptText(
 export async function decryptText(key: CryptoKey, cipher_b64: B64, iv_b64: B64): Promise<string> {
   const cipherBytes = fromB64(cipher_b64);
   const ivBytes = fromB64(iv_b64);
-  const ivForDecrypt = new Uint8Array(toArrayBufferView(ivBytes));
-  const cipherForDecrypt = new Uint8Array(toArrayBufferView(cipherBytes));
+  const ivForDecrypt = new Uint8Array(toArrayBuffer(ivBytes));
+  const cipherForDecrypt = new Uint8Array(toArrayBuffer(cipherBytes));
   const plainBuffer = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: ivForDecrypt },
     key,
@@ -122,7 +122,7 @@ export async function generateDataKey(): Promise<CryptoKey> {
  */
 export async function deriveKEKFromPassphrase(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const base = await crypto.subtle.importKey('raw', textEncoder.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
-  const saltBuffer = toArrayBufferView(salt);
+  const saltBuffer = toArrayBuffer(salt);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: saltBuffer, iterations: 200_000, hash: 'SHA-256' },
     base,
@@ -160,14 +160,16 @@ export async function wrapDataKey(dataKey: CryptoKey, passphrase: string): Promi
  */
 export async function unwrapDataKey(bundle: WrappedBundle, passphrase: string): Promise<CryptoKey> {
   const salt = fromB64(bundle.salt_b64);
-  const iv = fromB64(bundle.iv_b64);
-  const wrapped = fromB64(bundle.wrapped_b64);
+  const ivBytes = fromB64(bundle.iv_b64);
+  const wrappedBytes = fromB64(bundle.wrapped_b64);
   const kek = await deriveKEKFromPassphrase(passphrase, salt);
+  const ivBuffer = toArrayBuffer(ivBytes);
+  const wrappedBuffer = toArrayBuffer(wrappedBytes);
   return crypto.subtle.unwrapKey(
     'raw',
-    wrapped,
+    wrappedBuffer,
     kek,
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: new Uint8Array(ivBuffer) },
     { name: 'AES-GCM', length: 256 },
     true,
     ['encrypt', 'decrypt'],
