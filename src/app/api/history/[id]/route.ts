@@ -50,14 +50,13 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
     })
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id')
-    .maybeSingle();
+    .select('id');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!data) {
+  if (!data || data.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
@@ -85,14 +84,13 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     .delete()
     .eq('id', id)
     .eq('user_id', user.id)
-    .select('id')
-    .maybeSingle();
+    .select('id');
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!data) {
+  if (!data || data.length === 0) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
