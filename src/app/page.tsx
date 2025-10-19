@@ -50,6 +50,12 @@ export default function Landing() {
             >
               Generate a story
             </Link>
+            <Link
+              href="/visitor"
+              className="rounded-xl border border-white/10 bg-transparent px-6 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-white/5"
+            >
+              Try visitor mode
+            </Link>
           </div>
 
           <div className="mt-10 grid w-full max-w-3xl grid-cols-3 gap-3 text-left max-md:grid-cols-1">
