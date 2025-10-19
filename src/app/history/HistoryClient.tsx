@@ -22,7 +22,7 @@ type DecryptedEntry = EntryPayload & {
 };
 
 export default function HistoryClient({ initialEntries }: { initialEntries: EntryPayload[] }) {
-  const { dataKey } = useVault();
+  const { dataKey, markDecryptionFailure } = useVault();
   const [rawEntries, setRawEntries] = useState<EntryPayload[]>(initialEntries);
   const [items, setItems] = useState<DecryptedEntry[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,7 +45,12 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
               next.push({ ...entry, text, legacy: false, error: null });
             }
           } catch {
-            next.push({ ...entry, text: '', legacy: false, error: 'Unable to decrypt. Check your passphrase.' });
+            if (!cancelled) {
+              markDecryptionFailure(
+                'We could not decrypt your history. The passphrase must match the original code exactly — unlock again with that same phrase.',
+              );
+            }
+            return;
           }
         } else if (entry.content) {
           next.push({ ...entry, text: entry.content, legacy: true, error: null });

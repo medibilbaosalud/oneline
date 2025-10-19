@@ -7,10 +7,17 @@ import { useState } from 'react';
 import { useVault } from '@/hooks/useVault';
 
 export default function VaultGate({ children }: { children: React.ReactNode }) {
-  const { dataKey, hasBundle, loading, createWithPassphrase, unlockWithPassphrase } = useVault();
+  const {
+    dataKey,
+    hasBundle,
+    loading,
+    createWithPassphrase,
+    unlockWithPassphrase,
+    vaultError,
+  } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (loading) {
@@ -27,11 +34,11 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
 
   async function handleSubmit() {
     if (!passphrase.trim()) {
-      setError('Enter a passphrase.');
+      setFormError('Enter a passphrase.');
       return;
     }
     setBusy(true);
-    setError(null);
+    setFormError(null);
     try {
       if (hasBundle) {
         await unlockWithPassphrase(passphrase.trim());
@@ -41,7 +48,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       setPassphrase('');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unable to unlock';
-      setError(message);
+      setFormError(message);
     } finally {
       setBusy(false);
     }
@@ -71,13 +78,21 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
           )}
         </header>
 
+        {vaultError && (
+          <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            {vaultError}
+          </p>
+        )}
+
         <div className="space-y-3">
           <label className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-wider text-neutral-500">Passphrase</span>
             <input
               type="password"
               value={passphrase}
-              onChange={(event) => setPassphrase(event.target.value)}
+              onChange={(event) => {
+                setPassphrase(event.target.value);
+              }}
               className="rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
               placeholder="Enter a strong passphrase"
               autoComplete="current-password"
@@ -96,7 +111,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             </label>
           )}
 
-          {error && <p className="text-sm text-rose-400">{error}</p>}
+          {formError && <p className="text-sm text-rose-400">{formError}</p>}
         </div>
 
         <button

@@ -77,7 +77,7 @@ type EntryPayload = {
 };
 
 export default function TodayClient() {
-  const { dataKey } = useVault();
+  const { dataKey, markDecryptionFailure } = useVault();
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -151,6 +151,11 @@ export default function TodayClient() {
         })
         .catch(() => {
           setMsg('Unable to decrypt — check your passphrase.');
+          setText('');
+          setLegacyReadOnly(false);
+          markDecryptionFailure(
+            'Decryption failed. The passphrase you entered does not match the original code — unlock again with the exact phrase you set on day one.',
+          );
         });
     } else if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
       setText(pendingEntry.content);

@@ -15,6 +15,7 @@ let hasStoredBundle = false;
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
+let lastVaultError: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 
@@ -76,11 +77,13 @@ async function ensureInitialized() {
         currentUserId = userId;
         cachedBundle = null;
         hasStoredBundle = false;
+        lastVaultError = null;
         sharedKey = null;
       }
 
       if (!currentUserId) {
         initialized = true;
+        lastVaultError = null;
         return;
       }
 
@@ -89,6 +92,7 @@ async function ensureInitialized() {
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
+        lastVaultError = null;
         return;
       }
 
@@ -97,9 +101,11 @@ async function ensureInitialized() {
         cachedBundle = remoteBundle;
         hasStoredBundle = true;
         await idbSet(key, remoteBundle).catch(() => {});
+        lastVaultError = null;
       } else {
         cachedBundle = null;
         hasStoredBundle = false;
+        lastVaultError = null;
       }
     } finally {
       initialized = true;
@@ -117,10 +123,12 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
+    lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
+    lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
   notify();
@@ -150,6 +158,7 @@ export function useVault() {
     if (!currentUserId) throw new Error('Sign in before creating your vault');
     const key = await generateDataKey();
     sharedKey = key;
+    lastVaultError = null;
     const bundle = await wrapDataKey(key, passphrase);
     if (rememberDevice) {
       await persistBundle(bundle);
@@ -157,6 +166,7 @@ export function useVault() {
       // Keep the remote copy for recovery, but wipe local storage on this device.
       cachedBundle = bundle;
       hasStoredBundle = true;
+      lastVaultError = null;
       await saveRemoteBundle(bundle);
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
     }
@@ -182,6 +192,7 @@ export function useVault() {
     sharedKey = await unwrapDataKey(bundle, passphrase);
     cachedBundle = bundle;
     hasStoredBundle = true;
+    lastVaultError = null;
     notify();
   }, []);
 
@@ -194,6 +205,12 @@ export function useVault() {
     notify();
   }, []);
 
+  const markDecryptionFailure = useCallback((message: string) => {
+    sharedKey = null;
+    lastVaultError = message;
+    notify();
+  }, []);
+
   return {
     dataKey: sharedKey,
     hasBundle: hasStoredBundle,
@@ -201,6 +218,8 @@ export function useVault() {
     createWithPassphrase,
     unlockWithPassphrase,
     lock,
+    markDecryptionFailure,
+    vaultError: lastVaultError,
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,
