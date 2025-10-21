@@ -112,7 +112,7 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
 
   const { error: deleteErr } = await deleter
     .from('journal')
-    .delete({ returning: 'minimal' })
+    .delete()
     .eq('id', id)
     .eq('user_id', user.id);
 
