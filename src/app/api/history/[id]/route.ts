@@ -110,29 +110,22 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
   const admin = getAdminClient();
   const deleter = admin ?? sb;
 
-  const { error: deleteErr } = await deleter
+  const deleteBuilder = deleter
     .from('journal')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('id')
+    .maybeSingle<Pick<JournalRow, 'id'>>();
+
+  const { data: deleted, error: deleteErr } = await deleteBuilder;
 
   if (deleteErr) {
     return NextResponse.json({ error: deleteErr.message }, { status: 500 });
   }
 
-  const { data: verify, error: verifyErr } = await sb
-    .from('journal')
-    .select('id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .maybeSingle<Pick<JournalRow, 'id'>>();
-
-  if (verifyErr) {
-    return NextResponse.json({ error: verifyErr.message }, { status: 500 });
-  }
-
-  if (verify) {
-    return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
+  if (!deleted) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
