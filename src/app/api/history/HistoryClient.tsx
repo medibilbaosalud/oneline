@@ -58,6 +58,9 @@ export default function HistoryClient() {
 
     const res = await fetch(`/api/history/${e.id}`, { method: "DELETE" });
     if (!res.ok) {
+      if (res.status === 404) {
+        return;
+      }
       setItems(prev); // revertir
       const j = await res.json().catch(() => ({}));
       alert(j?.error || "Could not delete");
