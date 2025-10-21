@@ -7,7 +7,7 @@ import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
 
-const MAX = 300;
+const MAX = 333;
 const QUOTES = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
@@ -333,7 +333,7 @@ export default function TodayClient() {
 
           {!loadingEntry && !legacyReadOnly && !text && !pendingEntry?.content_cipher && (
             <p className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-300">
-              No entry saved for this date yet — write up to 300 characters to backfill it securely.
+              No entry saved for this date yet — write up to 333 characters to backfill it securely.
             </p>
           )}
 

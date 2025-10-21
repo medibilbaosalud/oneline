@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, context: any) {
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "invalid json" }, { status: 400 }); }
 
-  const content = String(body?.content ?? "").slice(0, 300);
+  const content = String(body?.content ?? "").slice(0, 333);
 
   const { data, error } = await supabase
     .from("journal")

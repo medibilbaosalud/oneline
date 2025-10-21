@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
   } = await sb.auth.getUser();
 
   if (authErr || !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);
@@ -77,7 +77,7 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
   } = await sb.auth.getUser();
 
   if (authErr || !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
   const { error: deleteErr } = await sb

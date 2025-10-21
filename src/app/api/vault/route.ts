@@ -28,7 +28,7 @@ export async function GET() {
     error: authErr,
   } = await supabase.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
   const { data, error } = await supabase
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest) {
     error: authErr,
   } = await supabase.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
   const body = await request.json().catch(() => null);

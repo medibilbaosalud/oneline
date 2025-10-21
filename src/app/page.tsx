@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata = {
   title: "OneLine — One honest line a day",
   description:
-    "Write up to 300 characters about your day, encrypted end to end by a passphrase only you know. Build a science-backed reflection habit and generate stories that read like you.",
+    "Write up to 333 characters about your day, encrypted end to end by a passphrase only you know. Build a science-backed reflection habit and generate stories that read like you.",
 };
 
 export default function Landing() {
@@ -16,7 +16,7 @@ export default function Landing() {
       {/* HERO */}
       <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <Badge>Private • 300 characters • Growth mindset</Badge>
+          <Badge>Private • 333 characters • Growth mindset</Badge>
 
           <h1 className="mt-4 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
             One honest line a day.
@@ -28,7 +28,7 @@ export default function Landing() {
           <div className="mt-6 grid w-full max-w-3xl gap-3 text-left text-sm text-zinc-300 sm:grid-cols-3 sm:text-base">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
               <p className="font-medium text-white">Write in under a minute</p>
-              <p className="mt-2 text-zinc-400">Capture up to 300 characters while the day is still vivid.</p>
+              <p className="mt-2 text-zinc-400">Capture up to 333 characters while the day is still vivid.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
               <p className="font-medium text-white">Encrypted with your passphrase</p>
@@ -128,7 +128,7 @@ export default function Landing() {
             <div className="grid gap-4 sm:grid-cols-2">
               <ExplainerCard
                 title="Capture the signal"
-                body="End each day in the Today screen with one true line. The 300-character cap keeps it sharp and easy to sustain."
+                body="End each day in the Today screen with one true line. The 333-character cap keeps it sharp and easy to sustain."
               />
               <ExplainerCard
                 title="Stitch the story"
@@ -241,7 +241,7 @@ export default function Landing() {
         <div className="grid gap-5 md:grid-cols-3">
           <FeatureCard
             title="Designed for daily momentum"
-            desc="Micro-entries under 300 characters keep you honest without draining your energy. Every pixel is tuned to get you in and out in under ten seconds."
+            desc="Micro-entries under 333 characters keep you honest without draining your energy. Every pixel is tuned to get you in and out in under ten seconds."
             emoji="🧭"
           />
           <FeatureCard
@@ -260,7 +260,7 @@ export default function Landing() {
       <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
         <div className="grid gap-5 md:grid-cols-3">
           <StepCard n="01" title="Week one">
-            Feel the relief of closing each day with one honest, sub-300-character reflection. The streak builds momentum, not pressure.
+            Feel the relief of closing each day with one honest, sub-333-character reflection. The streak builds momentum, not pressure.
           </StepCard>
           <StepCard n="02" title="Day 30">
             Patterns surface. You spot repeatable wins, mindset shifts, and friction before they snowball.
@@ -275,7 +275,7 @@ export default function Landing() {
       <section id="how" className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
         <h2 className="mb-6 text-xl font-semibold text-zinc-200">How OneLine fits your day</h2>
         <div className="grid gap-5 md:grid-cols-3">
-          <StepCard n="1" title="Write under 300 characters">
+          <StepCard n="1" title="Write under 333 characters">
             Open <b>Today</b> and capture the highlight, tension, or lesson in two short sentences. Five to ten seconds is all you need.
           </StepCard>
           <StepCard n="2" title="Keep the streak (and grow)">

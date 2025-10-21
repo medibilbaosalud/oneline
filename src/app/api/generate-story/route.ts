@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (authErr || !user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
   const body = await req.json().catch(() => null);

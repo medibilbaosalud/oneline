@@ -208,7 +208,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
                 value={draft}
                 onChange={(ev) => setDraft(ev.target.value)}
                 rows={4}
-                maxLength={300}
+                maxLength={333}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500"
               />
             )}

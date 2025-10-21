@@ -46,7 +46,7 @@ export default async function EditDayPage({ params }: Props) {
         <textarea
           name="content"
           defaultValue={content}
-          maxLength={300}
+          maxLength={333}
           className="h-56 w-full resize-none rounded-lg bg-neutral-900/70 p-4 outline-none ring-1 ring-white/10"
         />
         <div className="flex gap-3">
