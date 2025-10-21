@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,6 +65,17 @@ export async function PATCH(req: NextRequest, context: { params?: Params | Promi
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
 }
 
+type JournalRow = { id: string; user_id: string };
+
+function getAdminClient() {
+  try {
+    return supabaseAdmin();
+  } catch (error) {
+    console.error('[history/delete] supabase admin unavailable', error);
+    return null;
+  }
+}
+
 export async function DELETE(_req: NextRequest, context: { params?: Params | Promise<Params> }) {
   const params = await resolveParams(context.params);
   if (!params?.id) {
@@ -82,10 +94,10 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
 
   const { data: existing, error: existingErr } = await sb
     .from('journal')
-    .select('id')
+    .select('id, user_id')
     .eq('id', id)
     .eq('user_id', user.id)
-    .maybeSingle();
+    .maybeSingle<JournalRow>();
 
   if (existingErr) {
     return NextResponse.json({ error: existingErr.message }, { status: 500 });
@@ -95,29 +107,56 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  const { error: deleteErr } = await sb
+  const admin = getAdminClient();
+
+  if (admin) {
+    const { data: deleted, error: deleteErr } = await admin
+      .from('journal')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select('id')
+      .maybeSingle<JournalRow>();
+
+    if (deleteErr) {
+      return NextResponse.json({ error: deleteErr.message }, { status: 500 });
+    }
+
+    if (!deleted) {
+      return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
+    }
+
+    const { data: verify, error: verifyErr } = await admin
+      .from('journal')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle<Pick<JournalRow, 'id'>>();
+
+    if (verifyErr) {
+      return NextResponse.json({ error: verifyErr.message }, { status: 500 });
+    }
+
+    if (verify) {
+      return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+  }
+
+  const { data: deleted, error: deleteErr } = await sb
     .from('journal')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('id')
+    .maybeSingle<JournalRow>();
 
   if (deleteErr) {
     return NextResponse.json({ error: deleteErr.message }, { status: 500 });
   }
 
-  const { data: verify, error: verifyErr } = await sb
-    .from('journal')
-    .select('id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (verifyErr) {
-    return NextResponse.json({ error: verifyErr.message }, { status: 500 });
-  }
-
-  if (verify) {
-    return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
+  if (!deleted) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
