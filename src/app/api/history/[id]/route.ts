@@ -80,25 +80,20 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
-  const { error: deleteErr } = await sb
+  const { data: deletedRow, error: deleteErr } = await sb
     .from('journal')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .select('id')
+    .maybeSingle();
 
   if (deleteErr) {
     return NextResponse.json({ error: deleteErr.message }, { status: 500 });
   }
 
-  const { data: verify } = await sb
-    .from('journal')
-    .select('id')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (verify) {
-    return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
+  if (!deletedRow) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });

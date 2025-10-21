@@ -160,6 +160,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
       setDeletingId(null);
       return;
     }
+    setRawEntries((prev) => prev.filter((row) => row.id !== entry.id));
     await refreshFromServer();
     setDeletingId(null);
   }
