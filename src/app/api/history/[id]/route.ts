@@ -80,9 +80,24 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: 'sign-in required' }, { status: 401 });
   }
 
-  const { error: deleteErr, count } = await sb
+  const { data: existing, error: existingErr } = await sb
     .from('journal')
-    .delete({ count: 'exact' })
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existingErr) {
+    return NextResponse.json({ error: existingErr.message }, { status: 500 });
+  }
+
+  if (!existing) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  const { error: deleteErr } = await sb
+    .from('journal')
+    .delete()
     .eq('id', id)
     .eq('user_id', user.id);
 
@@ -90,8 +105,19 @@ export async function DELETE(_req: NextRequest, context: { params?: Params | Pro
     return NextResponse.json({ error: deleteErr.message }, { status: 500 });
   }
 
-  if ((count ?? 0) === 0) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  const { data: verify, error: verifyErr } = await sb
+    .from('journal')
+    .select('id')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (verifyErr) {
+    return NextResponse.json({ error: verifyErr.message }, { status: 500 });
+  }
+
+  if (verify) {
+    return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
