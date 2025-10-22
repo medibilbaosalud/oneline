@@ -4,14 +4,14 @@ import { supabaseServer } from '@/lib/supabaseServer';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: { id: string } };
 
 type PatchBody = {
   content_cipher?: string;
   iv?: string;
 };
 
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
     const s = await supabaseServer();
     const {
@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const { id } = await ctx.params;
+    const id = params.id;
     const body = (await req.json().catch(() => null)) as PatchBody | null;
 
     if (!body?.content_cipher || !body?.iv) {
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
 }
 
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
   try {
     const s = await supabaseServer();
     const {
@@ -68,7 +68,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const { id } = await ctx.params;
+    const id = params.id;
     const { data, error } = await s
       .from('journal')
       .delete()
