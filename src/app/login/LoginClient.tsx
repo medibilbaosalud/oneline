@@ -41,16 +41,19 @@ export default function LoginClient() {
         router.replace(next); // Redirect immediately
       } else {
         // Sign Up
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        // For setups without email confirmation we allow immediate entry.
-        // If your project requires confirmation, show a message instead of redirecting now.
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+
+        // When email confirmation is disabled Supabase returns an active session.
+        if (data.session) {
           router.replace(next);
-        } else {
-          setInfo("Check your inbox to confirm your account.");
+          return;
         }
+
+        // Otherwise the user must confirm the email address before signing in.
+        setMode("signin");
+        setPassword("");
+        setInfo("We sent a confirmation email. Check your inbox and complete the sign-up to continue.");
       }
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
