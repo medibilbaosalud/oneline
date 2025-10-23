@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 type RouteParams = { id: string };
 type RouteContext = {
-  params: RouteParams | Promise<RouteParams> | undefined;
+  params: Promise<RouteParams>;
 };
 
 type PatchBody = {
@@ -15,17 +15,17 @@ type PatchBody = {
 };
 
 async function resolveParams(context: RouteContext): Promise<RouteParams | null> {
-  const { params } = context ?? {};
-
-  if (!params) {
+  if (!context?.params) {
     return null;
   }
 
-  if (typeof (params as Promise<RouteParams>).then === 'function') {
-    return params as Promise<RouteParams>;
+  const params = await context.params;
+
+  if (!params?.id) {
+    return null;
   }
 
-  return params as RouteParams;
+  return params;
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
