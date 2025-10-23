@@ -12,12 +12,14 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setErr(null);
+    setInfo(null);
 
     try {
       if (mode === 'signup') {
@@ -33,14 +35,32 @@ export default function AuthPage() {
       if (mode === 'signin') {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
-      } else {
-        const { error } = await sb.auth.signUp({ email, password });
-        if (error) throw error;
+
+        router.refresh();
+        router.push('/today');
+        return;
       }
 
-      // Ensure server picks up session cookies
-      router.refresh();
-      router.push('/today');
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo:
+            'https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback',
+        },
+      });
+      if (error) throw error;
+
+      if (data.session) {
+        router.refresh();
+        router.push('/today');
+        return;
+      }
+
+      setMode('signin');
+      setPassword('');
+      setConfirmPassword('');
+      setInfo('We sent a confirmation email. Open your inbox to finish creating your account.');
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Authentication failed';
       setErr(message);
@@ -138,6 +158,7 @@ export default function AuthPage() {
                 </label>
               )}
 
+              {info && <p className="text-sm text-emerald-400">{info}</p>}
               {err && <p className="text-sm text-rose-400">{err}</p>}
 
               <button

@@ -12,7 +12,14 @@ export async function POST(req: Request) {
 
   const { data, error } =
     mode === "signup"
-      ? await sb.auth.signUp({ email, password })
+      ? await sb.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo:
+              "https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback",
+          },
+        })
       : await sb.auth.signInWithPassword({ email, password });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

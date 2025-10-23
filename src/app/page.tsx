@@ -1,15 +1,32 @@
 // src/app/page.tsx
 import Link from "next/link";
+import type { Metadata } from "next";
 
-export const metadata = {
+import { SignupFeedbackBanner } from "@/components/SignupFeedbackBanner";
+
+export const metadata: Metadata = {
   title: "OneLine — One honest line a day",
   description:
     "Write up to 333 characters about your day, encrypted end to end by a passphrase only you know. Build a science-backed reflection habit and generate stories that read like you.",
 };
 
-export default function Landing() {
+type LandingProps = {
+  searchParams?: {
+    signup?: string;
+  };
+};
+
+export default function Landing({ searchParams }: LandingProps) {
+  const signupStatus = searchParams?.signup as "ok" | "error" | "missing" | undefined;
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#07080B] text-zinc-100 selection:bg-indigo-600/30 selection:text-white">
+      {signupStatus ? (
+        <div className="relative mx-auto w-full max-w-5xl px-6 pt-6">
+          <SignupFeedbackBanner status={signupStatus} />
+        </div>
+      ) : null}
+
       {/* AURORA / NEBULA BACKDROP */}
       <Aurora />
 

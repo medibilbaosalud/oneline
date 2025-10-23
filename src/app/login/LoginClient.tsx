@@ -41,7 +41,14 @@ export default function LoginClient() {
         router.replace(next); // Redirect immediately
       } else {
         // Sign Up
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo:
+              "https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback",
+          },
+        });
         if (error) throw error;
 
         // When email confirmation is disabled Supabase returns an active session.
