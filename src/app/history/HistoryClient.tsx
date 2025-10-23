@@ -107,7 +107,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
     setSavingId(entry.id);
     try {
       const enc = await encryptText(dataKey, trimmed);
-      const res = await fetch(`/api/history/${entry.id}`, {
+      const res = await fetch(`/api/history/${encodeURIComponent(entry.id)}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content_cipher: enc.cipher_b64, iv: enc.iv_b64 }),
@@ -147,7 +147,10 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
   async function deleteEntry(entry: DecryptedEntry) {
     if (!confirm('Delete this entry? This action is permanent.')) return;
     setDeletingId(entry.id);
-    const res = await fetch(`/api/history/${entry.id}`, { method: 'DELETE', cache: 'no-store' });
+    const res = await fetch(`/api/history/${encodeURIComponent(entry.id)}`, {
+      method: 'DELETE',
+      cache: 'no-store',
+    });
     if (!res.ok) {
       if (res.status === 404) {
         setRawEntries((prev) => prev.filter((row) => row.id !== entry.id));
