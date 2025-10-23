@@ -4,31 +4,19 @@ import { supabaseServer } from '@/lib/supabaseServer';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type RouteParams = { id: string };
-type RouteContext = {
-  params: Promise<RouteParams>;
-};
-
 type PatchBody = {
   content_cipher?: string;
   iv?: string;
 };
 
-async function resolveParams(context: RouteContext): Promise<RouteParams | null> {
-  if (!context?.params) {
-    return null;
-  }
+type RouteParams = { params: { id?: string } };
 
-  const params = await context.params;
-
-  if (!params?.id) {
-    return null;
-  }
-
-  return params;
+function getIdParam(context: RouteParams): string | null {
+  const id = context?.params?.id;
+  return typeof id === 'string' && id.length > 0 ? id : null;
 }
 
-export async function PATCH(req: NextRequest, context: RouteContext) {
+export async function PATCH(req: NextRequest, context: RouteParams) {
   try {
     const s = await supabaseServer();
     const {
@@ -39,12 +27,11 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const params = await resolveParams(context);
-    if (!params?.id) {
+    const id = getIdParam(context);
+    if (!id) {
       return NextResponse.json({ error: 'invalid params' }, { status: 400 });
     }
 
-    const { id } = params;
     const body = (await req.json().catch(() => null)) as PatchBody | null;
 
     if (!body?.content_cipher || !body?.iv) {
@@ -72,17 +59,14 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'not found' }, { status: 404 });
     }
 
-    return NextResponse.json(
-      { ok: true },
-      { headers: { 'cache-control': 'no-store' } }
-    );
+    return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'server error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export async function DELETE(_req: NextRequest, context: RouteParams) {
   try {
     const s = await supabaseServer();
     const {
@@ -93,12 +77,11 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const params = await resolveParams(context);
-    if (!params?.id) {
+    const id = getIdParam(context);
+    if (!id) {
       return NextResponse.json({ error: 'invalid params' }, { status: 400 });
     }
 
-    const { id } = params;
     const { data, error } = await s
       .from('journal')
       .delete()
@@ -115,10 +98,7 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'not found' }, { status: 404 });
     }
 
-    return NextResponse.json(
-      { ok: true },
-      { headers: { 'cache-control': 'no-store' } }
-    );
+    return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'server error';
     return NextResponse.json({ error: message }, { status: 500 });
