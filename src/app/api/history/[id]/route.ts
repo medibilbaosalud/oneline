@@ -97,14 +97,39 @@ export async function DELETE(_req: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'invalid id' }, { status: 400 });
     }
 
-    const { error } = await s
+    const { data: removedRow, error } = await s
       .from('journal')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .select('id')
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!removedRow) {
+      // The delete call reported no matching rows; confirm whether it still exists.
+      const { data: stillThere, error: checkErr } = await s
+        .from('journal')
+        .select('id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkErr) {
+        return NextResponse.json({ error: checkErr.message }, { status: 500 });
+      }
+
+      if (!stillThere) {
+        return new NextResponse(null, {
+          status: 204,
+          headers: { 'cache-control': 'no-store' },
+        });
+      }
+
+      return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
     }
 
     return new NextResponse(null, {
