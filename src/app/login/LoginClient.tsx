@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getEmailHint } from "@/lib/emailHint";
 
 type Mode = "signin" | "signup";
 
@@ -20,6 +21,8 @@ export default function LoginClient() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  const emailHint = mode === "signup" ? getEmailHint(email) : null;
 
   // If already authenticated, redirect to the `next` route
   useEffect(() => {
@@ -110,6 +113,9 @@ export default function LoginClient() {
               className="w-full rounded-lg bg-neutral-800 px-3 py-2 text-neutral-100 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
               required
             />
+            {emailHint && (
+              <p className="mt-1 text-xs text-amber-400">{emailHint}</p>
+            )}
           </div>
 
           <div>

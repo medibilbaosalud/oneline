@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { getEmailHint } from '@/lib/emailHint';
 
 export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -14,6 +15,11 @@ export default function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const router = useRouter();
+
+  const emailHint = useMemo(
+    () => (mode === 'signup' ? getEmailHint(email) : null),
+    [email, mode],
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -107,6 +113,9 @@ export default function AuthPage() {
                   className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="you@example.com"
                 />
+                {emailHint && (
+                  <p className="mt-1 text-xs text-amber-400">{emailHint}</p>
+                )}
               </label>
 
               <label className="block">
