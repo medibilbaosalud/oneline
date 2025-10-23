@@ -9,14 +9,15 @@ type PatchBody = {
   iv?: string;
 };
 
-type RouteParams = { params: { id?: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 
-function getIdParam(context: RouteParams): string | null {
-  const id = context?.params?.id;
+async function resolveId(context: RouteContext): Promise<string | null> {
+  const params = await context?.params;
+  const id = params?.id;
   return typeof id === 'string' && id.length > 0 ? id : null;
 }
 
-export async function PATCH(req: NextRequest, context: RouteParams) {
+export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     const s = await supabaseServer();
     const {
@@ -27,7 +28,7 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const id = getIdParam(context);
+    const id = await resolveId(context);
     if (!id) {
       return NextResponse.json({ error: 'invalid params' }, { status: 400 });
     }
@@ -66,7 +67,7 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
   }
 }
 
-export async function DELETE(_req: NextRequest, context: RouteParams) {
+export async function DELETE(_req: NextRequest, context: RouteContext) {
   try {
     const s = await supabaseServer();
     const {
@@ -77,7 +78,7 @@ export async function DELETE(_req: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }
 
-    const id = getIdParam(context);
+    const id = await resolveId(context);
     if (!id) {
       return NextResponse.json({ error: 'invalid params' }, { status: 400 });
     }
