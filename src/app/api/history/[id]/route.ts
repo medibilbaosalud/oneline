@@ -5,9 +5,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 type RouteParams = { id: string };
-type RouteContext =
-  | { params: RouteParams }
-  | { params: Promise<RouteParams> };
+type RouteContext = {
+  params: RouteParams | Promise<RouteParams> | undefined;
+};
 
 type PatchBody = {
   content_cipher?: string;
@@ -15,7 +15,7 @@ type PatchBody = {
 };
 
 async function resolveParams(context: RouteContext): Promise<RouteParams | null> {
-  const { params } = context;
+  const { params } = context ?? {};
 
   if (!params) {
     return null;
