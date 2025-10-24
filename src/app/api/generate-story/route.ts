@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { incrementMonthlySummaryUsage } from '@/lib/summaryUsage';
 import {
   coercePov,
   coerceTone,
@@ -132,13 +133,10 @@ async function recordSummaryRun({ supabase, userId, story, from, to, entries }: 
     throw new Error(insertError.message || 'summary_log_failed');
   }
 
-  const { error: updateError } = await supabase
-    .from('user_settings')
-    .update({ last_summary_at: new Date().toISOString() })
-    .eq('user_id', userId);
-
-  if (updateError) {
-    console.error('Failed to update last_summary_at', updateError);
+  try {
+    await incrementMonthlySummaryUsage(supabase, userId);
+  } catch (error) {
+    console.error('Failed to record monthly summary usage', error);
   }
 }
 

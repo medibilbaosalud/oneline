@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { incrementMonthlySummaryUsage } from '@/lib/summaryUsage';
 import { generateYearStory, type YearStoryOptions } from '@/lib/yearStory';
 
 export const runtime = 'nodejs';
@@ -174,6 +175,12 @@ export async function GET(req: Request) {
 
       if (insertError) {
         throw new Error(insertError.message);
+      }
+
+      try {
+        await incrementMonthlySummaryUsage(supabase, userId);
+      } catch (error) {
+        console.error('Failed to bump monthly usage from cron', { userId, error });
       }
 
       generated += 1;
