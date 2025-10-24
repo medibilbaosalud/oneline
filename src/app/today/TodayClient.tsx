@@ -3,6 +3,7 @@
 // SECURITY: This client component never sends plaintext to the server; entries are encrypted locally before POSTing.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
@@ -74,6 +75,21 @@ function ymdUTC(date = new Date()) {
   return iso.slice(0, 10);
 }
 
+function formatWindowLabel(window: { start: string; end: string }) {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const start = new Date(`${window.start}T00:00:00Z`);
+    const end = new Date(`${window.end}T00:00:00Z`);
+    return `${formatter.format(start)} → ${formatter.format(end)}`;
+  } catch {
+    return `${window.start} → ${window.end}`;
+  }
+}
+
+function humanizePeriod(period: SummaryReminder['period']) {
+  return period.charAt(0).toUpperCase() + period.slice(1);
+}
+
 type EntryPayload = {
   id?: string;
   content_cipher?: string | null;
@@ -81,8 +97,17 @@ type EntryPayload = {
   content?: string | null;
 };
 
+type SummaryReminder = {
+  due: boolean;
+  period: 'weekly' | 'monthly' | 'yearly';
+  window: { start: string; end: string };
+  dueSince: string | null;
+  lastSummaryAt: string | null;
+};
+
 export default function TodayClient() {
   const { dataKey } = useVault();
+  const router = useRouter();
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -115,6 +140,41 @@ export default function TodayClient() {
       return selectedDay;
     }
   }, [selectedDay]);
+  const [summaryReminder, setSummaryReminder] = useState<SummaryReminder | null>(null);
+  const [showSummaryReminder, setShowSummaryReminder] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/summaries/reminder', { cache: 'no-store' });
+        if (!res.ok) {
+          if (res.status === 401 && !cancelled) {
+            setSummaryReminder(null);
+          }
+          return;
+        }
+        const payload = (await res.json().catch(() => null)) as
+          | { reminder?: SummaryReminder | null }
+          | null;
+        if (cancelled) return;
+        if (payload?.reminder?.due) {
+          setSummaryReminder(payload.reminder);
+          setShowSummaryReminder(true);
+        } else {
+          setSummaryReminder(payload?.reminder ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setSummaryReminder(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadStreak = useCallback(async () => {
     try {
@@ -276,8 +336,41 @@ export default function TodayClient() {
 
   return (
     <VaultGate>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-        <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+      <div className="space-y-6">
+        {summaryReminder && summaryReminder.due && showSummaryReminder && (
+          <div className="rounded-2xl border border-indigo-500/40 bg-indigo-500/15 p-4 text-sm text-indigo-100">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-white">{humanizePeriod(summaryReminder.period)} story ready</p>
+                <p className="mt-1 text-xs text-indigo-100/80">
+                  Generate your recap for {formatWindowLabel(summaryReminder.window)} with your saved preferences.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSummaryReminder(false);
+                    router.push(`/summaries?from=${summaryReminder.window.start}&to=${summaryReminder.window.end}`);
+                  }}
+                  className="rounded-xl bg-indigo-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-400"
+                >
+                  Generate now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSummaryReminder(false)}
+                  className="rounded-xl border border-white/20 px-4 py-2 text-xs font-medium text-indigo-100 transition hover:bg-indigo-500/10"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+          <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
@@ -423,6 +516,7 @@ export default function TodayClient() {
           </div>
         </aside>
       </div>
+    </div>
     </VaultGate>
   );
 }

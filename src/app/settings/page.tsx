@@ -5,16 +5,66 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type Frequency = "weekly" | "monthly" | "yearly";
+type StoryLength = "short" | "medium" | "long";
+type StoryTone = "auto" | "warm" | "neutral" | "poetic" | "direct";
+type StoryPov = "auto" | "first" | "third";
+
+type SummaryPreferences = {
+  length: StoryLength;
+  tone: StoryTone;
+  pov: StoryPov;
+  includeHighlights: boolean;
+  notes: string | null;
+};
+
+type SummaryReminder = {
+  due: boolean;
+  period: Frequency;
+  window: { start: string; end: string };
+  dueSince: string | null;
+  lastSummaryAt: string | null;
+};
 
 type SettingsResponse = {
   ok: boolean;
+  error?: string;
   settings?: {
     frequency: Frequency;
+    storyPreferences: SummaryPreferences;
+    lastSummaryAt: string | null;
+    reminder?: SummaryReminder;
   };
 };
 
+const NOTES_LIMIT = 500;
+
 function messageFromError(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
+}
+
+function humanizeFrequency(freq: Frequency) {
+  return freq.charAt(0).toUpperCase() + freq.slice(1);
+}
+
+function formatDateLabel(iso: string | null) {
+  if (!iso) return "never";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+function formatWindow(window?: { start: string; end: string }) {
+  if (!window) return "";
+  try {
+    const fmt = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+    const start = new Date(`${window.start}T00:00:00Z`);
+    const end = new Date(`${window.end}T00:00:00Z`);
+    return `${fmt.format(start)} → ${fmt.format(end)}`;
+  } catch {
+    return `${window.start} → ${window.end}`;
+  }
 }
 
 export default function SettingsPage() {
@@ -27,6 +77,12 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [lastSignIn, setLastSignIn] = useState<string | null>(null);
+  const [storyLength, setStoryLength] = useState<StoryLength>("medium");
+  const [storyTone, setStoryTone] = useState<StoryTone>("auto");
+  const [storyPov, setStoryPov] = useState<StoryPov>("auto");
+  const [storyIncludeHighlights, setStoryIncludeHighlights] = useState(true);
+  const [storyNotes, setStoryNotes] = useState("");
+  const [reminder, setReminder] = useState<SummaryReminder | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +104,15 @@ export default function SettingsPage() {
           const json = (await settingsRes.json()) as SettingsResponse;
           if (json.ok && json.settings) {
             setFrequency(json.settings.frequency ?? "weekly");
+            const prefs = json.settings.storyPreferences;
+            if (prefs) {
+              setStoryLength(prefs.length);
+              setStoryTone(prefs.tone);
+              setStoryPov(prefs.pov);
+              setStoryIncludeHighlights(prefs.includeHighlights);
+              setStoryNotes(prefs.notes ?? "");
+            }
+            setReminder(json.settings.reminder ?? null);
           }
         } else if (settingsRes.status === 401) {
           setError("You need to sign in to manage your settings.");
@@ -67,7 +132,7 @@ export default function SettingsPage() {
     };
   }, [supabase]);
 
-  async function handleSaveFrequency(nextFrequency: Frequency) {
+  async function handleSaveSettings() {
     setSaving(true);
     setFeedback(null);
     setError(null);
@@ -75,15 +140,31 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frequency: nextFrequency }),
+        body: JSON.stringify({
+          frequency,
+          storyPreferences: {
+            length: storyLength,
+            tone: storyTone,
+            pov: storyPov,
+            includeHighlights: storyIncludeHighlights,
+            notes: storyNotes.trim() ? storyNotes.trim() : undefined,
+          },
+        }),
       });
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
+      const json = (await res.json().catch(() => null)) as SettingsResponse | null;
+      if (!res.ok || !json?.ok || !json.settings) {
         throw new Error(json?.error || "Could not update your preferences.");
       }
 
-      setFrequency(nextFrequency);
+      setFrequency(json.settings.frequency);
+      const prefs = json.settings.storyPreferences;
+      setStoryLength(prefs.length);
+      setStoryTone(prefs.tone);
+      setStoryPov(prefs.pov);
+      setStoryIncludeHighlights(prefs.includeHighlights);
+      setStoryNotes(prefs.notes ?? "");
+      setReminder(json.settings.reminder ?? null);
       setFeedback("Saved.");
     } catch (err: unknown) {
       setError(messageFromError(err, "Could not update your preferences."));
@@ -202,7 +283,7 @@ export default function SettingsPage() {
                   <option value="yearly">Yearly report</option>
                 </select>
                 <button
-                  onClick={() => handleSaveFrequency(frequency)}
+                  onClick={handleSaveSettings}
                   disabled={settingsLoading || saving}
                   className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -210,6 +291,122 @@ export default function SettingsPage() {
                 </button>
               </div>
             </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                <label htmlFor="story-length" className="text-sm font-medium text-neutral-100">
+                  Story length
+                </label>
+                <select
+                  id="story-length"
+                  value={storyLength}
+                  disabled={settingsLoading || saving}
+                  onChange={(event) => setStoryLength(event.target.value as StoryLength)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="short">Short (around 4 paragraphs)</option>
+                  <option value="medium">Medium (balanced)</option>
+                  <option value="long">Long (10+ paragraphs)</option>
+                </select>
+                <p className="mt-2 text-xs text-neutral-500">
+                  We’ll pre-fill the generator with this depth every time you create a story.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                <label htmlFor="story-tone" className="text-sm font-medium text-neutral-100">
+                  Tone
+                </label>
+                <select
+                  id="story-tone"
+                  value={storyTone}
+                  disabled={settingsLoading || saving}
+                  onChange={(event) => setStoryTone(event.target.value as StoryTone)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="auto">Auto (let the model decide)</option>
+                  <option value="warm">Warm & encouraging</option>
+                  <option value="neutral">Neutral & factual</option>
+                  <option value="poetic">Poetic</option>
+                  <option value="direct">Direct & concise</option>
+                </select>
+                <p className="mt-2 text-xs text-neutral-500">
+                  Choose the emotional flavour you want in your summaries.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                <label htmlFor="story-pov" className="text-sm font-medium text-neutral-100">
+                  Point of view
+                </label>
+                <select
+                  id="story-pov"
+                  value={storyPov}
+                  disabled={settingsLoading || saving}
+                  onChange={(event) => setStoryPov(event.target.value as StoryPov)}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="first">First person</option>
+                  <option value="third">Third person</option>
+                </select>
+                <p className="mt-2 text-xs text-neutral-500">
+                  Decide whether the recap should sound like you or like a narrator.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                <span className="text-sm font-medium text-neutral-100">Highlights</span>
+                <p className="mt-2 text-xs text-neutral-500">
+                  Include pinned entries and milestones automatically when building your story.
+                </p>
+                <label className="mt-3 inline-flex items-center gap-2 text-sm text-neutral-200">
+                  <input
+                    type="checkbox"
+                    checked={storyIncludeHighlights}
+                    disabled={settingsLoading || saving}
+                    onChange={(event) => setStoryIncludeHighlights(event.target.checked)}
+                    className="h-4 w-4 rounded border border-white/20 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                  />
+                  Keep highlights in my summaries
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/5 bg-black/15 p-4">
+              <label htmlFor="story-notes" className="text-sm font-medium text-neutral-100">
+                Personal guidance (optional)
+              </label>
+              <textarea
+                id="story-notes"
+                value={storyNotes}
+                maxLength={NOTES_LIMIT}
+                disabled={settingsLoading || saving}
+                onChange={(event) => setStoryNotes(event.target.value)}
+                placeholder="Anything you want Gemini to emphasise when it writes your recap."
+                className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-3 text-sm text-neutral-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <div className="mt-1 flex flex-col gap-1 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+                <span>We’ll pre-fill the generator with this note — you can still edit it before sending.</span>
+                <span>
+                  {storyNotes.length}/{NOTES_LIMIT}
+                </span>
+              </div>
+            </div>
+
+            {reminder && (
+              <div className="mt-6 rounded-2xl border border-white/5 bg-black/20 p-4 text-xs text-neutral-400">
+                <p>
+                  Last story captured:
+                  <span className="ml-1 text-neutral-200">{formatDateLabel(reminder.lastSummaryAt)}</span>
+                </p>
+                <p className={`mt-2 ${reminder.due ? "text-amber-300" : "text-neutral-400"}`}>
+                  {reminder.due
+                    ? `It’s time for your ${reminder.period} story covering ${formatWindow(reminder.window)}. We’ll also remind you on the Today screen.`
+                    : `Your ${humanizeFrequency(reminder.period).toLowerCase()} cadence is active. We’ll prompt you again after the current window closes.`}
+                </p>
+              </div>
+            )}
 
             <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-neutral-300">
               <p className="font-medium text-neutral-100">New Year automation</p>
