@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   DEFAULT_SUMMARY_PREFERENCES,
@@ -12,6 +13,7 @@ import {
   type SummaryPreferences,
 } from "@/lib/summaryPreferences";
 import type { JournalDigestFreq, JournalStoryLength } from "@/types/journal";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const TABLE = "user_vaults";
 
@@ -23,9 +25,10 @@ type RawSettingsRow = {
   last_summary_at: string | null;
 };
 
-async function resolveSettings(userId: string) {
-  const supabase = createRouteHandlerClient({ cookies });
-  const { data, error } = await supabase
+type GenericClient = SupabaseClient<unknown, "public", unknown>;
+
+async function resolveSettings(client: GenericClient, userId: string) {
+  const { data, error } = await client
     .from(TABLE)
     .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
     .eq("user_id", userId)
@@ -58,18 +61,51 @@ async function resolveSettings(userId: string) {
   };
 }
 
-export async function GET() {
+function extractBearer(authHeader: string | null): string | null {
+  if (!authHeader) return null;
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim() || null;
+  }
+  return authHeader.trim() || null;
+}
+
+async function getClientAndUser(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user) {
+    return { client: supabase as GenericClient, user } as const;
+  }
+
+  const bearer = extractBearer(req.headers.get("authorization"));
+  if (bearer) {
+    try {
+      const admin = supabaseAdmin();
+      const { data, error } = await admin.auth.getUser(bearer);
+      if (error) {
+        console.error("[settings] admin auth error", error);
+      } else if (data?.user) {
+        return { client: admin as GenericClient, user: data.user } as const;
+      }
+    } catch (err) {
+      console.error("[settings] admin auth thrown", err);
+    }
+  }
+
+  return { client: supabase as GenericClient, user: null } as const;
+}
+
+export async function GET(req: Request) {
+  const { client, user } = await getClientAndUser(req);
 
   if (!user) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
 
   try {
-    const settings = await resolveSettings(user.id);
+    const settings = await resolveSettings(client, user.id);
     const reminder = computeSummaryReminder(settings.frequency, settings.lastSummaryAt);
 
     return NextResponse.json({
@@ -103,17 +139,14 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_frequency" }, { status: 400 });
   }
 
-  const supabase = createRouteHandlerClient({ cookies });
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { client, user } = await getClientAndUser(req);
 
   if (!user) {
     return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
   }
 
   try {
-    const current = await resolveSettings(user.id);
+    const current = await resolveSettings(client, user.id);
 
     const nextFrequency = body.frequency ?? current.frequency;
     const nextPreferences = body.storyPreferences
@@ -121,7 +154,7 @@ export async function PUT(req: Request) {
       : current.summaryPreferences;
     const nextStoryLength: JournalStoryLength = nextPreferences.length;
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from(TABLE)
       .upsert(
         {

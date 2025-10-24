@@ -77,6 +77,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [lastSignIn, setLastSignIn] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [storyLength, setStoryLength] = useState<StoryLength>("medium");
   const [storyTone, setStoryTone] = useState<StoryTone>("auto");
   const [storyPov, setStoryPov] = useState<StoryPov>("auto");
@@ -89,16 +90,27 @@ export default function SettingsPage() {
 
     (async () => {
       try {
-        const [sessionRes, settingsRes] = await Promise.all([
-          supabase.auth.getSession(),
-          fetch("/api/settings", { cache: "no-store", credentials: "include" }),
-        ]);
-
+        const sessionRes = await supabase.auth.getSession();
         if (cancelled) return;
 
         const session = sessionRes.data.session;
         setEmail(session?.user?.email ?? null);
         setLastSignIn(session?.user?.last_sign_in_at ?? null);
+        const bearer = session?.access_token ?? null;
+        setAccessToken(bearer ?? null);
+
+        const headers: Record<string, string> = {};
+        if (bearer) {
+          headers["Authorization"] = `Bearer ${bearer}`;
+        }
+
+        const settingsRes = await fetch("/api/settings", {
+          cache: "no-store",
+          credentials: "include",
+          headers,
+        });
+
+        if (cancelled) return;
 
         if (settingsRes.ok) {
           const json = (await settingsRes.json()) as SettingsResponse;
@@ -137,9 +149,20 @@ export default function SettingsPage() {
     setFeedback(null);
     setError(null);
     try {
+      const sessionRes = await supabase.auth.getSession();
+      const bearer = sessionRes.data.session?.access_token ?? accessToken;
+      if (bearer !== accessToken) {
+        setAccessToken(bearer ?? null);
+      }
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (bearer) {
+        headers["Authorization"] = `Bearer ${bearer}`;
+      }
+
       const res = await fetch("/api/settings", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers,
         credentials: "include",
         body: JSON.stringify({
           frequency,
