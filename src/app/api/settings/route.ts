@@ -73,25 +73,21 @@ async function getClientAndUser(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
 
   const bearer = extractBearer(req.headers.get("authorization"));
-  if (bearer) {
-    try {
-      supabase.auth.setAuth(bearer);
-    } catch (err) {
-      console.error("[settings] setAuth failed", err);
-    }
-  }
 
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = bearer
+    ? await supabase.auth.getUser(bearer)
+    : await supabase.auth.getUser();
 
   if (error) {
     console.error("[settings] getUser error", error);
   }
 
   if (user) {
-    return { client: supabase as GenericClient, user } as const;
+    const client = bearer ? (supabaseAdmin() as GenericClient) : (supabase as GenericClient);
+    return { client, user } as const;
   }
 
   if (bearer) {
