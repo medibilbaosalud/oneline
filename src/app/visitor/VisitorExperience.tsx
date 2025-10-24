@@ -311,6 +311,24 @@ export default function VisitorExperience() {
 
         <SectionTabs active={active} onChange={setActive} />
 
+        <div
+          className="mt-6 max-w-2xl rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300"
+          role="note"
+          aria-label="How to use the interactive preview"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-400">How to use</p>
+          <ul className="mt-2 space-y-1 text-neutral-300">
+            <li>
+              Tap or click the highlighted areas inside the workspace preview to jump between Today, History, Summaries, and
+              Settings.
+            </li>
+            <li>
+              If you’re not signed in yet, we’ll ask you to log in and then return you to the exact section you chose.
+            </li>
+            <li>All interactions are keyboard accessible—use Tab to focus a hotspot and press Enter to open it.</li>
+          </ul>
+        </div>
+
         {activeMeta && (
           <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>
         )}

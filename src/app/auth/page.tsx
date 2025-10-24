@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
 
@@ -15,6 +15,12 @@ export default function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = useMemo(() => {
+    const raw = searchParams?.get('redirectTo') ?? '/today';
+    if (!raw.startsWith('/')) return '/today';
+    return raw;
+  }, [searchParams]);
 
   const emailHint = useMemo(
     () => (mode === 'signup' ? getEmailHint(email) : null),
@@ -43,7 +49,7 @@ export default function AuthPage() {
         if (error) throw error;
 
         router.refresh();
-        router.push('/today');
+        router.replace(redirectTarget);
         return;
       }
 
@@ -59,7 +65,7 @@ export default function AuthPage() {
 
       if (data.session) {
         router.refresh();
-        router.push('/today');
+        router.replace(redirectTarget);
         return;
       }
 

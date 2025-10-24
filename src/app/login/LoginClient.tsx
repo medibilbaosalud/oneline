@@ -1,7 +1,7 @@
 // src/app/login/LoginClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { getEmailHint } from "@/lib/emailHint";
@@ -11,7 +11,11 @@ type Mode = "signin" | "signup";
 export default function LoginClient() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = decodeURIComponent(params.get("next") || "/today");
+  const redirectTarget = useMemo(() => {
+    const raw = params.get("redirectTo");
+    if (!raw || !raw.startsWith("/")) return "/today";
+    return decodeURIComponent(raw);
+  }, [params]);
 
   const supabase = createClientComponentClient();
 
@@ -24,12 +28,12 @@ export default function LoginClient() {
 
   const emailHint = mode === "signup" ? getEmailHint(email) : null;
 
-  // If already authenticated, redirect to the `next` route
+  // If already authenticated, redirect straight to the requested route
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) router.replace(next);
+      if (user) router.replace(redirectTarget);
     });
-  }, [next, router, supabase]);
+  }, [redirectTarget, router, supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +45,7 @@ export default function LoginClient() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.replace(next); // Redirect immediately
+        router.replace(redirectTarget); // Redirect immediately
       } else {
         // Sign Up
         const { data, error } = await supabase.auth.signUp({
@@ -56,7 +60,7 @@ export default function LoginClient() {
 
         // When email confirmation is disabled Supabase returns an active session.
         if (data.session) {
-          router.replace(next);
+          router.replace(redirectTarget);
           return;
         }
 
@@ -142,7 +146,7 @@ export default function LoginClient() {
           </button>
 
           <p className="mt-2 text-center text-xs text-neutral-500">
-            You’ll be redirected back to <span className="font-medium">{next}</span> after auth.
+            You’ll be redirected back to <span className="font-medium">{redirectTarget}</span> after auth.
           </p>
         </form>
       </div>

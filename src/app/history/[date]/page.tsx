@@ -1,7 +1,7 @@
 // src/app/history/[day]/page.tsx
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +9,12 @@ type Props = { params: { day: string } };
 
 export default async function EditDayPage({ params }: Props) {
   const day = params.day; // YYYY-MM-DD
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await supabaseServer();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth?next=/history/${day}`);
+  if (!user) redirect(`/auth?redirectTo=${encodeURIComponent(`/history/${day}`)}`);
 
   const { data: entry, error } = await supabase
     .from("journal")

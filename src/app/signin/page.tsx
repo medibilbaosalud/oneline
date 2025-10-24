@@ -2,9 +2,16 @@
 
 import { useState, useMemo } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useSearchParams } from 'next/navigation';
 
 export default function SignInPage() {
   const supabase = useMemo(() => createClientComponentClient(), []);
+  const searchParams = useSearchParams();
+  const redirectTarget = useMemo(() => {
+    const raw = searchParams?.get('redirectTo');
+    if (!raw || !raw.startsWith('/')) return '/today';
+    return raw;
+  }, [searchParams]);
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,10 +26,14 @@ export default function SignInPage() {
           ? window.location.origin
           : process.env.NEXT_PUBLIC_SITE_URL ?? '';
 
+      const callback = redirectTarget
+        ? `${origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTarget)}`
+        : `${origin}/auth/callback`;
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${origin}/auth/callback`,
+          emailRedirectTo: callback,
         },
       });
       if (error) throw error;

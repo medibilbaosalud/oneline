@@ -30,7 +30,7 @@ export default async function HistoryPage() {
   } = await sb.auth.getUser();
 
   if (!user) {
-    redirect('/auth?next=/history');
+    redirect(`/auth?redirectTo=${encodeURIComponent('/history')}`);
   }
 
   const { data } = await sb

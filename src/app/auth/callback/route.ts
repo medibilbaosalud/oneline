@@ -8,9 +8,12 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  const redirectToParam = url.searchParams.get("redirectTo");
+  const safeRedirect = redirectToParam && redirectToParam.startsWith("/") ? redirectToParam : null;
 
   if (!code) {
-    const missingUrl = new URL("/?signup=missing", url.origin);
+    const target = safeRedirect ?? "/?signup=missing";
+    const missingUrl = new URL(target, url.origin);
     return NextResponse.redirect(missingUrl, { status: 302 });
   }
 
@@ -18,10 +21,12 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    const errorUrl = new URL("/?signup=error", url.origin);
+    const target = safeRedirect ?? "/?signup=error";
+    const errorUrl = new URL(target, url.origin);
     return NextResponse.redirect(errorUrl, { status: 302 });
   }
 
-  const successUrl = new URL("/?signup=ok", url.origin);
+  const target = safeRedirect ?? "/?signup=ok";
+  const successUrl = new URL(target, url.origin);
   return NextResponse.redirect(successUrl, { status: 302 });
 }

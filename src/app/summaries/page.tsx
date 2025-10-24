@@ -1,10 +1,7 @@
 // src/app/summaries/page.tsx
 // SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-
 import VaultGate from "@/components/VaultGate";
 import StoryGenerator from "./StoryGenerator";
 import {
@@ -16,6 +13,7 @@ import {
   type SummaryFrequency,
   type SummaryPreferences,
 } from "@/lib/summaryPreferences";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 const TABLE = "user_vaults";
 
@@ -45,13 +43,13 @@ function formatWindow(window?: { start: string; end: string }) {
 }
 
 export default async function SummariesPage({ searchParams }: { searchParams?: SearchParams }) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await supabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth?next=/summaries");
+    redirect(`/auth?redirectTo=${encodeURIComponent('/summaries')}`);
   }
 
   let frequency: SummaryFrequency = "weekly";

@@ -14,7 +14,7 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth?next=/settings");
+    redirect(`/auth?redirectTo=${encodeURIComponent('/settings')}`);
   }
 
   return <SettingsClient />;
