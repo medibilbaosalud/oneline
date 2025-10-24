@@ -15,6 +15,9 @@ import {
 } from "@/lib/summaryPreferences";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const TABLE = "user_vaults";
 
 type SearchParams = {
