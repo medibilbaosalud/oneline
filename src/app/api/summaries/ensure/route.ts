@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 
+import { isSummaryFrequency, type SummaryFrequency } from "@/lib/summaryPreferences";
+
 function startEndOfCurrent(period: "weekly"|"monthly"|"yearly") {
   const now = new Date();
   let start = new Date(now), end = new Date(now);
@@ -32,11 +34,12 @@ export async function POST() {
   // 1) read the configured frequency
   const { data: settings } = await supabase
     .from("user_settings")
-    .select("frequency")
+    .select("frequency, digest_frequency")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const period: "weekly"|"monthly"|"yearly" = (settings?.frequency ?? "weekly") as any;
+  const frequencySource = settings?.digest_frequency ?? settings?.frequency;
+  const period: SummaryFrequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
 
   const { start, end } = startEndOfCurrent(period);
 

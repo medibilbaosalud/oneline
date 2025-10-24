@@ -32,7 +32,7 @@ export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   notes: null,
 };
 
-function isSummaryLength(value: unknown): value is SummaryLength {
+export function isSummaryLength(value: unknown): value is SummaryLength {
   return typeof value === 'string' && SUMMARY_LENGTHS.includes(value as SummaryLength);
 }
 
@@ -74,6 +74,20 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
     includeHighlights:
       typeof includeSource === 'boolean' ? includeSource : DEFAULT_SUMMARY_PREFERENCES.includeHighlights,
     notes: sanitizeNotes(notesSource),
+  };
+}
+
+export function withSummaryLength(
+  preferences: SummaryPreferences,
+  length: unknown,
+): SummaryPreferences {
+  if (!isSummaryLength(length)) {
+    return preferences;
+  }
+
+  return {
+    ...preferences,
+    length,
   };
 }
 

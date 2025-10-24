@@ -11,6 +11,7 @@ import {
   coerceSummaryPreferences,
   computeSummaryReminder,
   isSummaryFrequency,
+  withSummaryLength,
   type SummaryFrequency,
   type SummaryPreferences,
 } from "@/lib/summaryPreferences";
@@ -53,15 +54,20 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
   if (user) {
     const { data, error } = await supabase
       .from("user_settings")
-      .select("frequency, summary_preferences, last_summary_at")
+      .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (!error && data) {
-      frequency = isSummaryFrequency(data.frequency) ? data.frequency : "weekly";
-      storyPreferences = data.summary_preferences
+      const frequencySource = data.digest_frequency ?? data.frequency;
+      frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
+      const basePreferences = data.summary_preferences
         ? coerceSummaryPreferences(data.summary_preferences)
         : { ...DEFAULT_SUMMARY_PREFERENCES };
+      storyPreferences = withSummaryLength(
+        basePreferences,
+        data.story_length ?? basePreferences.length,
+      );
       reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
     }
   }

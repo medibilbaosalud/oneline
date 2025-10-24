@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+import { DEFAULT_SUMMARY_PREFERENCES, coerceSummaryPreferences, isSummaryLength } from '@/lib/summaryPreferences';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { incrementMonthlySummaryUsage } from '@/lib/summaryUsage';
 import { generateYearStory, type YearStoryOptions } from '@/lib/yearStory';
@@ -126,6 +128,32 @@ export async function GET(req: Request) {
   }
 
   const userIds = Array.from(new Set((userRows ?? []).map((row) => row.user_id).filter(Boolean)));
+
+  const settingsMap = new Map<
+    string,
+    { story_length: string | null; summary_preferences: unknown }
+  >();
+
+  if (userIds.length > 0) {
+    const { data: settingsRows, error: settingsError } = await supabase
+      .from('user_settings')
+      .select('user_id, story_length, summary_preferences')
+      .in('user_id', userIds);
+
+    if (settingsError) {
+      return NextResponse.json({ error: settingsError.message }, { status: 500 });
+    }
+
+    for (const row of settingsRows ?? []) {
+      if (row?.user_id) {
+        settingsMap.set(row.user_id, {
+          story_length: row.story_length ?? null,
+          summary_preferences: row.summary_preferences ?? null,
+        });
+      }
+    }
+  }
+
   let generated = 0;
   const skipped: string[] = [];
 
@@ -162,7 +190,21 @@ export async function GET(req: Request) {
         continue;
       }
 
-      const { story } = await generateYearStory(entries, from, to, defaultOptions);
+      const settings = settingsMap.get(userId) ?? null;
+      const basePreferences = settings?.summary_preferences
+        ? coerceSummaryPreferences(settings.summary_preferences)
+        : { ...DEFAULT_SUMMARY_PREFERENCES };
+      const preferredLength = settings?.story_length;
+      const options: YearStoryOptions = {
+        ...defaultOptions,
+        length: isSummaryLength(preferredLength) ? preferredLength : basePreferences.length,
+        tone: basePreferences.tone,
+        pov: basePreferences.pov,
+        includeHighlights: basePreferences.includeHighlights,
+        userNotes: basePreferences.notes ?? undefined,
+      };
+
+      const { story } = await generateYearStory(entries, from, to, options);
       const html = markdownishToHtml(story);
 
       const { error: insertError } = await supabase.from('summaries').insert({

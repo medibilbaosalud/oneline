@@ -7,12 +7,16 @@ import {
   coerceSummaryPreferences,
   computeSummaryReminder,
   isSummaryFrequency,
+  withSummaryLength,
   type SummaryFrequency,
   type SummaryPreferences,
 } from "@/lib/summaryPreferences";
+import type { JournalDigestFreq, JournalStoryLength } from "@/types/journal";
 
 type RawSettingsRow = {
-  frequency: SummaryFrequency | null;
+  frequency: JournalDigestFreq | null;
+  digest_frequency: JournalDigestFreq | null;
+  story_length: JournalStoryLength | null;
   summary_preferences: unknown;
   last_summary_at: string | null;
 };
@@ -21,7 +25,7 @@ async function resolveSettings(userId: string) {
   const supabase = createRouteHandlerClient({ cookies });
   const { data, error } = await supabase
     .from("user_settings")
-    .select("frequency, summary_preferences, last_summary_at")
+    .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -31,13 +35,19 @@ async function resolveSettings(userId: string) {
 
   const row = (data ?? null) as RawSettingsRow | null;
 
-  const frequency: SummaryFrequency = isSummaryFrequency(row?.frequency)
-    ? row!.frequency
+  const frequencySource = row?.digest_frequency ?? row?.frequency;
+  const frequency: SummaryFrequency = isSummaryFrequency(frequencySource)
+    ? frequencySource
     : "weekly";
 
-  const summaryPreferences = row?.summary_preferences
+  const basePreferences = row?.summary_preferences
     ? coerceSummaryPreferences(row.summary_preferences)
     : { ...DEFAULT_SUMMARY_PREFERENCES };
+
+  const summaryPreferences = withSummaryLength(
+    basePreferences,
+    row?.story_length ?? basePreferences.length,
+  );
 
   return {
     frequency,
@@ -107,6 +117,7 @@ export async function PUT(req: Request) {
     const nextPreferences = body.storyPreferences
       ? coerceSummaryPreferences(body.storyPreferences)
       : current.summaryPreferences;
+    const nextStoryLength: JournalStoryLength = nextPreferences.length;
 
     const { data, error } = await supabase
       .from("user_settings")
@@ -114,11 +125,13 @@ export async function PUT(req: Request) {
         {
           user_id: user.id,
           frequency: nextFrequency,
+          digest_frequency: nextFrequency,
+          story_length: nextStoryLength,
           summary_preferences: nextPreferences,
         },
         { onConflict: "user_id" },
       )
-      .select("frequency, summary_preferences, last_summary_at")
+      .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
       .maybeSingle();
 
     if (error) {
@@ -127,10 +140,15 @@ export async function PUT(req: Request) {
 
     const row = (data ?? null) as RawSettingsRow | null;
 
-    const savedFrequency = isSummaryFrequency(row?.frequency) ? row!.frequency : nextFrequency;
-    const savedPreferences = row?.summary_preferences
+    const frequencySource = row?.digest_frequency ?? row?.frequency;
+    const savedFrequency = isSummaryFrequency(frequencySource) ? frequencySource : nextFrequency;
+    const savedPreferencesBase = row?.summary_preferences
       ? coerceSummaryPreferences(row.summary_preferences)
       : nextPreferences;
+    const savedPreferences = withSummaryLength(
+      savedPreferencesBase,
+      row?.story_length ?? nextStoryLength,
+    );
 
     const reminder = computeSummaryReminder(
       savedFrequency,

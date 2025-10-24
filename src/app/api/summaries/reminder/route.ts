@@ -6,6 +6,7 @@ import {
   coerceSummaryPreferences,
   computeSummaryReminder,
   isSummaryFrequency,
+  withSummaryLength,
   type SummaryFrequency,
 } from "@/lib/summaryPreferences";
 
@@ -21,7 +22,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("user_settings")
-    .select("frequency, summary_preferences, last_summary_at")
+    .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -29,10 +30,15 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const frequency: SummaryFrequency = isSummaryFrequency(data?.frequency) ? data!.frequency : "weekly";
-  const preferences = data?.summary_preferences
+  const frequencySource = data?.digest_frequency ?? data?.frequency;
+  const frequency: SummaryFrequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
+  const basePreferences = data?.summary_preferences
     ? coerceSummaryPreferences(data.summary_preferences)
     : coerceSummaryPreferences(null);
+  const preferences = withSummaryLength(
+    basePreferences,
+    data?.story_length ?? basePreferences.length,
+  );
   const reminder = computeSummaryReminder(frequency, data?.last_summary_at ?? null);
 
   return NextResponse.json({ ok: true, frequency, preferences, reminder });

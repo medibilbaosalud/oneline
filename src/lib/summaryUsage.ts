@@ -60,6 +60,8 @@ export async function incrementMonthlySummaryUsage(
   const { error: insertErr } = await client.from("user_settings").insert({
     user_id: userId,
     frequency: "weekly",
+    digest_frequency: "weekly",
+    story_length: DEFAULT_SUMMARY_PREFERENCES.length,
     summary_preferences: DEFAULT_SUMMARY_PREFERENCES,
     ...payload,
   });
@@ -91,6 +93,8 @@ export async function ensureMonthlySummaryWindow(
     const { error: seedErr } = await client.from("user_settings").insert({
       user_id: userId,
       frequency: "weekly",
+      digest_frequency: "weekly",
+      story_length: DEFAULT_SUMMARY_PREFERENCES.length,
       summary_preferences: DEFAULT_SUMMARY_PREFERENCES,
       summary_month_count: 0,
       summary_month_started_at: startIso,
