@@ -91,7 +91,7 @@ export default function SettingsPage() {
       try {
         const [sessionRes, settingsRes] = await Promise.all([
           supabase.auth.getSession(),
-          fetch("/api/settings", { cache: "no-store" }),
+          fetch("/api/settings", { cache: "no-store", credentials: "include" }),
         ]);
 
         if (cancelled) return;
@@ -140,6 +140,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           frequency,
           storyPreferences: {
