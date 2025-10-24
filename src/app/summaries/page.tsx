@@ -16,6 +16,8 @@ import {
   type SummaryPreferences,
 } from "@/lib/summaryPreferences";
 
+const TABLE = "user_vaults";
+
 type SearchParams = {
   from?: string;
   to?: string;
@@ -53,7 +55,7 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
 
   if (user) {
     const { data, error } = await supabase
-      .from("user_settings")
+      .from(TABLE)
       .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
       .eq("user_id", user.id)
       .maybeSingle();

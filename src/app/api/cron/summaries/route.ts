@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 
   // Fetch user preferences
   const { data: settings, error } = await sb
-    .from('user_settings')
+    .from('user_vaults')
     .select('user_id, frequency, digest_frequency, delivery, hour_utc, last_summary_at, story_length');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -83,7 +83,7 @@ export async function GET(req: Request) {
     });
 
     // Mark the last summary timestamp
-    await sb.from('user_settings').update({ last_summary_at: now.toISOString() }).eq('user_id', s.user_id);
+    await sb.from('user_vaults').update({ last_summary_at: now.toISOString() }).eq('user_id', s.user_id);
 
     // If s.delivery === 'email', send it via your mail provider here
     done++;

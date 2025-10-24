@@ -266,9 +266,9 @@ export default function SettingsPage() {
           <section className="rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg shadow-black/20">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-neutral-100">Email summaries</h2>
+                <h2 className="text-lg font-semibold text-neutral-100">Summary planner</h2>
                 <p className="text-sm text-neutral-400">
-                  Choose how often OneLine should compile your recent entries into an email-ready summary.
+                  Choose how often OneLine should compile your recent entries into a recap and how it should sound.
                 </p>
               </div>
               <div className="flex items-center gap-3">

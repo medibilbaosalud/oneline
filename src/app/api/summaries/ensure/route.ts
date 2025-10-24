@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 
 import { isSummaryFrequency, type SummaryFrequency } from "@/lib/summaryPreferences";
 
+const TABLE = "user_vaults";
+
 function startEndOfCurrent(period: "weekly"|"monthly"|"yearly") {
   const now = new Date();
   let start = new Date(now), end = new Date(now);
@@ -33,7 +35,7 @@ export async function POST() {
 
   // 1) read the configured frequency
   const { data: settings } = await supabase
-    .from("user_settings")
+    .from(TABLE)
     .select("frequency, digest_frequency")
     .eq("user_id", user.id)
     .maybeSingle();

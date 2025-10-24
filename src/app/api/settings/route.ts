@@ -13,6 +13,8 @@ import {
 } from "@/lib/summaryPreferences";
 import type { JournalDigestFreq, JournalStoryLength } from "@/types/journal";
 
+const TABLE = "user_vaults";
+
 type RawSettingsRow = {
   frequency: JournalDigestFreq | null;
   digest_frequency: JournalDigestFreq | null;
@@ -24,7 +26,7 @@ type RawSettingsRow = {
 async function resolveSettings(userId: string) {
   const supabase = createRouteHandlerClient({ cookies });
   const { data, error } = await supabase
-    .from("user_settings")
+    .from(TABLE)
     .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
     .eq("user_id", userId)
     .maybeSingle();
@@ -120,7 +122,7 @@ export async function PUT(req: Request) {
     const nextStoryLength: JournalStoryLength = nextPreferences.length;
 
     const { data, error } = await supabase
-      .from("user_settings")
+      .from(TABLE)
       .upsert(
         {
           user_id: user.id,

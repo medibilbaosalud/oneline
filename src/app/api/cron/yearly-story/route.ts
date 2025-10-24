@@ -136,7 +136,7 @@ export async function GET(req: Request) {
 
   if (userIds.length > 0) {
     const { data: settingsRows, error: settingsError } = await supabase
-      .from('user_settings')
+      .from('user_vaults')
       .select('user_id, story_length, summary_preferences')
       .in('user_id', userIds);
 

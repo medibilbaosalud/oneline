@@ -4,6 +4,8 @@ import { DEFAULT_SUMMARY_PREFERENCES } from "./summaryPreferences";
 
 type ServerClient = SupabaseClient<any>;
 
+const TABLE = "user_vaults";
+
 export function monthStartIso(date = new Date()): string {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)).toISOString();
 }
@@ -29,7 +31,7 @@ export async function incrementMonthlySummaryUsage(
 ): Promise<void> {
   const startIso = monthStartIso(now);
   const { data, error } = await client
-    .from("user_settings")
+    .from(TABLE)
     .select("summary_month_count, summary_month_started_at")
     .eq("user_id", userId)
     .maybeSingle();
@@ -48,7 +50,7 @@ export async function incrementMonthlySummaryUsage(
 
   if (data) {
     const { error: updateErr } = await client
-      .from("user_settings")
+      .from(TABLE)
       .update(payload)
       .eq("user_id", userId);
     if (updateErr) {
@@ -57,17 +59,22 @@ export async function incrementMonthlySummaryUsage(
     return;
   }
 
-  const { error: insertErr } = await client.from("user_settings").insert({
-    user_id: userId,
-    frequency: "weekly",
-    digest_frequency: "weekly",
-    story_length: DEFAULT_SUMMARY_PREFERENCES.length,
-    summary_preferences: DEFAULT_SUMMARY_PREFERENCES,
-    ...payload,
-  });
+  const { error: upsertErr } = await client
+    .from(TABLE)
+    .upsert(
+      {
+        user_id: userId,
+        frequency: "weekly",
+        digest_frequency: "weekly",
+        story_length: DEFAULT_SUMMARY_PREFERENCES.length,
+        summary_preferences: DEFAULT_SUMMARY_PREFERENCES,
+        ...payload,
+      },
+      { onConflict: "user_id" },
+    );
 
-  if (insertErr) {
-    throw new Error(insertErr.message);
+  if (upsertErr) {
+    throw new Error(upsertErr.message);
   }
 }
 
@@ -80,7 +87,7 @@ export async function ensureMonthlySummaryWindow(
   const endIso = monthEndIso(now);
 
   const { data, error } = await client
-    .from("user_settings")
+    .from(TABLE)
     .select("summary_month_count, summary_month_started_at")
     .eq("user_id", userId)
     .maybeSingle();
@@ -90,15 +97,20 @@ export async function ensureMonthlySummaryWindow(
   }
 
   if (!data) {
-    const { error: seedErr } = await client.from("user_settings").insert({
-      user_id: userId,
-      frequency: "weekly",
-      digest_frequency: "weekly",
-      story_length: DEFAULT_SUMMARY_PREFERENCES.length,
-      summary_preferences: DEFAULT_SUMMARY_PREFERENCES,
-      summary_month_count: 0,
-      summary_month_started_at: startIso,
-    });
+    const { error: seedErr } = await client
+      .from(TABLE)
+      .upsert(
+        {
+          user_id: userId,
+          frequency: "weekly",
+          digest_frequency: "weekly",
+          story_length: DEFAULT_SUMMARY_PREFERENCES.length,
+          summary_preferences: DEFAULT_SUMMARY_PREFERENCES,
+          summary_month_count: 0,
+          summary_month_started_at: startIso,
+        },
+        { onConflict: "user_id" },
+      );
     if (seedErr) {
       throw new Error(seedErr.message);
     }
@@ -107,7 +119,7 @@ export async function ensureMonthlySummaryWindow(
 
   if (!isSameMonthCycle(data.summary_month_started_at ?? null, now)) {
     const { error: resetErr } = await client
-      .from("user_settings")
+      .from(TABLE)
       .update({
         summary_month_count: 0,
         summary_month_started_at: startIso,

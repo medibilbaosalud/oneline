@@ -10,6 +10,8 @@ import {
   type SummaryFrequency,
 } from "@/lib/summaryPreferences";
 
+const TABLE = "user_vaults";
+
 export async function GET() {
   const supabase = createRouteHandlerClient({ cookies });
   const {
@@ -21,7 +23,7 @@ export async function GET() {
   }
 
   const { data, error } = await supabase
-    .from("user_settings")
+    .from(TABLE)
     .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
     .eq("user_id", user.id)
     .maybeSingle();
