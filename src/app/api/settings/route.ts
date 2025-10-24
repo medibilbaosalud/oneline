@@ -71,21 +71,35 @@ function extractBearer(authHeader: string | null): string | null {
 
 async function getClientAndUser(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
+
+  const bearer = extractBearer(req.headers.get("authorization"));
+  if (bearer) {
+    try {
+      supabase.auth.setAuth(bearer);
+    } catch (err) {
+      console.error("[settings] setAuth failed", err);
+    }
+  }
+
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("[settings] getUser error", error);
+  }
 
   if (user) {
     return { client: supabase as GenericClient, user } as const;
   }
 
-  const bearer = extractBearer(req.headers.get("authorization"));
   if (bearer) {
     try {
       const admin = supabaseAdmin();
-      const { data, error } = await admin.auth.getUser(bearer);
-      if (error) {
-        console.error("[settings] admin auth error", error);
+      const { data, error: adminError } = await admin.auth.getUser(bearer);
+      if (adminError) {
+        console.error("[settings] admin auth error", adminError);
       } else if (data?.user) {
         return { client: admin as GenericClient, user: data.user } as const;
       }
