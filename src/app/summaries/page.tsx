@@ -2,6 +2,7 @@
 // SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import VaultGate from "@/components/VaultGate";
@@ -49,29 +50,31 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/auth?next=/summaries");
+  }
+
   let frequency: SummaryFrequency = "weekly";
   let storyPreferences: SummaryPreferences = { ...DEFAULT_SUMMARY_PREFERENCES };
   let reminder = computeSummaryReminder(frequency, null);
 
-  if (user) {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
-      .eq("user_id", user.id)
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-    if (!error && data) {
-      const frequencySource = data.digest_frequency ?? data.frequency;
-      frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
-      const basePreferences = data.summary_preferences
-        ? coerceSummaryPreferences(data.summary_preferences)
-        : { ...DEFAULT_SUMMARY_PREFERENCES };
-      storyPreferences = withSummaryLength(
-        basePreferences,
-        data.story_length ?? basePreferences.length,
-      );
-      reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
-    }
+  if (!error && data) {
+    const frequencySource = data.digest_frequency ?? data.frequency;
+    frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
+    const basePreferences = data.summary_preferences
+      ? coerceSummaryPreferences(data.summary_preferences)
+      : { ...DEFAULT_SUMMARY_PREFERENCES };
+    storyPreferences = withSummaryLength(
+      basePreferences,
+      data.story_length ?? basePreferences.length,
+    );
+    reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
   }
 
   const fromParam = searchParams?.from;

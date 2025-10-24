@@ -1,6 +1,8 @@
 // src/app/history/page.tsx
 // SECURITY: Server delivers ciphertext metadata only; decryption happens inside the VaultGate client flow.
 
+import { redirect } from 'next/navigation';
+
 import VaultGate from '@/components/VaultGate';
 import HistoryClient from './HistoryClient';
 import { supabaseServer } from '@/lib/supabaseServer';
@@ -27,16 +29,17 @@ export default async function HistoryPage() {
     data: { user },
   } = await sb.auth.getUser();
 
-  let entries: EntryPayload[] = [];
-
-  if (user) {
-    const { data } = await sb
-      .from('journal')
-      .select('id, created_at, day, content_cipher, iv, content')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    entries = data ?? [];
+  if (!user) {
+    redirect('/auth?next=/history');
   }
+
+  const { data } = await sb
+    .from('journal')
+    .select('id, created_at, day, content_cipher, iv, content')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const entries: EntryPayload[] = data ?? [];
 
   return (
     <main className="min-h-screen bg-[#0A0A0B] text-zinc-100">
