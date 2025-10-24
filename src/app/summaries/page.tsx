@@ -71,8 +71,8 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
   const hasCustomRange = isIsoDate(fromParam) && isIsoDate(toParam);
   const initialRange = hasCustomRange
     ? { from: fromParam!, to: toParam! }
-    : reminder.due
-    ? reminder.window
+    : reminder.due && reminder.window
+    ? { from: reminder.window.start, to: reminder.window.end }
     : undefined;
 
   const initialPreset = initialRange ? "custom" : undefined;
