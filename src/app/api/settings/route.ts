@@ -23,7 +23,8 @@ async function resolveSettings(userId: string) {
     .from("user_settings")
     .select("frequency, summary_preferences, last_summary_at")
     .eq("user_id", userId)
-    .maybeSingle<RawSettingsRow>();
+    .returns<RawSettingsRow>()
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message || "settings_fetch_failed");
@@ -116,7 +117,8 @@ export async function PUT(req: Request) {
         },
         { onConflict: "user_id" },
       )
-      .select<RawSettingsRow>("frequency, summary_preferences, last_summary_at")
+      .select("frequency, summary_preferences, last_summary_at")
+      .returns<RawSettingsRow>()
       .maybeSingle();
 
     if (error) {
