@@ -27,6 +27,15 @@ type RawSettingsRow = {
 
 type GenericClient = SupabaseClient<any>;
 
+function trySupabaseAdmin(): GenericClient | null {
+  try {
+    return supabaseAdmin() as GenericClient;
+  } catch (err) {
+    console.error("[settings] admin client unavailable", err);
+    return null;
+  }
+}
+
 async function resolveSettings(client: GenericClient, userId: string) {
   const { data, error } = await client
     .from(TABLE)
@@ -39,6 +48,7 @@ async function resolveSettings(client: GenericClient, userId: string) {
   }
 
   const row = (data ?? null) as RawSettingsRow | null;
+  const hasRow = !!row;
 
   const frequencySource = row?.digest_frequency ?? row?.frequency;
   const frequency: SummaryFrequency = isSummaryFrequency(frequencySource)
@@ -58,6 +68,7 @@ async function resolveSettings(client: GenericClient, userId: string) {
     frequency,
     summaryPreferences,
     lastSummaryAt: row?.last_summary_at ?? null,
+    hasRow,
   };
 }
 
@@ -73,6 +84,7 @@ async function getClientAndUser(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
 
   const bearer = extractBearer(req.headers.get("authorization"));
+  const adminClient = bearer ? trySupabaseAdmin() : null;
 
   const {
     data: { user },
@@ -86,13 +98,16 @@ async function getClientAndUser(req: Request) {
   }
 
   if (user) {
-    const client = bearer ? (supabaseAdmin() as GenericClient) : (supabase as GenericClient);
+    const client = adminClient ?? (supabase as GenericClient);
     return { client, user } as const;
   }
 
   if (bearer) {
     try {
-      const admin = supabaseAdmin();
+      const admin = adminClient ?? trySupabaseAdmin();
+      if (!admin) {
+        return { client: supabase as GenericClient, user: null } as const;
+      }
       const { data, error: adminError } = await admin.auth.getUser(bearer);
       if (adminError) {
         console.error("[settings] admin auth error", adminError);
@@ -158,6 +173,10 @@ export async function PUT(req: Request) {
   try {
     const current = await resolveSettings(client, user.id);
 
+    if (!current.hasRow) {
+      return NextResponse.json({ ok: false, error: "vault_missing" }, { status: 404 });
+    }
+
     const nextFrequency = body.frequency ?? current.frequency;
     const nextPreferences = body.storyPreferences
       ? coerceSummaryPreferences(body.storyPreferences)
@@ -166,16 +185,13 @@ export async function PUT(req: Request) {
 
     const { data, error } = await client
       .from(TABLE)
-      .upsert(
-        {
-          user_id: user.id,
-          frequency: nextFrequency,
-          digest_frequency: nextFrequency,
-          story_length: nextStoryLength,
-          summary_preferences: nextPreferences,
-        },
-        { onConflict: "user_id" },
-      )
+      .update({
+        frequency: nextFrequency,
+        digest_frequency: nextFrequency,
+        story_length: nextStoryLength,
+        summary_preferences: nextPreferences,
+      })
+      .eq("user_id", user.id)
       .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
       .maybeSingle();
 
@@ -183,21 +199,25 @@ export async function PUT(req: Request) {
       throw new Error(error.message || "settings_update_failed");
     }
 
-    const row = (data ?? null) as RawSettingsRow | null;
+    if (!data) {
+      throw new Error("settings_update_missing_row");
+    }
 
-    const frequencySource = row?.digest_frequency ?? row?.frequency;
+    const row = data as RawSettingsRow;
+
+    const frequencySource = row.digest_frequency ?? row.frequency;
     const savedFrequency = isSummaryFrequency(frequencySource) ? frequencySource : nextFrequency;
-    const savedPreferencesBase = row?.summary_preferences
+    const savedPreferencesBase = row.summary_preferences
       ? coerceSummaryPreferences(row.summary_preferences)
       : nextPreferences;
     const savedPreferences = withSummaryLength(
       savedPreferencesBase,
-      row?.story_length ?? nextStoryLength,
+      row.story_length ?? nextStoryLength,
     );
 
     const reminder = computeSummaryReminder(
       savedFrequency,
-      row?.last_summary_at ?? current.lastSummaryAt,
+      row.last_summary_at ?? current.lastSummaryAt,
     );
 
     return NextResponse.json({
@@ -205,7 +225,7 @@ export async function PUT(req: Request) {
       settings: {
         frequency: savedFrequency,
         storyPreferences: savedPreferences,
-        lastSummaryAt: row?.last_summary_at ?? current.lastSummaryAt,
+        lastSummaryAt: row.last_summary_at ?? current.lastSummaryAt,
         reminder,
       },
     });
