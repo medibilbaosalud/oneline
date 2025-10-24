@@ -155,11 +155,21 @@ export default function AuthPage() {
                   />
                   <span>
                     I have read and accept the
-                    <a href="/terms" className="mx-1 text-indigo-300 underline hover:text-indigo-200">
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="mx-1 text-indigo-300 underline hover:text-indigo-200"
+                    >
                       Terms of Service
                     </a>
                     and
-                    <a href="/privacy" className="ml-1 text-indigo-300 underline hover:text-indigo-200">
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="ml-1 text-indigo-300 underline hover:text-indigo-200"
+                    >
                       Privacy Policy
                     </a>
                     . Use the same passphrase every time you unlock your encrypted vault.
@@ -215,11 +225,21 @@ export default function AuthPage() {
 
             <p className="mt-6 text-center text-xs text-zinc-500">
               By continuing you agree to our{' '}
-              <a href="/terms" className="underline decoration-zinc-600 hover:text-zinc-300">
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline decoration-zinc-600 hover:text-zinc-300"
+              >
                 Terms
               </a>{' '}
               and{' '}
-              <a href="/privacy" className="underline decoration-zinc-600 hover:text-zinc-300">
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="underline decoration-zinc-600 hover:text-zinc-300"
+              >
                 Privacy Policy
               </a>.
             </p>

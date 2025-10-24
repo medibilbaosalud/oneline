@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import AuthButton from './AuthButton';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 function NavLink({
   href,
@@ -29,6 +30,8 @@ function NavLink({
 
 export default function TopNav() {
   const [open, setOpen] = useState(false);
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
   // Prevent body scroll when the menu is open
   useEffect(() => {
@@ -41,6 +44,27 @@ export default function TopNav() {
   // Render the mobile sheet through a portal
   const canUseDOM = typeof window !== 'undefined';
   const portalRoot = useMemo(() => (canUseDOM ? document.body : null), [canUseDOM]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setIsAuthed(!!data.session);
+    })();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthed(!!session);
+    });
+
+    return () => {
+      mounted = false;
+      listener?.subscription?.unsubscribe();
+    };
+  }, [supabase]);
+
+  const showProtectedLinks = isAuthed === true;
 
   const Sheet = open && portalRoot
     ? createPortal(
@@ -67,9 +91,13 @@ export default function TopNav() {
 
             <div className="flex flex-col gap-1 p-3">
               <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
-              <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
-              <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
-              <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
+              {showProtectedLinks ? (
+                <>
+                  <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
+                  <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
+                  <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
+                </>
+              ) : null}
               <div className="mt-2 border-t border-white/10 pt-2">
                 <AuthButton />
               </div>
@@ -93,9 +121,13 @@ export default function TopNav() {
           </Link>
           <div className="ml-2 hidden gap-1 md:flex">
             <NavLink href="/today" label="Today" />
-            <NavLink href="/history" label="History" />
-            <NavLink href="/summaries" label="Summaries" />
-            <NavLink href="/settings" label="Settings" />
+            {showProtectedLinks ? (
+              <>
+                <NavLink href="/history" label="History" />
+                <NavLink href="/summaries" label="Summaries" />
+                <NavLink href="/settings" label="Settings" />
+              </>
+            ) : null}
           </div>
         </div>
 
