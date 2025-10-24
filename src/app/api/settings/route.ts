@@ -25,7 +25,7 @@ type RawSettingsRow = {
   last_summary_at: string | null;
 };
 
-type GenericClient = SupabaseClient<unknown, "public", unknown>;
+type GenericClient = SupabaseClient<any>;
 
 async function resolveSettings(client: GenericClient, userId: string) {
   const { data, error } = await client
