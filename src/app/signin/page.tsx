@@ -1,10 +1,36 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { Suspense, useMemo, useState, type ReactNode } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useSearchParams } from 'next/navigation';
 
-export default function SignInPage() {
+function SignInShell({ heading, body }: { heading: string; body: ReactNode }) {
+  return (
+    <main className="min-h-screen grid place-items-center bg-neutral-950 text-neutral-50">
+      <div className="w-full max-w-sm rounded-2xl bg-neutral-900/60 p-6 ring-1 ring-white/10">
+        <h1 className="text-xl font-semibold mb-4">{heading}</h1>
+        {body}
+      </div>
+    </main>
+  );
+}
+
+function SignInFallback() {
+  return (
+    <SignInShell
+      heading="Sign in"
+      body={
+        <div className="space-y-3 text-sm text-neutral-400">
+          <div className="h-10 w-full animate-pulse rounded-lg bg-neutral-800/60" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-neutral-800/60" />
+          <div className="h-9 w-full animate-pulse rounded-lg bg-neutral-800/60" />
+        </div>
+      }
+    />
+  );
+}
+
+function SignInContent() {
   const supabase = useMemo(() => createClientComponentClient(), []);
   const searchParams = useSearchParams();
   const redirectTarget = useMemo(() => {
@@ -46,10 +72,10 @@ export default function SignInPage() {
   }
 
   return (
-    <main className="min-h-screen grid place-items-center bg-neutral-950 text-neutral-50">
-      <div className="w-full max-w-sm rounded-2xl bg-neutral-900/60 p-6 ring-1 ring-white/10">
-        <h1 className="text-xl font-semibold mb-4">Sign in</h1>
-        {sent ? (
+    <SignInShell
+      heading="Sign in"
+      body={
+        sent ? (
           <p className="text-sm text-neutral-300">
             We sent you a sign-in link. Check your inbox.
           </p>
@@ -72,8 +98,16 @@ export default function SignInPage() {
               {loading ? 'Sending…' : 'Send magic link'}
             </button>
           </>
-        )}
-      </div>
-    </main>
+        )
+      }
+    />
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<SignInFallback />}>
+      <SignInContent />
+    </Suspense>
   );
 }
