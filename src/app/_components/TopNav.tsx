@@ -2,10 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import AuthButton from './AuthButton';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+
+function AuthButtonFallback({ fullWidth = false }: { fullWidth?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      className={
+        fullWidth
+          ? 'h-9 w-full animate-pulse rounded-md bg-neutral-900/60'
+          : 'h-8 w-28 animate-pulse rounded-md bg-neutral-900/60'
+      }
+    />
+  );
+}
 
 function NavLink({
   href,
@@ -99,7 +112,9 @@ export default function TopNav() {
                 </>
               ) : null}
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <Suspense fallback={<AuthButtonFallback fullWidth />}>
+                  <AuthButton />
+                </Suspense>
               </div>
             </div>
           </div>
@@ -133,7 +148,9 @@ export default function TopNav() {
 
         {/* Right side (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <Suspense fallback={<AuthButtonFallback />}>
+            <AuthButton />
+          </Suspense>
         </div>
 
             {/* Mobile hamburger button */}
