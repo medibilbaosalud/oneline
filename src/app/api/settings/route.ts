@@ -23,25 +23,26 @@ async function resolveSettings(userId: string) {
     .from("user_settings")
     .select("frequency, summary_preferences, last_summary_at")
     .eq("user_id", userId)
-    .returns<RawSettingsRow>()
     .maybeSingle();
 
   if (error) {
     throw new Error(error.message || "settings_fetch_failed");
   }
 
-  const frequency: SummaryFrequency = isSummaryFrequency(data?.frequency)
-    ? data!.frequency
+  const row = (data ?? null) as RawSettingsRow | null;
+
+  const frequency: SummaryFrequency = isSummaryFrequency(row?.frequency)
+    ? row!.frequency
     : "weekly";
 
-  const summaryPreferences = data?.summary_preferences
-    ? coerceSummaryPreferences(data.summary_preferences)
+  const summaryPreferences = row?.summary_preferences
+    ? coerceSummaryPreferences(row.summary_preferences)
     : { ...DEFAULT_SUMMARY_PREFERENCES };
 
   return {
     frequency,
     summaryPreferences,
-    lastSummaryAt: data?.last_summary_at ?? null,
+    lastSummaryAt: row?.last_summary_at ?? null,
   };
 }
 
@@ -118,26 +119,30 @@ export async function PUT(req: Request) {
         { onConflict: "user_id" },
       )
       .select("frequency, summary_preferences, last_summary_at")
-      .returns<RawSettingsRow>()
       .maybeSingle();
 
     if (error) {
       throw new Error(error.message || "settings_update_failed");
     }
 
-    const savedFrequency = isSummaryFrequency(data?.frequency) ? data!.frequency : nextFrequency;
-    const savedPreferences = data?.summary_preferences
-      ? coerceSummaryPreferences(data.summary_preferences)
+    const row = (data ?? null) as RawSettingsRow | null;
+
+    const savedFrequency = isSummaryFrequency(row?.frequency) ? row!.frequency : nextFrequency;
+    const savedPreferences = row?.summary_preferences
+      ? coerceSummaryPreferences(row.summary_preferences)
       : nextPreferences;
 
-    const reminder = computeSummaryReminder(savedFrequency, data?.last_summary_at ?? current.lastSummaryAt);
+    const reminder = computeSummaryReminder(
+      savedFrequency,
+      row?.last_summary_at ?? current.lastSummaryAt,
+    );
 
     return NextResponse.json({
       ok: true,
       settings: {
         frequency: savedFrequency,
         storyPreferences: savedPreferences,
-        lastSummaryAt: data?.last_summary_at ?? current.lastSummaryAt,
+        lastSummaryAt: row?.last_summary_at ?? current.lastSummaryAt,
         reminder,
       },
     });
