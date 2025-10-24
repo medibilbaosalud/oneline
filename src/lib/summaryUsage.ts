@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { DEFAULT_SUMMARY_PREFERENCES } from "./summaryPreferences";
 
-type ServerClient = SupabaseClient<Record<string, unknown>, "public", Record<string, unknown>>;
+type ServerClient = SupabaseClient<any>;
 
 export function monthStartIso(date = new Date()): string {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)).toISOString();
