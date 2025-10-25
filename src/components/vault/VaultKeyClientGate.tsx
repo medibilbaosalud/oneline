@@ -1,12 +1,20 @@
-// src/components/VaultGate.tsx
-// SECURITY: Presents UI to unlock the client-side vault. Passphrases never leave the browser; losing them means permanent data loss.
-
 'use client';
 
-import { useState } from 'react';
-import { useVault } from '@/hooks/useVault';
+import { useEffect, useState } from 'react';
+import { primeVaultState, useVault } from '@/hooks/useVault';
+import type { WrappedBundle } from '@/lib/crypto';
 
-export default function VaultGate({ children }: { children: React.ReactNode }) {
+export default function VaultKeyClientGate({
+  userId,
+  initialBundle,
+  serverError,
+  children,
+}: {
+  userId: string | null;
+  initialBundle: WrappedBundle | null;
+  serverError: string | null;
+  children: React.ReactNode;
+}) {
   const {
     dataKey,
     hasBundle,
@@ -20,11 +28,33 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
   const [remember, setRemember] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [primed, setPrimed] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    primeVaultState(userId, initialBundle);
+    setPrimed(true);
+  }, [userId, initialBundle]);
+
+  if (!userId) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-2xl border border-white/10 bg-neutral-950/60 text-neutral-400">
-        Preparing secure vault…
+      <div className="rounded-3xl border border-white/10 bg-neutral-950/70 p-6 text-sm text-neutral-300">
+        <p>Sign in to create or unlock your encrypted vault.</p>
+      </div>
+    );
+  }
+
+  if (serverError) {
+    return (
+      <div className="rounded-3xl border border-rose-500/50 bg-rose-500/10 p-6 text-sm text-rose-100">
+        {serverError}
+      </div>
+    );
+  }
+
+  if (!primed || loading) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-3xl border border-white/10 bg-neutral-950/60 text-neutral-400">
+        Checking encrypted vault…
       </div>
     );
   }
@@ -100,9 +130,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
         </header>
 
         {vaultError && (
-          <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-            {vaultError}
-          </p>
+          <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{vaultError}</p>
         )}
 
         <div className="space-y-3">

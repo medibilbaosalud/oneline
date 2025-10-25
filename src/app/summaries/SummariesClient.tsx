@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser } from '@/lib/supabase/client';
 
 type Summary = {
   id: string;

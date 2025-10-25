@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { decryptText, encryptText, generateDataKey, unwrapDataKey, wrapDataKey, type WrappedBundle } from '@/lib/crypto';
 import { idbDel, idbGet, idbSet } from '@/lib/localVault';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser } from '@/lib/supabase/client';
 
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
 
@@ -18,6 +18,7 @@ let cachedBundle: WrappedBundle | null = null;
 let lastVaultError: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
+let primedFromServer = false;
 
 function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
@@ -31,6 +32,22 @@ function notify() {
       // ignore listener errors
     }
   });
+}
+
+export function primeVaultState(userId: string | null, bundle: WrappedBundle | null) {
+  primedFromServer = true;
+  const changedUser = currentUserId !== userId;
+  currentUserId = userId;
+  cachedBundle = bundle ?? null;
+  hasStoredBundle = !!bundle;
+  sharedKey = null;
+  lastVaultError = null;
+  loadingPromise = null;
+  initialized = false;
+
+  if (changedUser) {
+    notify();
+  }
 }
 
 async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
@@ -71,26 +88,29 @@ async function ensureInitialized() {
 
   loadingPromise = (async () => {
     try {
-      const supabase = supabaseBrowser();
-      let nextUserId: string | null = null;
+      let nextUserId = currentUserId;
 
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        nextUserId = session?.user?.id ?? null;
-      } catch {
-        nextUserId = null;
-      }
+      if (!primedFromServer) {
+        const supabase = supabaseBrowser();
 
-      if (!nextUserId) {
         try {
           const {
-            data: { user },
-          } = await supabase.auth.getUser();
-          nextUserId = user?.id ?? null;
+            data: { session },
+          } = await supabase.auth.getSession();
+          nextUserId = session?.user?.id ?? null;
         } catch {
           nextUserId = null;
+        }
+
+        if (!nextUserId) {
+          try {
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            nextUserId = user?.id ?? null;
+          } catch {
+            nextUserId = null;
+          }
         }
       }
 
@@ -119,6 +139,13 @@ async function ensureInitialized() {
         return;
       }
 
+      if (cachedBundle) {
+        hasStoredBundle = true;
+        lastVaultError = null;
+        await idbSet(key, cachedBundle).catch(() => {});
+        return;
+      }
+
       const remoteBundle = await fetchRemoteBundle();
       if (remoteBundle) {
         cachedBundle = remoteBundle;
@@ -134,6 +161,7 @@ async function ensureInitialized() {
       initialized = true;
       notify();
       loadingPromise = null;
+      primedFromServer = false;
     }
   })();
 

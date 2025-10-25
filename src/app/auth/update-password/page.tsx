@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser } from '@/lib/supabase/client';
 
 export default function UpdatePasswordPage() {
   const [pw, setPw] = useState('');

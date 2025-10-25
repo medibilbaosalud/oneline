@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useMemo, useState, type ReactNode } from 'react';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser } from '@/lib/supabase/client';
 import { useSearchParams } from 'next/navigation';
 
 function SignInShell({ heading, body }: { heading: string; body: ReactNode }) {

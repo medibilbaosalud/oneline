@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowser, syncServerAuth } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, syncServerAuth } from "@/lib/supabase/client";
 
 export default function AuthButton() {
   const supabase = useMemo(() => supabaseBrowser(), []);

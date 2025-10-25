@@ -4,10 +4,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser } from '@/lib/supabase/client';
 
 const MAX = 333;
 const QUOTES = [
@@ -379,8 +378,7 @@ export default function TodayClient() {
   const progressPercent = Math.round((streak?.progress ?? 0) * 100);
 
   return (
-    <VaultGate>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {summaryReminder && summaryReminder.due && showSummaryReminder && (
           <div className="rounded-2xl border border-indigo-500/40 bg-indigo-500/15 p-4 text-sm text-indigo-100">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -561,7 +559,6 @@ export default function TodayClient() {
         </aside>
       </div>
     </div>
-    </VaultGate>
   );
 }
 

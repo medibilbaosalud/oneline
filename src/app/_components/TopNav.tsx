@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import AuthButton from './AuthButton';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser } from '@/lib/supabase/client';
 
 function AuthButtonFallback({ fullWidth = false }: { fullWidth?: boolean }) {
   return (

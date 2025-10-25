@@ -1,7 +1,8 @@
 // src/app/summaries/page.tsx
 // SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
 
-import VaultGate from "@/components/VaultGate";
+import SessionGate from "@/components/auth/SessionGate";
+import VaultGate from "@/components/vault/VaultGate";
 import StoryGenerator from "./StoryGenerator";
 import {
   DEFAULT_SUMMARY_PREFERENCES,
@@ -87,39 +88,35 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
   const initialPreset = initialRange ? "custom" : undefined;
 
   return (
-    <main className="min-h-screen bg-black">
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="text-3xl font-semibold text-zinc-100">Summaries</h1>
-        <p className="mt-1 text-zinc-400">Generate a story from your journal.</p>
+    <SessionGate redirectBackTo="/summaries">
+      <VaultGate>
+        <main className="min-h-screen bg-black">
+          <div className="mx-auto max-w-4xl px-6 py-10">
+            <h1 className="text-3xl font-semibold text-zinc-100">Summaries</h1>
+            <p className="mt-1 text-zinc-400">Generate a story from your journal.</p>
 
-        {!user && (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
-            Sign in to preload your saved preferences and reminders. You can still create stories manually without logging in.
+            {reminder.due && (
+              <div className="mt-6 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 p-4 text-sm text-indigo-100">
+                <p className="text-sm font-semibold text-white">
+                  {humanizePeriod(reminder.period)} recap ready to generate
+                </p>
+                <p className="mt-1 text-xs text-indigo-100/80">
+                  Suggested range: {formatWindow(reminder.window)}. We’ll load these defaults for you below.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-8">
+              <StoryGenerator
+                initialOptions={storyPreferences}
+                initialPreset={initialPreset}
+                initialRange={initialRange}
+              />
+            </div>
           </div>
-        )}
-
-        {reminder.due && (
-          <div className="mt-6 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 p-4 text-sm text-indigo-100">
-            <p className="text-sm font-semibold text-white">
-              {humanizePeriod(reminder.period)} recap ready to generate
-            </p>
-            <p className="mt-1 text-xs text-indigo-100/80">
-              Suggested range: {formatWindow(reminder.window)}. We’ll load these defaults for you below.
-            </p>
-          </div>
-        )}
-
-        <div className="mt-8">
-          <VaultGate>
-            <StoryGenerator
-              initialOptions={storyPreferences}
-              initialPreset={initialPreset}
-              initialRange={initialRange}
-            />
-          </VaultGate>
-        </div>
-      </div>
-    </main>
+        </main>
+      </VaultGate>
+    </SessionGate>
   );
 }
 

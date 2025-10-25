@@ -24,10 +24,22 @@ export async function middleware(req: NextRequest) {
     },
   );
 
+  let session = null;
   try {
-    await supabase.auth.getSession();
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
   } catch (error) {
     console.error('[middleware] failed to load session', error);
+  }
+
+  const protectedRoutes = ['/today', '/history', '/summaries', '/settings', '/year-story'];
+  const requiresAuth = protectedRoutes.some((prefix) => req.nextUrl.pathname.startsWith(prefix));
+
+  if (requiresAuth && !session) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/signin';
+    url.searchParams.set('redirectTo', `${req.nextUrl.pathname}${req.nextUrl.search}`);
+    return NextResponse.redirect(url);
   }
 
   if (process.env.NODE_ENV !== 'production') {

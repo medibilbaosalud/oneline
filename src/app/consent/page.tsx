@@ -1,7 +1,7 @@
 // src/app/consent/page.tsx
 "use client";
 import { useMemo, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 export default function ConsentPage() {
   const supabase = useMemo(() => supabaseBrowser(), []);

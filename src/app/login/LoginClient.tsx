@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getEmailHint } from "@/lib/emailHint";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup";
 
