@@ -1,8 +1,10 @@
 // src/lib/supabaseBrowser.ts
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { SupabaseClient, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-let browserClient: SupabaseClient | null = null;
+type BrowserClient = ReturnType<typeof createClientComponentClient>;
+
+let browserClient: BrowserClient | null = null;
 let syncInitialized = false;
 
 async function postAuthState(
@@ -35,7 +37,7 @@ export async function syncServerAuth(
   await postAuthState(event, session, suppressErrors);
 }
 
-export function supabaseBrowser(): SupabaseClient {
+export function supabaseBrowser(): BrowserClient {
   if (!browserClient) {
     browserClient = createClientComponentClient();
   }
