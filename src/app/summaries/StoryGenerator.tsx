@@ -147,7 +147,7 @@ export default function StoryGenerator({
     try {
       setQuotaLoading(true);
       setQuotaError(null);
-      const res = await fetch("/api/summaries/quota", { cache: "no-store" });
+      const res = await fetch("/api/summaries/quota", { cache: "no-store", credentials: 'include' });
       if (res.status === 401) {
         setQuota(null);
         setQuotaError("Sign in to see your monthly allowance.");
@@ -184,7 +184,10 @@ export default function StoryGenerator({
       setStory("");
 
       const params = new URLSearchParams({ from, to });
-      const historyRes = await fetch(`/api/history?${params.toString()}`, { cache: "no-store" });
+      const historyRes = await fetch(`/api/history?${params.toString()}`, {
+        cache: "no-store",
+        credentials: 'include',
+      });
       if (historyRes.status === 401) {
         throw new Error("Please sign in to access your history.");
       }

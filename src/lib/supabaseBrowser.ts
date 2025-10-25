@@ -13,13 +13,28 @@ async function postAuthState(
   suppressErrors: boolean,
 ) {
   try {
-    await fetch('/api/auth/callback', {
+    const response = await fetch('/api/auth/callback', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({ event, session }),
     });
+
+    if (!response.ok) {
+      const detail = await response
+        .json()
+        .catch(() => ({ error: 'unknown', detail: response.statusText }));
+      const syncError = Object.assign(new Error('Failed to sync auth state'), {
+        detail,
+      });
+      if (!suppressErrors) {
+        throw syncError;
+      }
+      // eslint-disable-next-line no-console
+      console.warn('[supabaseBrowser] Auth sync responded with an error', detail);
+    }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[supabaseBrowser] Failed to sync auth state', error);

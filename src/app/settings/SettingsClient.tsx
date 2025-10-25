@@ -201,7 +201,7 @@ export default function SettingsClient() {
     setFeedback(null);
     setError(null);
     try {
-      const res = await fetch("/api/account/export", { cache: "no-store" });
+      const res = await fetch("/api/account/export", { cache: "no-store", credentials: "include" });
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json?.error || "Export failed");
@@ -231,7 +231,7 @@ export default function SettingsClient() {
     if (confirmation !== "DELETE") return;
 
     try {
-      const res = await fetch("/api/account/delete", { method: "POST" });
+      const res = await fetch("/api/account/delete", { method: "POST", credentials: "include" });
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json?.error || "Delete failed");

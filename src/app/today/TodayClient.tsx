@@ -150,7 +150,10 @@ export default function TodayClient() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/summaries/reminder', { cache: 'no-store' });
+        const res = await fetch('/api/summaries/reminder', {
+          cache: 'no-store',
+          credentials: 'include',
+        });
         if (!res.ok) {
           if (res.status === 401 && !cancelled) {
             setSummaryReminder(null);
@@ -181,7 +184,10 @@ export default function TodayClient() {
 
   const loadStreak = useCallback(async () => {
     try {
-      const response = await fetch('/api/journal/streak', { cache: 'no-store' });
+      const response = await fetch('/api/journal/streak', {
+        cache: 'no-store',
+        credentials: 'include',
+      });
       if (response.status === 401) {
         setNeedLogin(true);
         setStreak(null);
@@ -206,7 +212,7 @@ export default function TodayClient() {
       setText('');
       try {
         const endpoint = isToday ? '/api/journal/today' : `/api/journal/day/${selectedDay}`;
-        const r = await fetch(endpoint, { cache: 'no-store' });
+        const r = await fetch(endpoint, { cache: 'no-store', credentials: 'include' });
         if (!active) return;
         if (r.status === 401) {
           setNeedLogin(true);
@@ -324,6 +330,7 @@ export default function TodayClient() {
       const r = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ id: entryId, content_cipher: enc.cipher_b64, iv: enc.iv_b64 }),
       });
       if (r.status === 401) {

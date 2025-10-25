@@ -13,7 +13,10 @@ export default function YearStoryButton() {
     setError(null);
     setStory(null);
     try {
-      const res = await fetch('/api/year-story?from=2025-01-01&to=2025-12-31', { cache: 'no-store' });
+      const res = await fetch('/api/year-story?from=2025-01-01&to=2025-12-31', {
+        cache: 'no-store',
+        credentials: 'include',
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Error generating story');
       setStory(json.story);

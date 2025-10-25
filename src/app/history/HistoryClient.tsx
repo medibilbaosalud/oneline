@@ -112,6 +112,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content_cipher: enc.cipher_b64, iv: enc.iv_b64 }),
         cache: 'no-store',
+        credentials: 'include',
       });
       if (!res.ok) {
         throw new Error('Could not update entry.');
@@ -134,7 +135,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
 
   async function refreshFromServer() {
     try {
-      const res = await fetch('/api/history', { cache: 'no-store' });
+      const res = await fetch('/api/history', { cache: 'no-store', credentials: 'include' });
       if (!res.ok) return;
       const payload = await res.json().catch(() => null);
       const list = Array.isArray(payload?.entries) ? payload.entries : [];
@@ -150,6 +151,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
     const res = await fetch(`/api/history/${encodeURIComponent(entry.id)}`, {
       method: 'DELETE',
       cache: 'no-store',
+      credentials: 'include',
     });
     if (!res.ok) {
       if (res.status === 404) {
