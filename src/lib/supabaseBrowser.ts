@@ -1,8 +1,12 @@
 // src/lib/supabaseBrowser.ts
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
+import type {
+  AuthChangeEvent,
+  Session,
+  SupabaseClient,
+} from '@supabase/supabase-js';
 
-type BrowserClient = ReturnType<typeof createClientComponentClient>;
+type BrowserClient = SupabaseClient<any>;
 
 let browserClient: BrowserClient | null = null;
 let syncInitialized = false;
@@ -143,7 +147,7 @@ export async function syncServerAuth(
 
 export function supabaseBrowser(): BrowserClient {
   if (!browserClient) {
-    browserClient = createClientComponentClient();
+    browserClient = createClientComponentClient<any>() as SupabaseClient<any>;
   }
 
   ensurePatchedFetch();
