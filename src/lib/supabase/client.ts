@@ -13,13 +13,13 @@ async function postAuthState(event: AuthChangeEvent, session: Session | null, su
       body: JSON.stringify({ event, session }),
     });
 
-      if (!response.ok) {
-        if (!suppressErrors) {
-          const detail = (await response.json().catch(() => null)) as { message?: string } | null;
-          const reason = detail?.message ?? response.statusText;
-          throw new Error(`Auth sync failed: ${response.status} ${reason}`);
-        }
-        console.warn('[supabase] auth sync responded with', response.status);
+    if (!response.ok) {
+      if (!suppressErrors) {
+        const detail = (await response.json().catch(() => null)) as { message?: string } | null;
+        const reason = detail?.message ?? response.statusText;
+        throw new Error(`Auth sync failed: ${response.status} ${reason}`);
+      }
+      console.warn('[supabase] auth sync responded with', response.status);
     }
   } catch (error) {
     if (!suppressErrors) {
@@ -35,7 +35,7 @@ export function supabaseBrowser(): SupabaseClient {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        cookies: {
+        cookieOptions: {
           name: 'sb',
           lifetime: 60 * 60 * 24 * 365,
           domain: undefined,
