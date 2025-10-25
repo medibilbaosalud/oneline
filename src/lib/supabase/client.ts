@@ -37,7 +37,7 @@ export function supabaseBrowser(): SupabaseClient {
       {
         cookieOptions: {
           name: 'sb',
-          lifetime: 60 * 60 * 24 * 365,
+          maxAge: 60 * 60 * 24 * 365,
           domain: undefined,
           path: '/',
           sameSite: 'lax',
