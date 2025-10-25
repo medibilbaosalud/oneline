@@ -4,10 +4,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 let browserClient: SupabaseClient | null = null;
 
-export function supabaseBrowser() {
-  if (!browserClient) {
-    browserClient = createClientComponentClient();
+export function supabaseBrowser(): SupabaseClient {
+  if (browserClient) {
+    return browserClient;
   }
 
-  return browserClient;
+  const client = createClientComponentClient();
+  browserClient = client;
+  return client;
 }
