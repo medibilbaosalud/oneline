@@ -1,7 +1,11 @@
 import { createBrowserClient } from '@supabase/ssr';
 import type { AuthChangeEvent, Session, SupabaseClient } from '@supabase/supabase-js';
 
-let browserClient: SupabaseClient | null = null;
+export const supabaseClient = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+);
+
 let authListenerBound = false;
 
 async function postAuthState(event: AuthChangeEvent, session: Session | null, suppressErrors: boolean) {
@@ -29,35 +33,25 @@ async function postAuthState(event: AuthChangeEvent, session: Session | null, su
   }
 }
 
+function ensureAuthListener(client: SupabaseClient) {
+  if (typeof window === 'undefined' || authListenerBound) {
+    return;
+  }
+
+  authListenerBound = true;
+
+  void client.auth.getSession().then((result) => {
+    void postAuthState('INITIAL_SESSION', result.data.session ?? null, true);
+  });
+
+  client.auth.onAuthStateChange((event, session) => {
+    void postAuthState(event, session, true);
+  });
+}
+
 export function supabaseBrowser(): SupabaseClient {
-  if (!browserClient) {
-    browserClient = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookieOptions: {
-          name: 'sb',
-          maxAge: 60 * 60 * 24 * 365,
-          domain: undefined,
-          path: '/',
-          sameSite: 'lax',
-        },
-      },
-    );
-  }
-
-  if (browserClient && !authListenerBound) {
-    authListenerBound = true;
-    void browserClient.auth.getSession().then((result) => {
-      void postAuthState('INITIAL_SESSION', result.data.session ?? null, true);
-    });
-
-    browserClient.auth.onAuthStateChange((event, session) => {
-      void postAuthState(event, session, true);
-    });
-  }
-
-  return browserClient;
+  ensureAuthListener(supabaseClient);
+  return supabaseClient;
 }
 
 export async function syncServerAuth(

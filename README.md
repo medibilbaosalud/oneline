@@ -97,6 +97,14 @@ npm run build   # triggers Next.js type checks
 3. Complete email/password sign-in → you are redirected to `/history` with your vault unlocked.
 4. Confirm that `/auth/callback` handles email confirmation links by opening the Supabase verification email.
 
+### Manual Supabase session verification
+
+Follow these checks after any authentication-related change:
+
+1. While logged in, visit `/_debug-auth` and ensure both `SERVER hasSession` and `CLIENT hasSession` read `true`, with your Supabase `user.id` and email displayed.
+2. Hit `/api/auth-debug` in the browser or via `curl`; confirm that `hasSession` is `true` and the JSON payload includes the `sb-…` cookie names.
+3. Sign out, then browse to `/today` → you should be redirected to `/signin?redirectTo=/today`. After signing in, you must land back on `/today`.
+
 ## Project structure
 
 ```

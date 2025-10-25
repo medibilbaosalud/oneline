@@ -11,42 +11,29 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return req.cookies.get(name)?.value;
+        get: (key) => req.cookies.get(key)?.value,
+        set: (key, value, options) => {
+          res.cookies.set(key, value, options);
         },
-        set(name, value, options) {
-          res.cookies.set(name, value, options);
-        },
-        remove(name, options) {
-          res.cookies.set(name, '', { ...options, maxAge: 0 });
+        remove: (key, options) => {
+          res.cookies.set(key, '', { ...options, maxAge: 0 });
         },
       },
     },
   );
 
-  let session = null;
-  try {
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-  } catch (error) {
-    console.error('[middleware] failed to load session', error);
-  }
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const protectedRoutes = ['/today', '/history', '/summaries', '/settings', '/year-story'];
   const requiresAuth = protectedRoutes.some((prefix) => req.nextUrl.pathname.startsWith(prefix));
 
   if (requiresAuth && !session) {
     const url = req.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = '/signin';
     url.searchParams.set('redirectTo', `${req.nextUrl.pathname}${req.nextUrl.search}`);
     return NextResponse.redirect(url);
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    const cookieNames = req.cookies.getAll().map((cookie) => cookie.name);
-    console.log('[middleware] request cookies', cookieNames);
-    const responseCookieNames = res.cookies.getAll().map((cookie) => cookie.name);
-    console.log('[middleware] response cookies', responseCookieNames);
   }
 
   return res;

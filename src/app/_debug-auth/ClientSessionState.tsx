@@ -1,32 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabase/client';
 
+type ClientState = {
+  hasSession: boolean | null;
+  id?: string | null;
+  email?: string | null;
+};
+
 export default function ClientSessionState() {
-  const supabase = supabaseBrowser();
-  const [hasSession, setHasSession] = useState<null | boolean>(null);
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const [state, setState] = useState<ClientState>({ hasSession: null });
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
+
     supabase.auth
       .getSession()
-      .then((result) => {
-        if (!mounted) return;
-        setHasSession(!!result.data.session);
+      .then(({ data: { session } }) => {
+        if (!active) return;
+        setState({ hasSession: !!session, id: session?.user?.id ?? null, email: session?.user?.email ?? null });
       })
       .catch(() => {
-        if (!mounted) return;
-        setHasSession(false);
+        if (!active) return;
+        setState({ hasSession: false, id: null, email: null });
       });
+
     return () => {
-      mounted = false;
+      active = false;
     };
   }, [supabase]);
 
+  if (state.hasSession === null) {
+    return <p>CLIENT loading…</p>;
+  }
+
   return (
-    <pre className="overflow-auto rounded-xl bg-black/40 p-4 text-sm text-emerald-300">
-      CLIENT hasSession: {hasSession === null ? 'loading…' : String(hasSession)}
-    </pre>
+    <div>
+      <pre>CLIENT hasSession: {String(state.hasSession)}</pre>
+      <pre>CLIENT user id: {state.id ?? '-'}</pre>
+      <pre>CLIENT email: {state.email ?? '-'}</pre>
+    </div>
   );
 }

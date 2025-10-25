@@ -15,7 +15,7 @@ export default async function SessionGate({
 
   if (!session) {
     const target = redirectBackTo.startsWith('/') ? redirectBackTo : `/${redirectBackTo}`;
-    redirect(`/login?redirectTo=${encodeURIComponent(target)}`);
+    redirect(`/signin?redirectTo=${encodeURIComponent(target)}`);
   }
 
   return <>{children}</>;

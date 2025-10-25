@@ -1,27 +1,24 @@
-// src/app/_debug-auth/page.tsx
-import { supabaseServer } from '@/lib/supabaseServer';
+import { Suspense } from 'react';
+import { createServerSupabase } from '@/lib/supabase/server';
 import ClientSessionState from './ClientSessionState';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DebugAuthPage() {
-  const supabase = await supabaseServer();
+  const supabase = createServerSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   return (
-    <div className="min-h-screen bg-neutral-950 px-6 py-12 text-neutral-50">
-      <div className="mx-auto w-full max-w-3xl space-y-6 rounded-2xl border border-white/10 bg-neutral-900/60 p-6">
-        <h1 className="text-2xl font-semibold">Auth Debug</h1>
-        <p className="text-sm text-neutral-400">
-          Use this page to confirm whether Supabase sessions are available on the server and client during SSR.
-        </p>
-        <pre className="overflow-auto rounded-xl bg-black/40 p-4 text-sm text-emerald-300">
-          SERVER hasSession: {String(!!session)}
-        </pre>
+    <main style={{ padding: 24, fontFamily: 'ui-sans-serif' }}>
+      <h1>Auth Debug</h1>
+      <pre>SERVER hasSession: {String(!!session)}</pre>
+      <pre>SERVER user id: {session?.user?.id ?? '-'}</pre>
+      <pre>SERVER email: {session?.user?.email ?? '-'}</pre>
+      <Suspense fallback={<p>CLIENT loading…</p>}>
         <ClientSessionState />
-      </div>
-    </div>
+      </Suspense>
+    </main>
   );
 }
