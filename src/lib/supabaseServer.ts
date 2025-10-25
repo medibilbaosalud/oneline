@@ -39,15 +39,16 @@ export async function supabaseServer() {
     },
   });
 
-  const accessToken = extractBearer(headerStore.get('authorization'));
-  const refreshToken = headerStore.get('x-supabase-refresh');
+  const accessToken =
+    extractBearer(headerStore.get('authorization')) ?? cookieStore.get('sb-access-token')?.value ?? null;
+  const refreshToken = headerStore.get('x-supabase-refresh') ?? cookieStore.get('sb-refresh-token')?.value ?? null;
 
   if (accessToken && refreshToken) {
     try {
       await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('[supabaseServer] Failed to set session from headers', error);
+      console.error('[supabaseServer] Failed to set session from tokens', error);
     }
   }
 
