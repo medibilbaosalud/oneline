@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import type { Session } from '@supabase/supabase-js';
-import { readSupabaseTokensFromCookies } from '@/lib/supabaseTokens';
+import { getSupabaseProjectRef, readSupabaseTokensFromCookies } from '@/lib/supabaseTokens';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,8 @@ export async function POST(request: Request) {
     case 'SIGNED_IN':
     case 'TOKEN_REFRESHED': {
       const session = body.session ?? null;
-      const fallbackTokens = readSupabaseTokensFromCookies(cookieStore);
+      const projectRef = getSupabaseProjectRef();
+      const fallbackTokens = readSupabaseTokensFromCookies(cookieStore, { projectRef });
       const accessToken = session?.access_token ?? fallbackTokens.accessToken;
       const refreshToken = session?.refresh_token ?? fallbackTokens.refreshToken;
 

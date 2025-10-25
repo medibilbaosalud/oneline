@@ -3,6 +3,36 @@ import { parseSupabaseCookie } from '@supabase/auth-helpers-shared';
 const AUTH_COOKIE_PATTERN = /auth[-.]token/i;
 const DIRECT_TOKEN_PATTERN = /^(.*?)-(access|refresh)-token$/i;
 
+type MaybeProjectRef = string | null | undefined;
+
+let cachedProjectRef: string | null | undefined;
+
+export function getSupabaseProjectRef(): string | null {
+  if (cachedProjectRef !== undefined) {
+    return cachedProjectRef;
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) {
+    cachedProjectRef = null;
+    return cachedProjectRef;
+  }
+
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.endsWith('.supabase.co') || host.endsWith('.supabase.in')) {
+      const segments = host.split('.');
+      cachedProjectRef = segments.length > 0 ? segments[0] : null;
+      return cachedProjectRef;
+    }
+  } catch {
+    // ignore URL parse failures and fall through to null
+  }
+
+  cachedProjectRef = null;
+  return cachedProjectRef;
+}
+
 function sortChunkNames(names: Array<{ name: string; value: string }>) {
   return names
     .map(({ name, value }) => {
@@ -63,22 +93,65 @@ function groupAuthCookies(reader: CookieReader) {
   return groups;
 }
 
-function readDirectTokenPairs(reader: CookieReader): TokenPair {
+type TokenCandidate = { tokens: TokenPair; priority: number };
+
+function normalizePrefix(prefix: string | null | undefined): string | null {
+  if (!prefix) return null;
+  return prefix.trim().toLowerCase() || null;
+}
+
+function projectPriority(prefix: string | null, projectRef: MaybeProjectRef): number {
+  const normalizedPrefix = normalizePrefix(prefix);
+  if (!normalizedPrefix) return 0;
+
+  if (projectRef) {
+    const normalizedProject = projectRef.trim().toLowerCase();
+    const target = `sb-${normalizedProject}`;
+    if (normalizedPrefix === target) {
+      return 4;
+    }
+  }
+
+  if (normalizedPrefix.startsWith('sb-')) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function chooseBestCandidate(candidates: TokenCandidate[]): TokenPair {
+  let best: TokenPair = { accessToken: null, refreshToken: null };
+  let bestPriority = Number.NEGATIVE_INFINITY;
+
+  for (const candidate of candidates) {
+    const { tokens, priority } = candidate;
+    if (!tokens.accessToken || !tokens.refreshToken) continue;
+    if (priority > bestPriority) {
+      best = tokens;
+      bestPriority = priority;
+    }
+  }
+
+  return best;
+}
+
+function readDirectTokenPairs(reader: CookieReader, projectRef: MaybeProjectRef): TokenPair {
+  const candidates: TokenCandidate[] = [];
+
   const fromExactNames = {
     accessToken: reader.get('sb-access-token')?.value ?? null,
     refreshToken: reader.get('sb-refresh-token')?.value ?? null,
   } satisfies TokenPair;
 
-  if (fromExactNames.accessToken && fromExactNames.refreshToken) {
-    return fromExactNames;
-  }
+  candidates.push({ tokens: fromExactNames, priority: projectRef ? 3 : 2 });
 
   const grouped = new Map<string, TokenPair>();
   for (const cookie of reader.getAll()) {
     const match = cookie.name.match(DIRECT_TOKEN_PATTERN);
     if (!match) continue;
 
-    const [, prefix, kind] = match;
+    const [, rawPrefix, kind] = match;
+    const prefix = rawPrefix ?? '';
     const bucket = grouped.get(prefix) ?? { accessToken: null, refreshToken: null };
     if (kind.toLowerCase() === 'access') {
       bucket.accessToken = bucket.accessToken ?? cookie.value;
@@ -88,31 +161,37 @@ function readDirectTokenPairs(reader: CookieReader): TokenPair {
     grouped.set(prefix, bucket);
   }
 
-  for (const pair of grouped.values()) {
-    if (pair.accessToken && pair.refreshToken) {
-      return pair;
-    }
+  for (const [prefix, pair] of grouped.entries()) {
+    candidates.push({ tokens: pair, priority: projectPriority(prefix, projectRef) });
   }
 
-  return { accessToken: null, refreshToken: null };
+  return chooseBestCandidate(candidates);
 }
 
-export function readSupabaseTokensFromCookies(reader: CookieReader): TokenPair {
-  const directTokens = readDirectTokenPairs(reader);
+export function readSupabaseTokensFromCookies(
+  reader: CookieReader,
+  { projectRef }: { projectRef?: MaybeProjectRef } = {},
+): TokenPair {
+  const scopedRef = projectRef ?? null;
+  const directTokens = readDirectTokenPairs(reader, scopedRef);
   if (directTokens.accessToken && directTokens.refreshToken) {
     return directTokens;
   }
 
+  const chunkCandidates: TokenCandidate[] = [];
   const grouped = groupAuthCookies(reader);
-  for (const cookies of grouped.values()) {
+  for (const [baseName, cookies] of grouped.entries()) {
     const ordered = sortChunkNames(cookies);
     if (!ordered.length) continue;
 
     const serialized = ordered.map(({ value }) => value).join('');
     const tokens = tokensFromSerializedSession(serialized);
-    if (tokens.accessToken && tokens.refreshToken) {
-      return tokens;
-    }
+    chunkCandidates.push({ tokens, priority: projectPriority(baseName, scopedRef) });
+  }
+
+  const chunkTokens = chooseBestCandidate(chunkCandidates);
+  if (chunkTokens.accessToken && chunkTokens.refreshToken) {
+    return chunkTokens;
   }
 
   return { accessToken: null, refreshToken: null };
