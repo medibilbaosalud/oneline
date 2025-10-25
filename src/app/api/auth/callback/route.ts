@@ -21,19 +21,29 @@ export async function POST(request: Request) {
   const event = body.event;
 
   switch (event) {
+    case 'INITIAL_SESSION':
     case 'SIGNED_IN':
     case 'TOKEN_REFRESHED': {
-      const session = body.session;
-      if (!session?.access_token || !session.refresh_token) {
+      const session = body.session ?? null;
+
+      if (!session) {
+        await supabase.auth.signOut();
+        return NextResponse.json({ ok: true });
+      }
+
+      if (!session.access_token || !session.refresh_token) {
         return NextResponse.json({ ok: false, error: 'missing_tokens' }, { status: 400 });
       }
+
       const { error } = await supabase.auth.setSession({
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       });
+
       if (error) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
       }
+
       return NextResponse.json({ ok: true });
     }
     case 'SIGNED_OUT':
