@@ -2,24 +2,46 @@ import { cookies } from 'next/headers';
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
+function serializeCookie({ name, value, options }: {
+  name: string;
+  value: string;
+  options?: CookieOptions;
+}): ResponseCookie {
+  const { path, ...rest } = options ?? {};
+
+  return {
+    name,
+    value,
+    path: path ?? '/',
+    ...rest,
+  } satisfies ResponseCookie;
+}
+
 export function createServerSupabase() {
-  const cookieStore = cookies();
+  const cookieStorePromise = cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll: async () => {
+          const cookieStore = await cookieStorePromise;
+          return cookieStore
+            .getAll()
+            .map((cookie) => ({ name: cookie.name, value: cookie.value }));
         },
-        set(name: string, value: string, options: CookieOptions) {
-          const cookie: ResponseCookie = { name, value, ...options };
-          cookieStore.set(cookie);
-        },
-        remove(name: string, options: CookieOptions) {
-          const cookie: ResponseCookie = { name, value: '', ...options, maxAge: 0 };
-          cookieStore.set(cookie);
+        setAll: async (cookiesToSet) => {
+          const cookieStore = await cookieStorePromise;
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(
+              serializeCookie({
+                name,
+                value,
+                options,
+              }),
+            );
+          });
         },
       },
     },
