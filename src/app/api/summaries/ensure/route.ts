@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { supabaseServer } from "@/lib/supabaseServer";
+
+import { isSummaryFrequency, type SummaryFrequency } from "@/lib/summaryPreferences";
+
+const TABLE = "user_vaults";
 
 function startEndOfCurrent(period: "weekly"|"monthly"|"yearly") {
   const now = new Date();
@@ -25,18 +28,19 @@ function startEndOfCurrent(period: "weekly"|"monthly"|"yearly") {
 }
 
 export async function POST() {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
 
   // 1) read the configured frequency
   const { data: settings } = await supabase
-    .from("user_settings")
-    .select("frequency")
+    .from(TABLE)
+    .select("frequency, digest_frequency")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const period: "weekly"|"monthly"|"yearly" = (settings?.frequency ?? "weekly") as any;
+  const frequencySource = settings?.digest_frequency ?? settings?.frequency;
+  const period: SummaryFrequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
 
   const { start, end } = startEndOfCurrent(period);
 

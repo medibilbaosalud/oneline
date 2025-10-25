@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 
-const MAX = 300;
+const MAX = 333;
 
 const QUOTES = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
@@ -27,7 +27,7 @@ type Section = {
 };
 
 const SECTIONS: Section[] = [
-  { id: 'today', label: 'Today', blurb: 'Write a 300-character reflection that encrypts before it leaves your browser.' },
+  { id: 'today', label: 'Today', blurb: 'Write a 333-character reflection that encrypts before it leaves your browser.' },
   { id: 'history', label: 'History', blurb: 'See how past lines unlock locally with your passphrase—edits and deletions stay disabled here.' },
   { id: 'summaries', label: 'Summaries', blurb: 'Preview the consent flow that sends decrypted stories to Gemini only when you approve.' },
   { id: 'settings', label: 'Settings', blurb: 'Tour the account tools, streak insights, and encryption reminders in read-only form.' },
@@ -77,7 +77,7 @@ function TodayPreview() {
         </p>
 
         <textarea
-          value={'This is where your 300 characters go. Entries stay encrypted end to end until you unlock them with your passphrase.'}
+          value={'This is where your 333 characters go. Entries stay encrypted end to end until you unlock them with your passphrase.'}
           readOnly
           maxLength={MAX}
           className="mt-6 min-h-[220px] flex-1 resize-none rounded-xl border border-white/5 bg-black/30 px-4 py-3 text-base leading-relaxed text-zinc-100 opacity-70 outline-none"
@@ -310,6 +310,24 @@ export default function VisitorExperience() {
         </header>
 
         <SectionTabs active={active} onChange={setActive} />
+
+        <div
+          className="mt-6 max-w-2xl rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300"
+          role="note"
+          aria-label="How to use the interactive preview"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-400">How to use</p>
+          <ul className="mt-2 space-y-1 text-neutral-300">
+            <li>
+              Tap or click the highlighted areas inside the workspace preview to jump between Today, History, Summaries, and
+              Settings.
+            </li>
+            <li>
+              If you’re not signed in yet, we’ll ask you to log in and then return you to the exact section you chose.
+            </li>
+            <li>All interactions are keyboard accessible—use Tab to focus a hotspot and press Enter to open it.</li>
+          </ul>
+        </div>
 
         {activeMeta && (
           <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>

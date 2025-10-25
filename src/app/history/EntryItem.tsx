@@ -77,7 +77,7 @@ export default function EntryItem({
             onChange={(e) => setText(e.target.value)}
             className="w-full rounded-md bg-zinc-900 border border-zinc-700 p-2"
             rows={4}
-            maxLength={300}
+            maxLength={333}
           />
           <div className="mt-3 flex gap-2">
             <button

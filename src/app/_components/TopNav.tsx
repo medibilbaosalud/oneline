@@ -2,9 +2,23 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import AuthButton from './AuthButton';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
+
+function AuthButtonFallback({ fullWidth = false }: { fullWidth?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      className={
+        fullWidth
+          ? 'h-9 w-full animate-pulse rounded-md bg-neutral-900/60'
+          : 'h-8 w-28 animate-pulse rounded-md bg-neutral-900/60'
+      }
+    />
+  );
+}
 
 function NavLink({
   href,
@@ -29,6 +43,8 @@ function NavLink({
 
 export default function TopNav() {
   const [open, setOpen] = useState(false);
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
   // Prevent body scroll when the menu is open
   useEffect(() => {
@@ -41,6 +57,27 @@ export default function TopNav() {
   // Render the mobile sheet through a portal
   const canUseDOM = typeof window !== 'undefined';
   const portalRoot = useMemo(() => (canUseDOM ? document.body : null), [canUseDOM]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setIsAuthed(!!data.session);
+    })();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthed(!!session);
+    });
+
+    return () => {
+      mounted = false;
+      listener?.subscription?.unsubscribe();
+    };
+  }, [supabase]);
+
+  const showProtectedLinks = isAuthed === true;
 
   const Sheet = open && portalRoot
     ? createPortal(
@@ -67,11 +104,17 @@ export default function TopNav() {
 
             <div className="flex flex-col gap-1 p-3">
               <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
-              <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
-              <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
-              <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
+              {showProtectedLinks ? (
+                <>
+                  <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
+                  <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
+                  <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
+                </>
+              ) : null}
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <Suspense fallback={<AuthButtonFallback fullWidth />}>
+                  <AuthButton />
+                </Suspense>
               </div>
             </div>
           </div>
@@ -93,15 +136,21 @@ export default function TopNav() {
           </Link>
           <div className="ml-2 hidden gap-1 md:flex">
             <NavLink href="/today" label="Today" />
-            <NavLink href="/history" label="History" />
-            <NavLink href="/summaries" label="Summaries" />
-            <NavLink href="/settings" label="Settings" />
+            {showProtectedLinks ? (
+              <>
+                <NavLink href="/history" label="History" />
+                <NavLink href="/summaries" label="Summaries" />
+                <NavLink href="/settings" label="Settings" />
+              </>
+            ) : null}
           </div>
         </div>
 
         {/* Right side (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <Suspense fallback={<AuthButtonFallback />}>
+            <AuthButton />
+          </Suspense>
         </div>
 
             {/* Mobile hamburger button */}

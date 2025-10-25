@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,7 +15,7 @@ async function getParam(context: any, name: string) {
 
 export async function PATCH(req: NextRequest, context: any) {
   const id = await getParam(context, "id");
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
@@ -24,7 +23,7 @@ export async function PATCH(req: NextRequest, context: any) {
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "invalid json" }, { status: 400 }); }
 
-  const content = String(body?.content ?? "").slice(0, 300);
+  const content = String(body?.content ?? "").slice(0, 333);
 
   const { data, error } = await supabase
     .from("journal")
@@ -40,7 +39,7 @@ export async function PATCH(req: NextRequest, context: any) {
 
 export async function DELETE(req: NextRequest, context: any) {
   const id = await getParam(context, "id");
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
