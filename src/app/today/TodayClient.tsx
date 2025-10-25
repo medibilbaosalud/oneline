@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const MAX = 333;
 const QUOTES = [
@@ -106,12 +107,14 @@ type SummaryReminder = {
 };
 
 export default function TodayClient() {
+  const supabase = useMemo(() => supabaseBrowser(), []);
   const { dataKey } = useVault();
   const router = useRouter();
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [needLogin, setNeedLogin] = useState(false);
+  const [authVersion, setAuthVersion] = useState(0);
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
   const [pendingEntry, setPendingEntry] = useState<EntryPayload | null>(null);
@@ -229,7 +232,41 @@ export default function TodayClient() {
     return () => {
       active = false;
     };
-  }, [isToday, loadStreak, selectedDay]);
+  }, [authVersion, isToday, loadStreak, selectedDay]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) {
+        setNeedLogin(false);
+        setAuthVersion((v) => v + 1);
+      }
+    })();
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setNeedLogin(false);
+        setAuthVersion((v) => v + 1);
+        return;
+      }
+      if (event === 'SIGNED_OUT') {
+        setNeedLogin(true);
+        setAuthVersion((v) => v + 1);
+      }
+      if (session) {
+        setNeedLogin(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription?.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     if (!pendingEntry) {
