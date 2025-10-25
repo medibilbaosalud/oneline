@@ -47,6 +47,14 @@ Ensure the following redirect URL is added to the Supabase Auth Redirect Allow L
 https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback
 ```
 
+### Supabase auth configuration checklist
+
+Before testing the secure routes, confirm these settings inside the Supabase dashboard:
+
+- **Allowed Redirect URLs** → include `http://localhost:3000/*`, your production domain such as `https://example.com/*`, and the wildcard for Vercel previews `https://*.vercel.app/*`. Add any additional custom domains following the same pattern.
+- **Site URL** → set it to the canonical production hostname (no preview URLs) so Supabase issues cookies for the correct origin.
+- **Environment parity** → keep `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in sync across Development, Preview, and Production deployments. Rotate keys everywhere if you regenerate them.
+
 ### Database migrations
 
 Run the SQL files in `supabase/` (timestamped). They create enum types, preference columns, and monthly usage counters in `public.user_vaults`, alongside any additional structures required by the summaries workflow. Apply them in chronological order using the Supabase SQL editor or CLI.

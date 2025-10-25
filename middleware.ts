@@ -1,21 +1,61 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
+
+const PROTECTED_PATHS = ['/today', '/history', '/summaries', '/settings', '/year-story'];
+
+function isProtectedPath(pathname: string) {
+  return PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
 
 export async function middleware(req: NextRequest) {
-  const nextResponse = NextResponse.next();
+  const res = NextResponse.next();
 
-  // Maintain Supabase session cookies for downstream requests but do not block
-  // navigation when no session is present. We’ll reintroduce hard guards later.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name, value, options) {
+          res.cookies.set(name, value, options);
+        },
+        remove(name, options) {
+          res.cookies.set(name, '', { ...options, maxAge: 0 });
+        },
+      },
+    },
+  );
+
+  let session = null;
   try {
-    const supabase = createMiddlewareClient({ req, res: nextResponse });
-    await supabase.auth.getSession();
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
   } catch (error) {
-    console.error('[middleware] session refresh failed', error);
+    console.error('[middleware] failed to load session', error);
   }
 
-  return nextResponse;
+  if (process.env.NODE_ENV !== 'production') {
+    const cookieNames = req.cookies.getAll().map((cookie) => cookie.name);
+    console.log('[middleware] request cookies', cookieNames);
+    const responseCookieNames = res.cookies.getAll().map((cookie) => cookie.name);
+    console.log('[middleware] response cookies', responseCookieNames);
+  }
+
+  const { pathname, search } = req.nextUrl;
+
+  if (isProtectedPath(pathname) && !session) {
+    const redirectUrl = req.nextUrl.clone();
+    const target = `${pathname}${search}`;
+    redirectUrl.pathname = '/signin';
+    redirectUrl.searchParams.set('redirectTo', target);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return res;
 }
 
 export const config = {
