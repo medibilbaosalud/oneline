@@ -72,13 +72,32 @@ async function ensureInitialized() {
   loadingPromise = (async () => {
     try {
       const supabase = supabaseBrowser();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const userId = user?.id ?? null;
+      let nextUserId: string | null = null;
 
-      if (userId !== currentUserId) {
-        currentUserId = userId;
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        nextUserId = session?.user?.id ?? null;
+      } catch {
+        nextUserId = null;
+      }
+
+      if (!nextUserId) {
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          nextUserId = user?.id ?? null;
+        } catch {
+          nextUserId = null;
+        }
+      }
+
+      const previousUserId = currentUserId;
+      currentUserId = nextUserId;
+
+      if (currentUserId !== previousUserId) {
         cachedBundle = null;
         hasStoredBundle = false;
         lastVaultError = null;
@@ -199,7 +218,7 @@ export function useVault() {
       hasStoredBundle = true;
       lastVaultError = null;
       notify();
-    } catch (error) {
+    } catch {
       sharedKey = null;
       lastVaultError =
         'Decryption error: the passphrase you entered is different from the one you used when you created your vault. Enter the exact original code to recover access.';
