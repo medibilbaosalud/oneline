@@ -1,6 +1,7 @@
 // src/lib/supabaseServer.ts
 import { cookies, headers } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { readSupabaseTokensFromCookies } from '@/lib/supabaseTokens';
 
 function extractBearer(headerValue: string | null | undefined) {
   if (!headerValue) return null;
@@ -39,9 +40,17 @@ export async function supabaseServer() {
     },
   });
 
+  const cookieTokens = readSupabaseTokensFromCookies(cookieStore);
   const accessToken =
-    extractBearer(headerStore.get('authorization')) ?? cookieStore.get('sb-access-token')?.value ?? null;
-  const refreshToken = headerStore.get('x-supabase-refresh') ?? cookieStore.get('sb-refresh-token')?.value ?? null;
+    extractBearer(headerStore.get('authorization')) ??
+    cookieStore.get('sb-access-token')?.value ??
+    cookieTokens.accessToken ??
+    null;
+  const refreshToken =
+    headerStore.get('x-supabase-refresh') ??
+    cookieStore.get('sb-refresh-token')?.value ??
+    cookieTokens.refreshToken ??
+    null;
 
   if (accessToken && refreshToken) {
     try {

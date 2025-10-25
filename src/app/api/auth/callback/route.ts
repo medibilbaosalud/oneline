@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import type { Session } from '@supabase/supabase-js';
+import { readSupabaseTokensFromCookies } from '@/lib/supabaseTokens';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,7 @@ type CallbackPayload = {
 
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies });
+  const cookieStore = cookies();
   const body = (await request.json().catch(() => null)) as CallbackPayload | null;
 
   if (!body?.event) {
@@ -25,19 +27,22 @@ export async function POST(request: Request) {
     case 'SIGNED_IN':
     case 'TOKEN_REFRESHED': {
       const session = body.session ?? null;
+      const fallbackTokens = readSupabaseTokensFromCookies(cookieStore);
+      const accessToken = session?.access_token ?? fallbackTokens.accessToken;
+      const refreshToken = session?.refresh_token ?? fallbackTokens.refreshToken;
 
-      if (!session) {
+      if (!session && !accessToken && !refreshToken) {
         await supabase.auth.signOut();
         return NextResponse.json({ ok: true });
       }
 
-      if (!session.access_token || !session.refresh_token) {
+      if (!accessToken || !refreshToken) {
         return NextResponse.json({ ok: false, error: 'missing_tokens' }, { status: 400 });
       }
 
       const { error } = await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
+        access_token: accessToken,
+        refresh_token: refreshToken,
       });
 
       if (error) {
