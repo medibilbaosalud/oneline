@@ -107,11 +107,12 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
     setSavingId(entry.id);
     try {
       const enc = await encryptText(dataKey, trimmed);
-      const res = await fetch(`/api/history/${entry.id}`, {
+      const res = await fetch(`/api/history/${encodeURIComponent(entry.id)}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ content_cipher: enc.cipher_b64, iv: enc.iv_b64 }),
         cache: 'no-store',
+        credentials: 'include',
       });
       if (!res.ok) {
         throw new Error('Could not update entry.');
@@ -134,7 +135,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
 
   async function refreshFromServer() {
     try {
-      const res = await fetch('/api/history', { cache: 'no-store' });
+      const res = await fetch('/api/history', { cache: 'no-store', credentials: 'include' });
       if (!res.ok) return;
       const payload = await res.json().catch(() => null);
       const list = Array.isArray(payload?.entries) ? payload.entries : [];
@@ -147,7 +148,11 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
   async function deleteEntry(entry: DecryptedEntry) {
     if (!confirm('Delete this entry? This action is permanent.')) return;
     setDeletingId(entry.id);
-    const res = await fetch(`/api/history/${entry.id}`, { method: 'DELETE', cache: 'no-store' });
+    const res = await fetch(`/api/history/${encodeURIComponent(entry.id)}`, {
+      method: 'DELETE',
+      cache: 'no-store',
+      credentials: 'include',
+    });
     if (!res.ok) {
       if (res.status === 404) {
         setRawEntries((prev) => prev.filter((row) => row.id !== entry.id));
@@ -160,6 +165,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
       setDeletingId(null);
       return;
     }
+    setRawEntries((prev) => prev.filter((row) => row.id !== entry.id));
     await refreshFromServer();
     setDeletingId(null);
   }
@@ -208,7 +214,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
                 value={draft}
                 onChange={(ev) => setDraft(ev.target.value)}
                 rows={4}
-                maxLength={300}
+                maxLength={333}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500"
               />
             )}

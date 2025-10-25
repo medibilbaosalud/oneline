@@ -1,14 +1,21 @@
 // src/app/summaries/StoryGenerator.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
+import type { SummaryPreferences } from "@/lib/summaryPreferences";
 
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
 type Pov = "auto" | "first" | "third";
 type Preset = "30" | "90" | "180" | "year" | "custom";
+
+type StoryGeneratorProps = {
+  initialOptions?: SummaryPreferences;
+  initialPreset?: Preset;
+  initialRange?: { from: string; to: string } | null;
+};
 
 function ymd(d: Date) {
   const iso = new Date(d).toISOString();
@@ -45,20 +52,26 @@ type EntryPayload = {
   content?: string | null;
 };
 
-export default function StoryGenerator() {
+export default function StoryGenerator({
+  initialOptions,
+  initialPreset,
+  initialRange,
+}: StoryGeneratorProps) {
   const { dataKey, unlockWithPassphrase, getCurrentKey } = useVault();
   // Preset + from/to
-  const [preset, setPreset] = useState<Preset>("90");
   const today = useMemo(() => new Date(), []);
-  const [customFrom, setCustomFrom] = useState<string>(ymd(addDays(today, -30)));
-  const [customTo, setCustomTo] = useState<string>(ymd(today));
+  const [preset, setPreset] = useState<Preset>(initialPreset ?? (initialRange ? "custom" : "90"));
+  const [customFrom, setCustomFrom] = useState<string>(initialRange?.from ?? ymd(addDays(today, -30)));
+  const [customTo, setCustomTo] = useState<string>(initialRange?.to ?? ymd(today));
 
   // Options
-  const [length, setLength] = useState<Length>("medium");
-  const [tone, setTone] = useState<Tone>("auto");
-  const [pov, setPov] = useState<Pov>("auto");
-  const [includeHighlights, setIncludeHighlights] = useState(true);
-  const [notes, setNotes] = useState("");
+  const [length, setLength] = useState<Length>(initialOptions?.length ?? "medium");
+  const [tone, setTone] = useState<Tone>(initialOptions?.tone ?? "auto");
+  const [pov, setPov] = useState<Pov>(initialOptions?.pov ?? "auto");
+  const [includeHighlights, setIncludeHighlights] = useState(
+    initialOptions?.includeHighlights ?? true,
+  );
+  const [notes, setNotes] = useState(initialOptions?.notes ?? "");
 
   // Result
   const [loading, setLoading] = useState(false);
@@ -92,11 +105,49 @@ export default function StoryGenerator() {
     return { from: ymd(addDays(now, -180)), to: ymd(now) };
   }, [preset, customFrom, customTo]);
 
+  const propsSignature = useRef<string | null>(null);
+
+  useEffect(() => {
+    const signature = JSON.stringify({
+      options: initialOptions ?? null,
+      preset: initialPreset ?? null,
+      range: initialRange ?? null,
+    });
+
+    if (propsSignature.current === signature) {
+      return;
+    }
+
+    propsSignature.current = signature;
+
+    if (initialOptions) {
+      setLength(initialOptions.length);
+      setTone(initialOptions.tone);
+      setPov(initialOptions.pov);
+      setIncludeHighlights(initialOptions.includeHighlights);
+      setNotes(initialOptions.notes ?? "");
+    } else {
+      setLength("medium");
+      setTone("auto");
+      setPov("auto");
+      setIncludeHighlights(true);
+      setNotes("");
+    }
+
+    if (initialRange) {
+      setCustomFrom(initialRange.from);
+      setCustomTo(initialRange.to);
+      setPreset(initialPreset ?? "custom");
+    } else if (initialPreset) {
+      setPreset(initialPreset);
+    }
+  }, [initialOptions, initialPreset, initialRange]);
+
   const refreshQuota = useCallback(async () => {
     try {
       setQuotaLoading(true);
       setQuotaError(null);
-      const res = await fetch("/api/summaries/quota", { cache: "no-store" });
+      const res = await fetch("/api/summaries/quota", { cache: "no-store", credentials: 'include' });
       if (res.status === 401) {
         setQuota(null);
         setQuotaError("Sign in to see your monthly allowance.");
@@ -133,7 +184,10 @@ export default function StoryGenerator() {
       setStory("");
 
       const params = new URLSearchParams({ from, to });
-      const historyRes = await fetch(`/api/history?${params.toString()}`, { cache: "no-store" });
+      const historyRes = await fetch(`/api/history?${params.toString()}`, {
+        cache: "no-store",
+        credentials: 'include',
+      });
       if (historyRes.status === 401) {
         throw new Error("Please sign in to access your history.");
       }

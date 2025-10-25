@@ -35,7 +35,10 @@ function notify() {
 
 async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
   try {
-    const res = await fetch('/api/vault', { cache: 'no-store' });
+    const res = await fetch('/api/vault', {
+      cache: 'no-store',
+      credentials: 'include',
+    });
     if (!res.ok) return null;
     const payload = (await res.json()) as { bundle?: WrappedBundle | null };
     return payload?.bundle ?? null;
@@ -49,6 +52,7 @@ async function saveRemoteBundle(bundle: WrappedBundle | null) {
     await fetch('/api/vault', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ bundle }),
     });
   } catch {

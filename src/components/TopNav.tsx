@@ -3,8 +3,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import AuthButton from './AuthButton';
+
+function AuthButtonFallback() {
+  return (
+    <div
+      aria-hidden
+      className="h-8 w-28 animate-pulse rounded-md bg-neutral-900/60"
+    />
+  );
+}
 
 type NavLinkProps = {
   href: string;
@@ -65,7 +74,9 @@ export default function TopNav() {
 
         {/* Auth (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <Suspense fallback={<AuthButtonFallback />}>
+            <AuthButton />
+          </Suspense>
         </div>
 
         {/* Hamburger (mobile) */}
@@ -117,7 +128,9 @@ export default function TopNav() {
               <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
               <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <Suspense fallback={<AuthButtonFallback />}>
+                  <AuthButton />
+                </Suspense>
               </div>
             </div>
           </div>

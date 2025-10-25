@@ -1,17 +1,26 @@
 // src/lib/supabaseServer.ts
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
+function extractBearer(headerValue: string | null | undefined) {
+  if (!headerValue) return null;
+  if (headerValue.startsWith('Bearer ')) {
+    return headerValue.slice(7).trim() || null;
+  }
+  return headerValue.trim() || null;
+}
+
 export async function supabaseServer() {
-  const cookieStore = await cookies(); // in App Router this returns a Promise-like
+  const cookieStore = await cookies();
+  const headerStore = await headers();
   const mutableCookies = cookieStore as unknown as {
-    get(name: string): { value?: string } | undefined;
-    set?(options: { name: string; value: string } & CookieOptions): void;
+    get(name: string): { value: string } | undefined;
+    set?: (options: { name: string; value: string } & CookieOptions) => void;
   };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  return createServerClient(url, key, {
+  const client = createServerClient(url, key, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
@@ -29,4 +38,19 @@ export async function supabaseServer() {
       },
     },
   });
+
+  const accessToken =
+    extractBearer(headerStore.get('authorization')) ?? cookieStore.get('sb-access-token')?.value ?? null;
+  const refreshToken = headerStore.get('x-supabase-refresh') ?? cookieStore.get('sb-refresh-token')?.value ?? null;
+
+  if (accessToken && refreshToken) {
+    try {
+      await client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[supabaseServer] Failed to set session from tokens', error);
+    }
+  }
+
+  return client;
 }

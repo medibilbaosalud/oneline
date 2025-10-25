@@ -1,10 +1,10 @@
 // src/app/consent/page.tsx
 "use client";
-import { useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useMemo, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 export default function ConsentPage() {
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => supabaseBrowser(), []);
   const [privacy, setPrivacy] = useState(false);
   const [terms, setTerms] = useState(false);
   const [marketing, setMarketing] = useState(false);

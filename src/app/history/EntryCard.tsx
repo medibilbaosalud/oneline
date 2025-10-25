@@ -84,7 +84,7 @@ export default function EntryCard({ entry }: { entry: Entry }) {
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          maxLength={300}
+          maxLength={333}
           className="
             mt-4 h-40 w-full resize-none rounded-xl
             bg-zinc-950/80 text-zinc-50 placeholder:text-zinc-500

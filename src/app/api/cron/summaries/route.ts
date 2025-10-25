@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+import { isSummaryFrequency, type SummaryFrequency } from '@/lib/summaryPreferences';
+
 // Use the Service Role key to write summaries and update last_summary_at
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -35,22 +37,26 @@ export async function GET(req: Request) {
 
   // Fetch user preferences
   const { data: settings, error } = await sb
-    .from('user_settings')
-    .select('user_id, frequency, delivery, hour_utc, last_summary_at');
+    .from('user_vaults')
+    .select('user_id, frequency, digest_frequency, delivery, hour_utc, last_summary_at, story_length');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   let done = 0;
   for (const s of settings ?? []) {
     if (s.hour_utc !== currentHour) continue;
-    if (!isDue(s.frequency, s.last_summary_at, now)) continue;
+
+    const frequencySource = s.digest_frequency ?? s.frequency;
+    const frequency: SummaryFrequency = isSummaryFrequency(frequencySource) ? frequencySource : 'weekly';
+
+    if (!isDue(frequency, s.last_summary_at, now)) continue;
 
     // Compute the date window for the selected frequency
     let start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     let end = new Date(start);
-    if (s.frequency === 'weekly') start = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
-    if (s.frequency === 'monthly') start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, now.getUTCDate()));
-    if (s.frequency === 'yearly') start = new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate()));
+    if (frequency === 'weekly') start = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (frequency === 'monthly') start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, now.getUTCDate()));
+    if (frequency === 'yearly') start = new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), now.getUTCDate()));
 
     // Read journal entries for that period
     const { data: entries } = await sb
@@ -70,14 +76,14 @@ export async function GET(req: Request) {
     // Persist the summary
     await sb.from('entries_summaries').insert({
       user_id: s.user_id,
-      frequency: s.frequency,
+      frequency,
       period_start: start.toISOString().slice(0, 10),
       period_end: end.toISOString().slice(0, 10),
       content,
     });
 
     // Mark the last summary timestamp
-    await sb.from('user_settings').update({ last_summary_at: now.toISOString() }).eq('user_id', s.user_id);
+    await sb.from('user_vaults').update({ last_summary_at: now.toISOString() }).eq('user_id', s.user_id);
 
     // If s.delivery === 'email', send it via your mail provider here
     done++;
