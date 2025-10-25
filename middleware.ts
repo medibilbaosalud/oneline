@@ -3,12 +3,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-const PROTECTED_PATHS = ['/today', '/history', '/summaries', '/settings', '/year-story'];
-
-function isProtectedPath(pathname: string) {
-  return PROTECTED_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-}
-
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
 
@@ -30,10 +24,8 @@ export async function middleware(req: NextRequest) {
     },
   );
 
-  let session = null;
   try {
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
+    await supabase.auth.getSession();
   } catch (error) {
     console.error('[middleware] failed to load session', error);
   }
@@ -43,16 +35,6 @@ export async function middleware(req: NextRequest) {
     console.log('[middleware] request cookies', cookieNames);
     const responseCookieNames = res.cookies.getAll().map((cookie) => cookie.name);
     console.log('[middleware] response cookies', responseCookieNames);
-  }
-
-  const { pathname, search } = req.nextUrl;
-
-  if (isProtectedPath(pathname) && !session) {
-    const redirectUrl = req.nextUrl.clone();
-    const target = `${pathname}${search}`;
-    redirectUrl.pathname = '/signin';
-    redirectUrl.searchParams.set('redirectTo', target);
-    return NextResponse.redirect(redirectUrl);
   }
 
   return res;
