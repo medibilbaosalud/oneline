@@ -13,7 +13,7 @@ type CallbackPayload = {
 
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies });
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const body = (await request.json().catch(() => null)) as CallbackPayload | null;
 
   if (!body?.event) {
