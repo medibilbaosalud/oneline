@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useMemo, useState, type ReactNode } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useSearchParams } from 'next/navigation';
 
 function SignInShell({ heading, body }: { heading: string; body: ReactNode }) {
@@ -31,7 +31,7 @@ function SignInFallback() {
 }
 
 function SignInContent() {
-  const supabase = useMemo(() => createClientComponentClient(), []);
+  const supabase = useMemo(() => supabaseBrowser(), []);
   const searchParams = useSearchParams();
   const redirectTarget = useMemo(() => {
     const raw = searchParams?.get('redirectTo');

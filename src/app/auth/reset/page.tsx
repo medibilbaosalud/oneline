@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function ResetPage() {
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();

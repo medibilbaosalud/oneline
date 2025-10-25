@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function UpdatePasswordPage() {
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
 
   async function submit(e: React.FormEvent) {

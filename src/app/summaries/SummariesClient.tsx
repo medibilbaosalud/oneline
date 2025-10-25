@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type Summary = {
   id: string;
@@ -14,7 +14,7 @@ type Summary = {
 };
 
 export default function SummariesClient() {
-  const sb = useMemo(() => createClientComponentClient(), []);
+  const sb = useMemo(() => supabaseBrowser(), []);
   const [items, setItems] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(true);
 

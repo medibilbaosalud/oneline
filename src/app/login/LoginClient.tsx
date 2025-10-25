@@ -3,8 +3,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { getEmailHint } from "@/lib/emailHint";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type Mode = "signin" | "signup";
 
@@ -17,7 +17,7 @@ export default function LoginClient() {
     return decodeURIComponent(raw);
   }, [params]);
 
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
