@@ -1,7 +1,6 @@
 // src/app/summaries/page.tsx
 // SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
 
-import { redirect } from "next/navigation";
 import VaultGate from "@/components/VaultGate";
 import StoryGenerator from "./StoryGenerator";
 import {
@@ -51,31 +50,29 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect(`/auth?redirectTo=${encodeURIComponent('/summaries')}`);
-  }
-
   let frequency: SummaryFrequency = "weekly";
   let storyPreferences: SummaryPreferences = { ...DEFAULT_SUMMARY_PREFERENCES };
   let reminder = computeSummaryReminder(frequency, null);
 
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  if (user) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  if (!error && data) {
-    const frequencySource = data.digest_frequency ?? data.frequency;
-    frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
-    const basePreferences = data.summary_preferences
-      ? coerceSummaryPreferences(data.summary_preferences)
-      : { ...DEFAULT_SUMMARY_PREFERENCES };
-    storyPreferences = withSummaryLength(
-      basePreferences,
-      data.story_length ?? basePreferences.length,
-    );
-    reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
+    if (!error && data) {
+      const frequencySource = data.digest_frequency ?? data.frequency;
+      frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
+      const basePreferences = data.summary_preferences
+        ? coerceSummaryPreferences(data.summary_preferences)
+        : { ...DEFAULT_SUMMARY_PREFERENCES };
+      storyPreferences = withSummaryLength(
+        basePreferences,
+        data.story_length ?? basePreferences.length,
+      );
+      reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
+    }
   }
 
   const fromParam = searchParams?.from;
@@ -94,6 +91,12 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
       <div className="mx-auto max-w-4xl px-6 py-10">
         <h1 className="text-3xl font-semibold text-zinc-100">Summaries</h1>
         <p className="mt-1 text-zinc-400">Generate a story from your journal.</p>
+
+        {!user && (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
+            Sign in to preload your saved preferences and reminders. You can still create stories manually without logging in.
+          </div>
+        )}
 
         {reminder.due && (
           <div className="mt-6 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 p-4 text-sm text-indigo-100">
