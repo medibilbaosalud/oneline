@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { supabaseBrowser, syncServerAuth } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
 
 export default function AuthPageClient() {
@@ -45,8 +45,10 @@ export default function AuthPageClient() {
       const sb = supabaseBrowser();
 
       if (mode === 'signin') {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        await syncServerAuth('SIGNED_IN', data.session ?? null, { suppressErrors: false });
 
         router.refresh();
         router.replace(redirectTarget);
@@ -64,6 +66,7 @@ export default function AuthPageClient() {
       if (error) throw error;
 
       if (data.session) {
+        await syncServerAuth('SIGNED_IN', data.session, { suppressErrors: false });
         router.refresh();
         router.replace(redirectTarget);
         return;

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, syncServerAuth } from "@/lib/supabaseBrowser";
 
 export default function AuthButton() {
   const supabase = useMemo(() => supabaseBrowser(), []);
@@ -71,6 +71,7 @@ export default function AuthButton() {
       <button
         onClick={async () => {
           await supabase.auth.signOut();
+          await syncServerAuth("SIGNED_OUT", null, { suppressErrors: false });
           router.replace("/");
           router.refresh();
         }}

@@ -1,11 +1,15 @@
 // src/lib/supabaseBrowser.ts
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import type { SupabaseClient, Session } from '@supabase/supabase-js';
+import type { SupabaseClient, Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 let browserClient: SupabaseClient | null = null;
 let syncInitialized = false;
 
-async function syncAuthState(event: string, session: Session | null) {
+async function postAuthState(
+  event: AuthChangeEvent,
+  session: Session | null,
+  suppressErrors: boolean,
+) {
   try {
     await fetch('/api/auth/callback', {
       method: 'POST',
@@ -17,7 +21,18 @@ async function syncAuthState(event: string, session: Session | null) {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('[supabaseBrowser] Failed to sync auth state', error);
+    if (!suppressErrors) {
+      throw error;
+    }
   }
+}
+
+export async function syncServerAuth(
+  event: AuthChangeEvent,
+  session: Session | null,
+  { suppressErrors = true }: { suppressErrors?: boolean } = {},
+) {
+  await postAuthState(event, session, suppressErrors);
 }
 
 export function supabaseBrowser(): SupabaseClient {
@@ -28,7 +43,7 @@ export function supabaseBrowser(): SupabaseClient {
   if (!syncInitialized && browserClient) {
     syncInitialized = true;
     browserClient.auth.onAuthStateChange((event, session) => {
-      void syncAuthState(event, session);
+      void postAuthState(event, session, true);
     });
   }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, syncServerAuth } from "@/lib/supabaseBrowser";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
@@ -238,6 +238,7 @@ export default function SettingsClient() {
       }
 
       await supabase.auth.signOut();
+      await syncServerAuth("SIGNED_OUT", null, { suppressErrors: false });
       router.push("/auth");
       router.refresh();
     } catch (err: unknown) {
@@ -247,6 +248,7 @@ export default function SettingsClient() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+    await syncServerAuth("SIGNED_OUT", null, { suppressErrors: false });
     router.replace("/auth");
     router.refresh();
   }
