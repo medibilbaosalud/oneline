@@ -1,6 +1,7 @@
 import { parseSupabaseCookie } from '@supabase/auth-helpers-shared';
 
 const AUTH_COOKIE_PATTERN = /auth[-.]token/i;
+const DIRECT_TOKEN_PATTERN = /^(.*?)-(access|refresh)-token$/i;
 
 function sortChunkNames(names: Array<{ name: string; value: string }>) {
   return names
@@ -62,11 +63,44 @@ function groupAuthCookies(reader: CookieReader) {
   return groups;
 }
 
+function readDirectTokenPairs(reader: CookieReader): TokenPair {
+  const fromExactNames = {
+    accessToken: reader.get('sb-access-token')?.value ?? null,
+    refreshToken: reader.get('sb-refresh-token')?.value ?? null,
+  } satisfies TokenPair;
+
+  if (fromExactNames.accessToken && fromExactNames.refreshToken) {
+    return fromExactNames;
+  }
+
+  const grouped = new Map<string, TokenPair>();
+  for (const cookie of reader.getAll()) {
+    const match = cookie.name.match(DIRECT_TOKEN_PATTERN);
+    if (!match) continue;
+
+    const [, prefix, kind] = match;
+    const bucket = grouped.get(prefix) ?? { accessToken: null, refreshToken: null };
+    if (kind.toLowerCase() === 'access') {
+      bucket.accessToken = bucket.accessToken ?? cookie.value;
+    } else {
+      bucket.refreshToken = bucket.refreshToken ?? cookie.value;
+    }
+    grouped.set(prefix, bucket);
+  }
+
+  for (const pair of grouped.values()) {
+    if (pair.accessToken && pair.refreshToken) {
+      return pair;
+    }
+  }
+
+  return { accessToken: null, refreshToken: null };
+}
+
 export function readSupabaseTokensFromCookies(reader: CookieReader): TokenPair {
-  const directAccess = reader.get('sb-access-token')?.value ?? null;
-  const directRefresh = reader.get('sb-refresh-token')?.value ?? null;
-  if (directAccess && directRefresh) {
-    return { accessToken: directAccess, refreshToken: directRefresh };
+  const directTokens = readDirectTokenPairs(reader);
+  if (directTokens.accessToken && directTokens.refreshToken) {
+    return directTokens;
   }
 
   const grouped = groupAuthCookies(reader);
