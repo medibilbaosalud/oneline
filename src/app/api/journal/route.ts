@@ -1,7 +1,6 @@
 // src/app/api/journal/route.ts
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -12,7 +11,7 @@ export async function GET(req: Request) {
 
   // Add cursor pagination here in the future if needed
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await supabaseServer();
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

@@ -80,11 +80,25 @@ function extractBearer(authHeader: string | null): string | null {
   return authHeader.trim() || null;
 }
 
+function extractRefresh(headerValue: string | null): string | null {
+  if (!headerValue) return null;
+  return headerValue.trim() || null;
+}
+
 async function getClientAndUser(req: Request) {
   const supabase = createRouteHandlerClient({ cookies });
 
   const bearer = extractBearer(req.headers.get("authorization"));
+  const refresh = extractRefresh(req.headers.get("x-supabase-refresh"));
   const adminClient = bearer ? trySupabaseAdmin() : null;
+
+  if (bearer && refresh) {
+    try {
+      await supabase.auth.setSession({ access_token: bearer, refresh_token: refresh });
+    } catch (err) {
+      console.error("[settings] setSession fallback failed", err);
+    }
+  }
 
   const {
     data: { user },
