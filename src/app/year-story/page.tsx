@@ -42,7 +42,7 @@ export default function YearStoryPage() {
       });
       if (notes.trim()) qs.set("notes", notes.trim());
 
-      const res = await fetch(`/api/year-story?${qs.toString()}`);
+      const res = await fetch(`/api/year-story?${qs.toString()}`, { credentials: "include" });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to generate the story");
       setStory(json.story);

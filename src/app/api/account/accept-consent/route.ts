@@ -1,12 +1,11 @@
 // src/app/api/account/accept-consent/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 
 export async function POST() {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await supabaseServer();
   const {
     data: { user },
     error: authError,

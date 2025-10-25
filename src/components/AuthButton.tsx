@@ -2,15 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { supabaseBrowser, syncServerAuth } from "@/lib/supabaseBrowser";
 
 export default function AuthButton() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const redirectTarget = useMemo(() => {
+    const base = pathname && pathname.startsWith('/') ? pathname : '/today';
+    const search = searchParams?.toString();
+    return search ? `${base}?${search}` : base;
+  }, [pathname, searchParams]);
+  const redirectTo = useMemo(() => encodeURIComponent(redirectTarget), [redirectTarget]);
 
   useEffect(() => {
     let mounted = true;
@@ -45,10 +52,9 @@ export default function AuthButton() {
   }
 
   if (!email) {
-    const next = encodeURIComponent(pathname || "/today");
     return (
       <Link
-        href={`/auth?next=${next}`}
+        href={`/auth?redirectTo=${redirectTo}`}
         className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
       >
         Sign in / Sign up
@@ -65,7 +71,8 @@ export default function AuthButton() {
       <button
         onClick={async () => {
           await supabase.auth.signOut();
-          router.replace("/today");
+          await syncServerAuth("SIGNED_OUT", null, { suppressErrors: false });
+          router.replace("/");
           router.refresh();
         }}
         className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700"

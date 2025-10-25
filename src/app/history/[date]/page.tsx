@@ -1,7 +1,5 @@
 // src/app/history/[day]/page.tsx
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +7,21 @@ type Props = { params: { day: string } };
 
 export default async function EditDayPage({ params }: Props) {
   const day = params.day; // YYYY-MM-DD
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await supabaseServer();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth?next=/history/${day}`);
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-3xl p-6">
+        <h1 className="mb-4 text-2xl font-semibold">Edit {day}</h1>
+        <p className="text-sm text-neutral-400">
+          Sign in to edit this day’s entry. You can still browse other sections without logging in.
+        </p>
+      </main>
+    );
+  }
 
   const { data: entry, error } = await supabase
     .from("journal")
@@ -26,7 +33,7 @@ export default async function EditDayPage({ params }: Props) {
   if (error) {
     return (
       <main className="mx-auto max-w-3xl p-6">
-        <h1 className="text-2xl font-semibold mb-4">Edit {day}</h1>
+        <h1 className="mb-4 text-2xl font-semibold">Edit {day}</h1>
         <p className="text-rose-400">Error: {error.message}</p>
       </main>
     );
@@ -46,7 +53,7 @@ export default async function EditDayPage({ params }: Props) {
         <textarea
           name="content"
           defaultValue={content}
-          maxLength={300}
+          maxLength={333}
           className="h-56 w-full resize-none rounded-lg bg-neutral-900/70 p-4 outline-none ring-1 ring-white/10"
         />
         <div className="flex gap-3">

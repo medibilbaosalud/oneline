@@ -1,8 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import AuthButton from './AuthButton';
+
+function AuthButtonFallback() {
+  return (
+    <div
+      aria-hidden
+      className="h-9 w-full animate-pulse rounded-md bg-neutral-900/60"
+    />
+  );
+}
 
 export default function LandingMenu() {
   const [open, setOpen] = useState(false);
@@ -56,7 +65,9 @@ export default function LandingMenu() {
               <Link href="/settings"  onClick={() => setOpen(false)} className="rounded-md px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-800/60">Settings</Link>
 
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <Suspense fallback={<AuthButtonFallback />}>
+                  <AuthButton />
+                </Suspense>
               </div>
             </div>
           </div>

@@ -87,6 +87,11 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
               Set it once and never change it — losing or altering this passphrase permanently locks all existing entries.
             </p>
           )}
+          {!hasBundle && (
+            <p className="text-xs text-neutral-400">
+              Choose numbers that are easy to remember — something like your own phone number keeps the code memorable without sharing it.
+            </p>
+          )}
           {hasBundle && (
             <p className="text-xs text-amber-300">
               We never store your passphrase. If you forget it, we cannot recover or reset your data.

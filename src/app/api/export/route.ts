@@ -12,7 +12,7 @@ export async function GET() {
     error: authErr,
   } = await s.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "sign-in required" }, { status: 401 });
   }
 
   // Reminder: adjust the table name if your production schema differs.

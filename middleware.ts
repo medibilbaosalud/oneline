@@ -4,16 +4,20 @@ import type { NextRequest } from 'next/server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+  const nextResponse = NextResponse.next();
 
-  // Esta llamada hidrata/renueva las cookies de sesión en cada request
-  await supabase.auth.getSession();
+  // Maintain Supabase session cookies for downstream requests but do not block
+  // navigation when no session is present. We’ll reintroduce hard guards later.
+  try {
+    const supabase = createMiddlewareClient({ req, res: nextResponse });
+    await supabase.auth.getSession();
+  } catch (error) {
+    console.error('[middleware] session refresh failed', error);
+  }
 
-  return res;
+  return nextResponse;
 }
 
-// Excluye assets estáticos
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/today/:path*', '/history/:path*', '/summaries/:path*', '/settings/:path*', '/year-story/:path*'],
 };

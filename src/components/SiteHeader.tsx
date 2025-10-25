@@ -1,8 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import AuthButton from './AuthButton';
+
+function AuthButtonFallback() {
+  return (
+    <div
+      aria-hidden
+      className="h-8 w-28 animate-pulse rounded-md bg-neutral-900/60"
+    />
+  );
+}
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -33,7 +42,9 @@ export default function SiteHeader() {
 
         {/* Auth (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <Suspense fallback={<AuthButtonFallback />}>
+            <AuthButton />
+          </Suspense>
         </div>
 
         {/* Hamburger (mobile) */}
@@ -84,7 +95,9 @@ export default function SiteHeader() {
                 Settings
               </Link>
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <Suspense fallback={<AuthButtonFallback />}>
+                  <AuthButton />
+                </Suspense>
               </div>
             </div>
           </div>

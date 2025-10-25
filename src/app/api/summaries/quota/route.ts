@@ -1,15 +1,10 @@
 // src/app/api/summaries/quota/route.ts
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { ensureMonthlySummaryWindow } from "@/lib/summaryUsage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function monthWindowUTC(d = new Date()) {
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
-  const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0));
-  return { start, end };
-}
 
 export async function GET() {
   const sb = await supabaseServer();
@@ -22,37 +17,31 @@ export async function GET() {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  const { start, end } = monthWindowUTC();
-  const { count, error } = await sb
-    .from("summaries")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("created_at", start.toISOString())
-    .lt("created_at", end.toISOString());
+  try {
+    const now = new Date();
+    const { used, startIso, endIso } = await ensureMonthlySummaryWindow(sb, user.id, now);
+    const limit = 10;
+    const remaining = Math.max(0, limit - used);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(
+      {
+        limit,
+        used,
+        remaining,
+        period: {
+          start: startIso,
+          end: endIso,
+        },
+        resetAt: endIso,
+      },
+      {
+        headers: {
+          "cache-control": "no-store",
+        },
+      },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "quota_failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const limit = 10;
-  const used = count ?? 0;
-  const remaining = Math.max(0, limit - used);
-
-  return NextResponse.json(
-    {
-      limit,
-      used,
-      remaining,
-      period: {
-        start: start.toISOString(),
-        end: end.toISOString(),
-      },
-      resetAt: end.toISOString(),
-    },
-    {
-      headers: {
-        "cache-control": "no-store",
-      },
-    },
-  );
 }
