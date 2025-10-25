@@ -8,7 +8,7 @@ export default async function SessionGate({
   children: React.ReactNode;
   redirectBackTo: string;
 }) {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();

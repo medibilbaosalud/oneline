@@ -8,7 +8,7 @@ export async function GET() {
   const cookieStore = await cookies();
   const cookieNames = cookieStore.getAll().map((cookie) => cookie.name);
 
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();

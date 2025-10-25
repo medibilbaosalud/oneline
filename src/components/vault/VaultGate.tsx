@@ -8,7 +8,7 @@ export default async function VaultGate({
 }: {
   children: ReactNode;
 }) {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();

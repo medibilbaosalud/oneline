@@ -6,4 +6,4 @@ export function supabaseServer() {
 
 export const supabaseRoute = supabaseServer;
 
-export type SupabaseServerClient = ReturnType<typeof supabaseServer>;
+export type SupabaseServerClient = Awaited<ReturnType<typeof supabaseServer>>;

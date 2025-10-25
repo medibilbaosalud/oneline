@@ -5,7 +5,7 @@ import ClientSessionState from './ClientSessionState';
 export const dynamic = 'force-dynamic';
 
 export default async function DebugAuthPage() {
-  const supabase = createServerSupabase();
+  const supabase = await createServerSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();

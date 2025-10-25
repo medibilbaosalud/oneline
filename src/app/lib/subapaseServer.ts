@@ -10,7 +10,7 @@ export function supabaseServer() {
 // Alias por compatibilidad: algunos archivos importan { supabaseRoute }
 export const supabaseRoute = supabaseServer;
 
-export type SupabaseServerClient = ReturnType<typeof supabaseServer>;
+export type SupabaseServerClient = Awaited<ReturnType<typeof supabaseServer>>;
 
 // Utilidad por si quieres obtener el usuario ya resuelto
 export async function getUserServer() {
