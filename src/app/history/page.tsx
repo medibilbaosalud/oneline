@@ -1,6 +1,7 @@
 // src/app/history/page.tsx
 // SECURITY: Server delivers ciphertext metadata only; decryption happens inside the VaultGate client flow.
 
+import { unstable_noStore as noStore } from 'next/cache';
 import SessionGate from '@/components/auth/SessionGate';
 import VaultGate from '@/components/vault/VaultGate';
 import HistoryClient from './HistoryClient';
@@ -23,6 +24,7 @@ type EntryPayload = {
 };
 
 export default async function HistoryPage() {
+  noStore();
   const sb = await supabaseServer();
   const {
     data: { user },

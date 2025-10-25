@@ -30,6 +30,65 @@ async function readCookieStore(): Promise<MutableCookieStore> {
   return store as unknown as MutableCookieStore;
 }
 
+type AuthTokens = { accessToken: string | null; refreshToken: string | null };
+
+function parseAuthCookie(value: string | undefined): AuthTokens {
+  if (!value) {
+    return { accessToken: null, refreshToken: null };
+  }
+
+  try {
+    const raw = decodeURIComponent(value);
+    const parsed = JSON.parse(raw) as
+      | {
+          access_token?: string;
+          refresh_token?: string;
+          currentSession?: { access_token?: string; refresh_token?: string };
+        }
+      | undefined;
+
+    if (!parsed) {
+      return { accessToken: null, refreshToken: null };
+    }
+
+    const accessToken =
+      typeof parsed.access_token === 'string'
+        ? parsed.access_token
+        : typeof parsed.currentSession?.access_token === 'string'
+        ? parsed.currentSession.access_token
+        : null;
+    const refreshToken =
+      typeof parsed.refresh_token === 'string'
+        ? parsed.refresh_token
+        : typeof parsed.currentSession?.refresh_token === 'string'
+        ? parsed.currentSession.refresh_token
+        : null;
+
+    return { accessToken: accessToken ?? null, refreshToken: refreshToken ?? null };
+  } catch {
+    return { accessToken: null, refreshToken: null };
+  }
+}
+
+async function readAuthTokensFromCookies(): Promise<AuthTokens> {
+  const store = await readCookieStore();
+  const projectRef = getSupabaseProjectRef();
+
+  const candidate = store
+    .getAll()
+    .find((cookie) => cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token'));
+
+  if (candidate?.value) {
+    const parsed = parseAuthCookie(candidate.value);
+    if (parsed.accessToken && parsed.refreshToken) {
+      return parsed;
+    }
+  }
+
+  const fallback = readSupabaseTokensFromCookies(store, { projectRef });
+  return fallback;
+}
+
 export async function createServerSupabase(): Promise<SupabaseClient> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -76,9 +135,8 @@ export async function createServerSupabase(): Promise<SupabaseClient> {
     return client;
   }
 
-  const [cookieStore, headerStore] = await Promise.all([readCookieStore(), headers()]);
-  const projectRef = getSupabaseProjectRef();
-  const cookieTokens = readSupabaseTokensFromCookies(cookieStore, { projectRef });
+  const headerStore = await headers();
+  const cookieTokens = await readAuthTokensFromCookies();
 
   const accessToken =
     extractBearer(headerStore.get('authorization')) ?? cookieTokens.accessToken;

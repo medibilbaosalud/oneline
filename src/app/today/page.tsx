@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from 'next/cache';
 import SessionGate from '@/components/auth/SessionGate';
 import VaultGate from '@/components/vault/VaultGate';
 import TodayClient from './TodayClient';
@@ -8,6 +9,7 @@ export const revalidate = 0;
 export const metadata = { title: 'Today — OneLine' };
 
 export default function TodayPage() {
+  noStore();
   return (
     <SessionGate redirectBackTo="/today">
       <VaultGate>

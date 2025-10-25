@@ -1,6 +1,7 @@
 // src/app/summaries/page.tsx
 // SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
 
+import { unstable_noStore as noStore } from "next/cache";
 import SessionGate from "@/components/auth/SessionGate";
 import VaultGate from "@/components/vault/VaultGate";
 import StoryGenerator from "./StoryGenerator";
@@ -46,6 +47,7 @@ function formatWindow(window?: { start: string; end: string }) {
 }
 
 export default async function SummariesPage({ searchParams }: { searchParams?: SearchParams }) {
+  noStore();
   const supabase = await supabaseServer();
   const {
     data: { user },
