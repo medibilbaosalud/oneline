@@ -5,9 +5,8 @@ import { createServerSupabase } from '@/lib/supabase/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const cookieNames = cookies()
-    .getAll()
-    .map((cookie) => cookie.name);
+  const cookieStore = await cookies();
+  const cookieNames = cookieStore.getAll().map((cookie) => cookie.name);
 
   const supabase = createServerSupabase();
   const {
