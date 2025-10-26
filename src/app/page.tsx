@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { SignupFeedbackBanner } from "@/components/SignupFeedbackBanner";
+import { OnboardingAssistant } from "@/components/OnboardingAssistant";
 
 export const metadata: Metadata = {
   title: "OneLine — One honest line a day",
@@ -80,6 +81,24 @@ export default function Landing({ searchParams }: LandingProps) {
             <Stat k="92%" v="Return the next week and stick with it" />
             <Stat k="0 ads" v="Your words stay private. Always." />
           </div>
+        </div>
+      </section>
+
+      {/* ONBOARDING ASSISTANT */}
+      <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 md:mt-24">
+        <div className="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-5 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+            <h2 className="text-left text-2xl font-semibold text-white">¿Nuevo aquí? Empieza acompañado</h2>
+            <p>
+              Al entrar por primera vez, nuestro asistente te guía paso a paso para crear tu cuenta, confirmar tu correo y
+              guardar la frase que protege tu diario. Así sabes exactamente qué esperar antes de escribir tu primera línea.
+            </p>
+            <p className="text-sm text-zinc-400 md:text-base">
+              Si vuelves más adelante, siempre podrás abrir el asistente para recordar cómo recuperar tu acceso o invitar a
+              alguien más a unirse.
+            </p>
+          </div>
+          <OnboardingAssistant />
         </div>
       </section>
 
