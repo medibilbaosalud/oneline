@@ -11,8 +11,8 @@
 
 ## Updating copy & redirects
 
-- Sign-up copy lives in `src/app/signup/page.tsx`. Adjust button labels or helper text in this file.
-- Sign-in copy and button text live in `src/app/signin/page.tsx`.
+- Sign-up copy lives in `src/app/signup/SignUpClient.tsx`. Adjust button labels or helper text in this file.
+- Sign-in copy and button text live in `src/app/signin/SignInClient.tsx`.
 - The onboarding vault instructions are defined in `src/app/onboarding/vault/page.tsx` and `src/app/onboarding/vault/VaultStepClient.tsx`.
 - The welcome screen content is at `src/app/onboarding/done/page.tsx`.
 - Update OAuth redirect targets or Supabase client configuration in `src/lib/supabase/client.ts` and `src/lib/supabaseServer.ts`.
