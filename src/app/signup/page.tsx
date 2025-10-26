@@ -53,12 +53,14 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const origin = window.location.origin;
-      const { error } = await supabase.auth.signUp({
-        email,
-        options: {
-          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`,
-        },
-      });
+      const { error } = await supabase.auth.signUp(
+        {
+          email,
+          options: {
+            emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`,
+          },
+        } as Parameters<typeof supabase.auth.signUp>[0]
+      );
       if (error) throw error;
       setSent(true);
     } catch (error) {
