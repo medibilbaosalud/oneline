@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+export type AssistantVariant = "signup" | "tour";
+
 type AssistantStep = {
   title: string;
   description: string;
@@ -10,43 +12,99 @@ type AssistantStep = {
   helper?: string;
 };
 
-const STEPS: AssistantStep[] = [
-  {
-    title: "Paso 1 · Crea tu acceso",
-    description:
-      "Haz clic en “Start now — go to Today” o en “Try visitor mode” y selecciona la opción de crear cuenta. Introduce tu correo electrónico para que podamos enviarte el enlace mágico.",
-    actionLabel: "Ir a la página de acceso",
-    actionHref: "/signin",
-    helper:
-      "Solo necesitas un correo válido. No hay contraseñas tradicionales ni formularios interminables.",
-  },
-  {
-    title: "Paso 2 · Confirma desde tu correo",
-    description:
-      "Abre el mensaje que te enviaremos y pulsa el botón del enlace mágico. Te llevará de vuelta a OneLine con tu sesión verificada.",
-    helper:
-      "Si no ves el correo, revisa la carpeta de spam o espera unos segundos. El remitente será support@oneline.day.",
-  },
-  {
-    title: "Paso 3 · Protege tu diario",
-    description:
-      "Al entrar por primera vez te pediremos crear una frase-segura. Guárdala bien: es la llave que cifra y descifra tus líneas, y nadie más puede recuperarla.",
-    helper:
-      "Consejo: usa una frase única, con varias palabras y números. Guarda una copia en tu gestor de contraseñas para no perder el acceso.",
-  },
-  {
-    title: "Listo · Empieza a escribir",
-    description:
-      "Ve a Today y escribe tu primera línea. Con solo 333 caracteres al día empezarás a construir tu historia personal.",
-    actionLabel: "Ir a Today",
-    actionHref: "/today",
-  },
-];
+type VariantCopy = {
+  badge: string;
+  title: string;
+};
 
-export function OnboardingAssistant() {
+const STEP_SETS: Record<AssistantVariant, AssistantStep[]> = {
+  signup: [
+    {
+      title: "Step 1 · Open the entry point",
+      description:
+        "Tap “Start now — go to Today” or explore visitor mode. From either option you can choose to create your account.",
+      actionLabel: "Go to the sign-in page",
+      actionHref: "/signin",
+      helper:
+        "All you need is a valid email address. We send a magic link — no long forms or passwords to invent.",
+    },
+    {
+      title: "Step 2 · Confirm the magic link",
+      description:
+        "Check your inbox and click the confirmation button. It takes you back to OneLine with your session verified.",
+      helper:
+        "Didn’t see it? Wait a few seconds or check spam. The sender appears as support@oneline.day.",
+    },
+    {
+      title: "Step 3 · Create your passphrase",
+      description:
+        "On your first visit we’ll ask for a passphrase. Store it securely — it encrypts and decrypts every line you write.",
+      helper:
+        "Tip: pick a long, memorable sentence with numbers or punctuation. Save it in a password manager so you never lose access.",
+    },
+    {
+      title: "Done · Write your first line",
+      description:
+        "Head back to Today and capture something honest in 333 characters. That’s enough to start your reflection habit.",
+      actionLabel: "Open Today",
+      actionHref: "/today",
+    },
+  ],
+  tour: [
+    {
+      title: "Today · Capture the moment",
+      description:
+        "Write up to 333 encrypted characters. We show streaks, quotes, and reminders to keep the habit easy.",
+      actionLabel: "Jump to Today",
+      actionHref: "/today",
+    },
+    {
+      title: "History · Revisit securely",
+      description:
+        "Unlock past entries with the same passphrase. You can edit, delete, or simply read your encrypted archive.",
+      actionLabel: "Browse History",
+      actionHref: "/history",
+    },
+    {
+      title: "Summaries · Generate stories",
+      description:
+        "Opt in to create weekly, monthly, or yearly recaps. Everything decrypts locally and you control every export.",
+      actionLabel: "Go to Summaries",
+      actionHref: "/summaries",
+    },
+    {
+      title: "Settings · Manage privacy",
+      description:
+        "Update reminder cadence, download your vault, or delete the account entirely. Encryption choices live here too.",
+      actionLabel: "Open Settings",
+      actionHref: "/settings",
+    },
+  ],
+};
+
+const VARIANT_COPY: Record<AssistantVariant, VariantCopy> = {
+  signup: {
+    badge: "Getting started",
+    title: "Create your account in minutes",
+  },
+  tour: {
+    badge: "Welcome tour",
+    title: "Here’s how OneLine is organised",
+  },
+};
+
+type Props = {
+  variant?: AssistantVariant;
+  onDismiss?: () => void;
+  className?: string;
+};
+
+export function OnboardingAssistant({ variant = "signup", onDismiss, className }: Props) {
+  const steps = STEP_SETS[variant];
+  const copy = VARIANT_COPY[variant];
   const [stepIndex, setStepIndex] = useState(0);
-  const step = STEPS[stepIndex];
-  const totalSteps = STEPS.length;
+  const totalSteps = steps.length;
+  const step = steps[stepIndex];
 
   const progress = useMemo(() => ((stepIndex + 1) / totalSteps) * 100, [stepIndex, totalSteps]);
 
@@ -56,12 +114,28 @@ export function OnboardingAssistant() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-left text-sm text-zinc-200 backdrop-blur">
+    <div
+      className={`relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-left text-sm text-zinc-200 backdrop-blur ${className ?? ""}`.trim()}
+    >
       <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_60%)] blur-3xl" />
       <div className="relative flex flex-col gap-4">
         <header className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">Asistente de inicio</span>
-          <h2 className="text-lg font-semibold text-white">Crea tu cuenta en tres pasos</h2>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">{copy.badge}</span>
+              <h2 className="text-lg font-semibold text-white">{copy.title}</h2>
+            </div>
+            {onDismiss ? (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="rounded-full border border-white/10 bg-white/5 p-1 text-xs text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                aria-label="Close onboarding assistant"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
         </header>
 
         <div className="flex items-center gap-3 text-xs text-zinc-400">
@@ -96,18 +170,16 @@ export function OnboardingAssistant() {
             disabled={stepIndex === 0}
             className="rounded-xl border border-white/10 px-4 py-2 font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Anterior
+            Previous
           </button>
           <div className="flex items-center gap-1">
-            {STEPS.map((_, index) => (
+            {steps.map((_, index) => (
               <button
                 key={index}
                 type="button"
                 onClick={() => goTo(index)}
-                className={`h-2 w-2 rounded-full transition ${
-                  index === stepIndex ? "bg-emerald-400" : "bg-white/15 hover:bg-white/30"
-                }`}
-                aria-label={`Ir al paso ${index + 1}`}
+                className={`h-2 w-2 rounded-full transition ${index === stepIndex ? "bg-emerald-400" : "bg-white/15 hover:bg-white/30"}`}
+                aria-label={`Go to step ${index + 1}`}
               />
             ))}
           </div>
@@ -117,11 +189,10 @@ export function OnboardingAssistant() {
             disabled={stepIndex === totalSteps - 1}
             className="rounded-xl border border-white/10 px-4 py-2 font-medium text-zinc-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Siguiente
+            Next
           </button>
         </footer>
       </div>
     </div>
   );
 }
-
