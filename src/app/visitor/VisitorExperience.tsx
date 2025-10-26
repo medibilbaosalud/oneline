@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 const MAX = 333;
@@ -295,13 +295,30 @@ function ActiveSection({ active }: { active: SectionId }) {
 
 export default function VisitorExperience() {
   const [active, setActive] = useState<SectionId>('today');
+  const [showInterface, setShowInterface] = useState(false);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (showInterface && shellRef.current) {
+      shellRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showInterface]);
 
   const activeMeta = SECTIONS.find((section) => section.id === active);
+
+  const handleReveal = () => {
+    if (showInterface) {
+      shellRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    setActive('today');
+    setShowInterface(true);
+  };
 
   return (
     <main className="min-h-screen bg-[#07080B] text-zinc-100">
       <div className="mx-auto w-full max-w-6xl px-6 py-16">
-        <header className="mb-10 max-w-3xl text-pretty text-center md:text-left">
+        <header className="max-w-3xl text-pretty text-center md:text-left">
           <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Visitor mode</p>
           <h1 className="mt-3 text-4xl font-semibold md:text-5xl">Walk through the OneLine workspace</h1>
           <p className="mt-4 text-sm text-neutral-400 md:text-base">
@@ -309,15 +326,56 @@ export default function VisitorExperience() {
           </p>
         </header>
 
-        <SectionTabs active={active} onChange={setActive} />
-
-        {activeMeta && (
-          <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>
-        )}
-
-        <div className="mt-10 space-y-16">
-          <ActiveSection active={active} />
+        <div className="mt-10 flex flex-col items-center gap-3 text-center md:items-start md:text-left">
+          <button
+            type="button"
+            onClick={handleReveal}
+            className="inline-flex items-center justify-center rounded-full bg-indigo-500 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080B]"
+          >
+            👀 Mirar la app (no sign-in needed)
+          </button>
+          <p className="max-w-xl text-sm text-neutral-400 md:text-base">
+            Tap the button to open a full, read-only replica of the Today, History, Summaries, and Settings pages — exactly how members see them, just with demo data and callouts.
+          </p>
         </div>
+
+        {showInterface ? (
+          <div ref={shellRef} className="mt-16">
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/40 shadow-2xl shadow-black/40">
+              <div className="border-b border-white/5 bg-black/40 px-6 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-left">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 text-xl">🦊</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">OneLine demo workspace</p>
+                      <p className="text-xs text-neutral-500">All encryption-sensitive actions stay disabled here.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Visitor preview</span>
+                    <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1 md:inline">No login required</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-8">
+                <SectionTabs active={active} onChange={setActive} />
+
+                {activeMeta && (
+                  <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>
+                )}
+
+                <div className="mt-10 space-y-16">
+                  <ActiveSection active={active} />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-16 rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-neutral-400">
+            Want to peek at the real interface? Hit “Mirar la app (no sign-in needed)” to launch an embedded tour that mirrors the production layout with explanations for every page.
+          </div>
+        )}
       </div>
     </main>
   );
