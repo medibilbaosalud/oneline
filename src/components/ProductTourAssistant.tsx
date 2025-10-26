@@ -5,9 +5,8 @@ import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import { OnboardingAssistant } from "@/components/OnboardingAssistant";
 
-const STORAGE_PREFIX = "oneline:onboarding:tour:";
-const RECENT_WINDOW_MS = 10 * 60 * 1000;
-const FIRST_SESSION_TOLERANCE_MS = 60 * 1000;
+const STORAGE_PREFIX = "oneline:onboarding:tour:seen:";
+const INTENT_KEY = "oneline:onboarding:tour:intent";
 
 export function ProductTourAssistant() {
   const supabase = useMemo(() => createClientComponentClient(), []);
@@ -35,22 +34,15 @@ export function ProductTourAssistant() {
         const key = `${STORAGE_PREFIX}${user.id}`;
         setStorageKey(key);
 
-        const now = Date.now();
-        const createdAt = user.created_at ? Date.parse(user.created_at) : null;
-        const lastSignIn = user.last_sign_in_at ? Date.parse(user.last_sign_in_at) : null;
-        const firstSession = Boolean(
-          createdAt &&
-            lastSignIn &&
-            Math.abs(lastSignIn - createdAt) <= FIRST_SESSION_TOLERANCE_MS,
-        );
-        const createdRecently = Boolean(createdAt && now - createdAt <= RECENT_WINDOW_MS);
-
-        let hasSeen = false;
+        let shouldAutoOpen = false;
         if (typeof window !== "undefined") {
-          hasSeen = Boolean(window.localStorage.getItem(key));
+          const hasSeen = Boolean(window.localStorage.getItem(key));
+          const intent = window.localStorage.getItem(INTENT_KEY);
+          shouldAutoOpen = Boolean(intent && !hasSeen);
+          if (intent) {
+            window.localStorage.removeItem(INTENT_KEY);
+          }
         }
-
-        const shouldAutoOpen = (firstSession || createdRecently) && !hasSeen;
 
         setCanRender(true);
         setOpen(shouldAutoOpen);
@@ -81,8 +73,11 @@ export function ProductTourAssistant() {
   }, [storageKey]);
 
   const handleOpen = useCallback(() => {
+    if (storageKey && typeof window !== "undefined") {
+      window.localStorage.setItem(storageKey, new Date().toISOString());
+    }
     setOpen(true);
-  }, []);
+  }, [storageKey]);
 
   if (!ready || !canRender) {
     return null;

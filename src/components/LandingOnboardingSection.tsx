@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { OnboardingAssistant } from "@/components/OnboardingAssistant";
 
-const STORAGE_KEY = "oneline:onboarding:signup";
+const TOUR_INTENT_KEY = "oneline:onboarding:tour:intent";
 
 export function LandingOnboardingSection() {
   const [open, setOpen] = useState(false);
@@ -12,19 +12,17 @@ export function LandingOnboardingSection() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const dismissed = window.localStorage.getItem(STORAGE_KEY);
-    setOpen(!dismissed);
     setHydrated(true);
   }, []);
 
   const handleDismiss = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, new Date().toISOString());
-    }
     setOpen(false);
   }, []);
 
   const handleOpen = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TOUR_INTENT_KEY, "pending");
+    }
     setOpen(true);
   }, []);
 
@@ -32,14 +30,14 @@ export function LandingOnboardingSection() {
     <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 md:mt-24">
       <div className="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-5 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-          <h2 className="text-left text-2xl font-semibold text-white">New here? We’ll guide every step</h2>
+          <h2 className="text-left text-2xl font-semibold text-white">Guided setup for brand-new writers</h2>
           <p>
-            The onboarding assistant opens automatically for first-time visitors so you can see how sign-up, email confirmation,
-            and passphrase creation work before writing anything.
+            Curious before you commit? Launch the onboarding assistant to tour visitor mode, learn how sign-up works, and see
+            what happens after you confirm your email.
           </p>
           <p className="text-sm text-zinc-400 md:text-base">
-            Finish creating your account and the same assistant appears inside the app again — this time it explains Today,
-            History, Summaries, and Settings so you know what each page is for.
+            When you finish creating your account and log in, the tour automatically returns inside the app to explain Today,
+            History, Summaries, and Settings.
           </p>
           {!open && hydrated ? (
             <button
