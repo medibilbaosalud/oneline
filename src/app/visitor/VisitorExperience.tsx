@@ -60,14 +60,14 @@ function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: S
 function TodayPreview() {
   const quote = useMemo(() => quoteOfToday(), []);
   return (
-    <section className="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
-      <div className="flex flex-col rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
-        <header className="flex flex-wrap items-start justify-between gap-3">
+    <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/55 p-5 shadow-sm">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Today</p>
             <h2 className="mt-2 text-xl font-semibold text-white">Demo entry (read-only)</h2>
           </div>
-          <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+          <span className="inline-flex w-max rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
             Locked
           </span>
         </header>
@@ -80,19 +80,19 @@ function TodayPreview() {
           value={'This is where your 333 characters go. Entries stay encrypted end to end until you unlock them with your passphrase.'}
           readOnly
           maxLength={MAX}
-          className="mt-6 min-h-[220px] flex-1 resize-none rounded-xl border border-white/5 bg-black/30 px-4 py-3 text-base leading-relaxed text-zinc-100 opacity-70 outline-none"
+          className="mt-6 min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-base leading-relaxed text-zinc-100 opacity-80 outline-none"
         />
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-neutral-500">
-          <span>118/{MAX}</span>
-          <div className="flex gap-2">
+        <div className="mt-6 flex flex-col gap-3 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+          <span className="font-medium text-neutral-400">118/{MAX}</span>
+          <div className="flex flex-wrap items-center gap-3">
             <button type="button" disabled className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-400">
               Clear
             </button>
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-lg bg-indigo-500/60 px-4 py-2 text-sm font-medium text-white/70"
+              className="cursor-not-allowed rounded-lg bg-indigo-500/60 px-4 py-2 text-sm font-medium text-white/80"
             >
               Save entry
             </button>
@@ -104,7 +104,7 @@ function TodayPreview() {
         </p>
       </div>
 
-      <aside className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+      <aside className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-neutral-900/55 p-5 shadow-sm">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
           <h2 className="mt-2 text-xl font-semibold text-white">Streaks stay private too</h2>
