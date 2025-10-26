@@ -7,21 +7,26 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
+  const next = url.searchParams.get("next") || "/onboarding/vault";
   const code = url.searchParams.get("code");
 
   if (!code) {
-    const missingUrl = new URL("/?signup=missing", url.origin);
-    return NextResponse.redirect(missingUrl, { status: 302 });
+    const redirectUrl = new URL("/signin", url.origin);
+    redirectUrl.searchParams.set("redirectTo", next);
+    redirectUrl.searchParams.set("error", "missing_code");
+    return NextResponse.redirect(redirectUrl, { status: 302 });
   }
 
   const supabase = createRouteHandlerClient({ cookies });
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    const errorUrl = new URL("/?signup=error", url.origin);
+    const errorUrl = new URL("/signin", url.origin);
+    errorUrl.searchParams.set("redirectTo", next);
+    errorUrl.searchParams.set("error", "callback_failed");
     return NextResponse.redirect(errorUrl, { status: 302 });
   }
 
-  const successUrl = new URL("/?signup=ok", url.origin);
-  return NextResponse.redirect(successUrl, { status: 302 });
+  const nextUrl = new URL(next, url.origin);
+  return NextResponse.redirect(nextUrl, { status: 302 });
 }
