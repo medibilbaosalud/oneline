@@ -1,74 +1,58 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import Image from "next/image";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function AuthButton() {
-  const supabase = useMemo(() => supabaseBrowser(), []);
-  const [email, setEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const pathname = usePathname();
-  const router = useRouter();
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setEmail(data.session?.user?.email ?? null);
-      setLoading(false);
-    })();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      setEmail(session?.user?.email ?? null);
-      router.refresh();
-    });
-
-    return () => {
-      mounted = false;
-      subscription?.subscription.unsubscribe();
-    };
-  }, [supabase, router]);
-
-  if (loading) {
+  if (status === "loading") {
     return (
       <button
-        className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-neutral-300"
+        className="inline-flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white/70 backdrop-blur"
         disabled
       >
-        …
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-white/50" />
+        Checking session…
       </button>
     );
   }
 
-  if (!email) {
-    const next = encodeURIComponent(pathname || "/today");
+  if (status !== "authenticated") {
     return (
-      <Link
-        href={`/auth?next=${next}`}
-        className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+      <button
+        onClick={() => signIn("github")}
+        className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-neutral-900 shadow-lg shadow-indigo-500/20 transition hover:-translate-y-px hover:shadow-xl hover:shadow-indigo-500/30"
       >
-        Sign in / Sign up
-      </Link>
+        <span className="text-lg">🐙</span>
+        Sign in with GitHub
+      </button>
     );
   }
 
+  const email = session.user?.email ?? session.user?.name ?? "Signed in";
+
   return (
-    <div className="flex items-center gap-3 rounded-md bg-neutral-900/50 px-3 py-1.5">
-      <div className="flex max-w-[10rem] flex-col leading-tight sm:max-w-none">
-        <span className="text-[11px] uppercase tracking-wide text-neutral-500">Signed in</span>
-        <span className="truncate text-sm font-medium text-neutral-100">{email}</span>
-      </div>
+    <div className="flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur">
+      {session.user?.image ? (
+        <Image
+          src={session.user.image}
+          alt="GitHub avatar"
+          width={28}
+          height={28}
+          className="rounded-full"
+        />
+      ) : (
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs text-white/80">
+          {email.slice(0, 2).toUpperCase()}
+        </span>
+      )}
+      <span className="max-w-[10rem] truncate text-xs font-medium uppercase tracking-wide text-white/70 sm:text-sm sm:normal-case sm:text-white/90">
+        {email}
+      </span>
       <button
-        onClick={async () => {
-          await supabase.auth.signOut();
-          router.replace("/today");
-          router.refresh();
-        }}
-        className="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-neutral-200 hover:bg-neutral-700"
+        onClick={() => signOut()}
+        className="rounded-md bg-white/10 px-3 py-1 text-xs font-medium text-white/80 transition hover:bg-white/20"
       >
         Sign out
       </button>

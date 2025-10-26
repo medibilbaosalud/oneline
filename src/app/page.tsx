@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 
 import { SignupFeedbackBanner } from "@/components/SignupFeedbackBanner";
 import { LandingOnboardingSection } from "@/components/LandingOnboardingSection";
+import AuthButton from "@/components/AuthButton";
 
 export const metadata: Metadata = {
   title: "OneLine — One honest line a day",
@@ -74,6 +75,10 @@ export default function Landing({ searchParams }: LandingProps) {
             >
               Try visitor mode
             </Link>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <AuthButton />
           </div>
 
           <div className="mt-10 grid w-full max-w-3xl grid-cols-3 gap-3 text-left max-md:grid-cols-1">
