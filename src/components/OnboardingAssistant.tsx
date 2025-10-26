@@ -23,8 +23,6 @@ const STEP_SETS: Record<AssistantVariant, AssistantStep[]> = {
       title: "Step 1 · Open the entry point",
       description:
         "Tap “Start now — go to Today” or explore visitor mode. From either option you can choose to create your account.",
-      actionLabel: "Go to the sign-in page",
-      actionHref: "/signin",
       helper:
         "All you need is a valid email address. We send a magic link — no long forms or passwords to invent.",
     },
