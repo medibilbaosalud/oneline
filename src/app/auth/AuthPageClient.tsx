@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabaseBrowser, syncServerAuth } from '@/lib/supabaseBrowser';
+import { supabaseBrowser, syncServerAuth } from '@/lib/supabase/client';
 import { getEmailHint } from '@/lib/emailHint';
 
 export default function AuthPageClient() {

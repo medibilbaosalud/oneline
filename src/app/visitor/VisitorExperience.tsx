@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const MAX = 333;
 
@@ -33,6 +34,20 @@ const SECTIONS: Section[] = [
   { id: 'settings', label: 'Settings', blurb: 'Tour the account tools, streak insights, and encryption reminders in read-only form.' },
 ];
 
+const HOTSPOTS: Array<{
+  id: SectionId;
+  label: string;
+  icon: string;
+  href: string;
+  top: string;
+  left: string;
+}> = [
+  { id: 'today', label: 'Today', icon: '✏️', href: '/today', top: '18%', left: '16%' },
+  { id: 'history', label: 'History', icon: '🗂️', href: '/history', top: '54%', left: '12%' },
+  { id: 'summaries', label: 'Summaries', icon: '📖', href: '/summaries', top: '32%', left: '64%' },
+  { id: 'settings', label: 'Settings', icon: '⚙️', href: '/settings', top: '72%', left: '70%' },
+];
+
 function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: SectionId) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -53,6 +68,41 @@ function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: S
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function WorkspaceHotspots({ active, onPreview }: { active: SectionId; onPreview: (id: SectionId) => void }) {
+  const router = useRouter();
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+      <div className="relative aspect-[4/3] w-full rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent">
+        <div className="absolute inset-3 rounded-2xl border border-white/10 bg-black/40" />
+
+        {HOTSPOTS.map((spot) => {
+          const isActive = active === spot.id;
+          return (
+            <button
+              key={spot.id}
+              type="button"
+              onClick={() => router.push(spot.href)}
+              onMouseEnter={() => onPreview(spot.id)}
+              onFocus={() => onPreview(spot.id)}
+              className={`group absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                isActive
+                  ? 'border-indigo-400/70 bg-indigo-500/20 text-white shadow-lg shadow-indigo-500/20'
+                  : 'border-white/15 bg-black/50 text-neutral-200 hover:border-indigo-400/60 hover:bg-indigo-500/10'
+              }`}
+              style={{ top: spot.top, left: spot.left }}
+              aria-label={`Open ${spot.label}`}
+            >
+              <span className="text-sm">{spot.icon}</span>
+              <span>{spot.label}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -122,7 +172,7 @@ function TodayPreview() {
         <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-neutral-300">
           <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Companion</p>
           <div className="mt-2 flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-2xl">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-xl">
               🦊
             </span>
             <div>
@@ -311,23 +361,23 @@ export default function VisitorExperience() {
 
         <SectionTabs active={active} onChange={setActive} />
 
-        <div
-          className="mt-6 max-w-2xl rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300"
-          role="note"
-          aria-label="How to use the interactive preview"
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-400">How to use</p>
-          <ul className="mt-2 space-y-1 text-neutral-300">
-            <li>
-              Tap or click the highlighted areas inside the workspace preview to jump between Today, History, Summaries, and
-              Settings.
-            </li>
-            <li>
-              If you’re not signed in yet, we’ll ask you to log in and then return you to the exact section you chose.
-            </li>
-            <li>All interactions are keyboard accessible—use Tab to focus a hotspot and press Enter to open it.</li>
-          </ul>
-        </div>
+        <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.55fr)]">
+          <WorkspaceHotspots active={active} onPreview={setActive} />
+
+          <aside
+            className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-neutral-200"
+            role="note"
+            aria-label="Cómo usar la demo interactiva"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-400">Cómo usar</p>
+            <p className="mt-3 text-neutral-300">
+              Haz clic o enfoca cualquier hotspot para ver qué parte del workspace se abre y qué contexto ofrece.
+            </p>
+            <p className="mt-2 text-neutral-400">
+              Si ya has iniciado sesión, te llevaremos directo; si no, pasarás por el acceso y volverás al destino que elegiste.
+            </p>
+          </aside>
+        </section>
 
         {activeMeta && (
           <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>

@@ -47,6 +47,14 @@ Ensure the following redirect URL is added to the Supabase Auth Redirect Allow L
 https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback
 ```
 
+### Supabase auth configuration checklist
+
+Before testing the secure routes, confirm these settings inside the Supabase dashboard:
+
+- **Allowed Redirect URLs** → include `http://localhost:3000/*`, your production domain such as `https://example.com/*`, and the wildcard for Vercel previews `https://*.vercel.app/*`. Add any additional custom domains following the same pattern.
+- **Site URL** → set it to the canonical production hostname (no preview URLs) so Supabase issues cookies for the correct origin.
+- **Environment parity** → keep `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in sync across Development, Preview, and Production deployments. Rotate keys everywhere if you regenerate them.
+
 ### Database migrations
 
 Run the SQL files in `supabase/` (timestamped). They create enum types, preference columns, and monthly usage counters in `public.user_vaults`, alongside any additional structures required by the summaries workflow. Apply them in chronological order using the Supabase SQL editor or CLI.
@@ -88,6 +96,14 @@ npm run build   # triggers Next.js type checks
 2. Navigate to `/history` → you will be redirected to `/auth?redirectTo=/history`.
 3. Complete email/password sign-in → you are redirected to `/history` with your vault unlocked.
 4. Confirm that `/auth/callback` handles email confirmation links by opening the Supabase verification email.
+
+### Manual Supabase session verification
+
+Follow these checks after any authentication-related change:
+
+1. While logged in, visit `/_debug-auth` and ensure both `SERVER hasSession` and `CLIENT hasSession` read `true`, with your Supabase `user.id` and email displayed.
+2. Hit `/api/auth-debug` in the browser or via `curl`; confirm that `hasSession` is `true` and the JSON payload includes the `sb-…` cookie names.
+3. Sign out, then browse to `/today` → you should be redirected to `/signin?redirectTo=/today`. After signing in, you must land back on `/today`.
 
 ## Project structure
 
