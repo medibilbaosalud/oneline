@@ -5,7 +5,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 
 const Upsert = z.object({
   id: z.string().uuid().optional(),
-  content: z.string().min(1).max(300),
+  content: z.string().min(1).max(333),
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD
 });
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "sign-in required" }, { status: 401 });
     }
 
     const payload = await req.json();
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         .select("id, content, created_at, day")
         .single();
     } else {
-      // upsert único por (user_id, day)
+      // Unique upsert per (user_id, day)
       result = await supabase
         .from("journal")
         .upsert([{ user_id: user.id, content, day }], {

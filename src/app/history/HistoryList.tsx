@@ -71,7 +71,7 @@ export default function HistoryList({ initialEntries }: { initialEntries: Entry[
                 onChange={(ev) => setDraft(ev.target.value)}
                 className="w-full rounded-md bg-zinc-900 border border-zinc-700 p-3 outline-none"
                 rows={4}
-                maxLength={300}
+                maxLength={333}
               />
               <div className="flex items-center gap-3 mt-3">
                 <button

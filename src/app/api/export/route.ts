@@ -12,11 +12,10 @@ export async function GET() {
     error: authErr,
   } = await s.auth.getUser();
   if (authErr || !user) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "sign-in required" }, { status: 401 });
   }
 
-  // OJO: usa el nombre real de tu tabla.
-  // Si tu tabla se llama "entries" cámbialo aquí.
+  // Reminder: adjust the table name if your production schema differs.
   const { data, error } = await s
     .from("journal")
     .select("id, content, created_at")

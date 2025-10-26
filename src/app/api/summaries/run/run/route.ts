@@ -4,13 +4,13 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';       // opcional, por si usas libs de Node
 export const dynamic = 'force-dynamic'; // no SSG
 
-// Exporta al menos un método HTTP (GET o POST)
+// Export at least one HTTP method (GET or POST)
 export async function GET() {
-  // si luego añades lógica real, colócala aquí
+// Add the real logic here once you wire it up
   return NextResponse.json({ ok: true });
 }
 
-// (opcional) si tu cron envía POST, añade también:
+// (Optional) Add POST if your cron calls it
 export async function POST() {
   return NextResponse.json({ ok: true });
 }

@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { getEmailHint } from "@/lib/emailHint";
 
 type Mode = "signin" | "signup";
 
@@ -21,7 +22,9 @@ export default function LoginClient() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  // Si ya estás logueado, vete directo a "next"
+  const emailHint = mode === "signup" ? getEmailHint(email) : null;
+
+  // If already authenticated, redirect to the `next` route
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) router.replace(next);
@@ -38,20 +41,29 @@ export default function LoginClient() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.replace(next); // ✅ redirección inmediata
+        router.replace(next); // Redirect immediately
       } else {
         // Sign Up
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo:
+              "https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback",
+          },
+        });
         if (error) throw error;
-        // Para setups sin confirmación de email activada,
-        // el usuario ya entra; si tu proyecto requiere confirmación,
-        // mostramos un mensaje y no redirigimos aún.
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
+
+        // When email confirmation is disabled Supabase returns an active session.
+        if (data.session) {
           router.replace(next);
-        } else {
-          setInfo("Check your inbox to confirm your account.");
+          return;
         }
+
+        // Otherwise the user must confirm the email address before signing in.
+        setMode("signin");
+        setPassword("");
+        setInfo("We sent a confirmation email. Check your inbox and complete the sign-up to continue.");
       }
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
@@ -101,6 +113,9 @@ export default function LoginClient() {
               className="w-full rounded-lg bg-neutral-800 px-3 py-2 text-neutral-100 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
               required
             />
+            {emailHint && (
+              <p className="mt-1 text-xs text-amber-400">{emailHint}</p>
+            )}
           </div>
 
           <div>

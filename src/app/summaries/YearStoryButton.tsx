@@ -17,8 +17,8 @@ export default function YearStoryButton() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Error generating story');
       setStory(json.story);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to generate story');
     } finally {
       setLoading(false);
     }
@@ -31,14 +31,14 @@ export default function YearStoryButton() {
         disabled={loading}
         className="rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
       >
-        {loading ? 'Generando…' : 'Generate your story'}
+        {loading ? 'Generating…' : 'Generate your story'}
       </button>
 
       {error && <p className="text-rose-400 text-sm">{error}</p>}
 
       {story && (
         <article className="prose prose-invert max-w-none">
-          {/* De momento mostramos el markdown como texto; si quieres HTML, pásalo por un parser */}
+          {/* For now we render markdown as text; feed it through a parser for HTML */}
           <pre className="whitespace-pre-wrap">{story}</pre>
         </article>
       )}

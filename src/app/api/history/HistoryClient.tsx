@@ -35,13 +35,13 @@ export default function HistoryClient() {
 
     // Optimista
     setItems(prev => prev.map(it => it.id === e.id ? { ...it, content: newContent } : it));
-    const res = await fetch(`/api/history/${e.id}`, {
+    const res = await fetch(`/api/history/${encodeURIComponent(e.id)}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ content: newContent }),
     });
     if (!res.ok) {
-      // revertir si falló
+      // Revert the optimistic update if the request failed
       setItems(prev => prev.map(it => it.id === e.id ? { ...it, content: e.content } : it));
       const j = await res.json().catch(() => ({}));
       alert(j?.error || "Could not update");
@@ -56,8 +56,13 @@ export default function HistoryClient() {
     const prev = items;
     setItems(prev.filter(it => it.id !== e.id));
 
-    const res = await fetch(`/api/history/${e.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/history/${encodeURIComponent(e.id)}`, {
+      method: "DELETE",
+    });
     if (!res.ok) {
+      if (res.status === 404) {
+        return;
+      }
       setItems(prev); // revertir
       const j = await res.json().catch(() => ({}));
       alert(j?.error || "Could not delete");

@@ -7,7 +7,7 @@ import AuthButton from './AuthButton';
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
 
-  // Evita scroll del body con el menú abierto
+  // Prevent body scroll when the menu is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
