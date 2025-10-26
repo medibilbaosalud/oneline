@@ -5,6 +5,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import VaultGate from "@/components/VaultGate";
 import StoryGenerator from "./StoryGenerator";
 import {
