@@ -30,3 +30,7 @@ export async function supabaseServer() {
     },
   });
 }
+
+export async function createServerSupabase() {
+  return supabaseServer();
+}
