@@ -45,8 +45,8 @@ function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: S
             onClick={() => onChange(section.id)}
             className={
               selected
-                ? 'rounded-full bg-white/15 px-4 py-2 text-white shadow-lg shadow-indigo-500/20 transition'
-                : 'rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:bg-white/10'
+                ? 'rounded-full bg-gradient-to-r from-indigo-500/80 via-purple-500/80 to-emerald-400/80 px-4 py-2 text-white shadow-[0_10px_24px_rgba(79,70,229,0.25)] transition'
+                : 'rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:border-white/20 hover:bg-white/10'
             }
           >
             {section.label}
@@ -316,32 +316,46 @@ export default function VisitorExperience() {
   };
 
   return (
-    <main className="min-h-screen bg-[#07080B] text-zinc-100">
-      <div className="mx-auto w-full max-w-6xl px-6 py-16">
+    <main className="relative min-h-screen overflow-hidden bg-[#07080B] text-zinc-100 selection:bg-indigo-600/30 selection:text-white">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -left-[12rem] top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.3),_transparent_65%)] blur-3xl" />
+        <div className="absolute right-[-10rem] top-72 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_bottom,_rgba(16,185,129,0.22),_transparent_60%)] blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#07080B] via-transparent to-transparent" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-6xl px-6 py-16">
         <header className="max-w-3xl text-pretty text-center md:text-left">
-          <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Visitor mode</p>
-          <h1 className="mt-3 text-4xl font-semibold md:text-5xl">Walk through the OneLine workspace</h1>
+          <p className="text-xs uppercase tracking-[0.28em] text-neutral-500">Visitor mode</p>
+          <h1 className="mt-3 text-4xl font-semibold md:text-5xl">
+            Walk through the OneLine workspace
+          </h1>
           <p className="mt-4 text-sm text-neutral-400 md:text-base">
             Explore the editor, history, summaries, and settings without creating an account. Everything is read-only here — to save your own encrypted entries you’ll need to sign in and unlock your vault with a passphrase only you know.
           </p>
         </header>
 
-        <div className="mt-10 flex flex-col items-center gap-3 text-center md:items-start md:text-left">
+        <div className="mt-10 flex flex-col items-center gap-4 text-center md:items-start md:text-left">
           <button
             type="button"
             onClick={handleReveal}
-            className="inline-flex items-center justify-center rounded-full bg-indigo-500 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080B]"
+            className="group relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/20 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 px-9 py-4 text-base font-semibold text-white shadow-[0_18px_40px_rgba(79,70,229,0.45)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080B] hover:shadow-[0_22px_48px_rgba(79,70,229,0.55)]"
           >
-            👀 Mirar la app (no sign-in needed)
+            <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.35),_transparent_70%)]" />
+            </span>
+            <span className="relative flex items-center gap-2 text-lg">
+              <span className="text-xl">👀</span>
+              Explore the workspace (no sign-in needed)
+            </span>
           </button>
           <p className="max-w-xl text-sm text-neutral-400 md:text-base">
-            Tap the button to open a full, read-only replica of the Today, History, Summaries, and Settings pages — exactly how members see them, just with demo data and callouts.
+            Press the button to open a full, read-only replica of the Today, History, Summaries, and Settings pages — exactly how members see them, just with demo data and callouts.
           </p>
         </div>
 
         {showInterface ? (
           <div ref={shellRef} className="mt-16">
-            <div className="overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/40 shadow-2xl shadow-black/40">
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/40 shadow-2xl shadow-black/40 backdrop-blur">
               <div className="border-b border-white/5 bg-black/40 px-6 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3 text-left">
@@ -372,8 +386,8 @@ export default function VisitorExperience() {
             </div>
           </div>
         ) : (
-          <div className="mt-16 rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-neutral-400">
-            Want to peek at the real interface? Hit “Mirar la app (no sign-in needed)” to launch an embedded tour that mirrors the production layout with explanations for every page.
+          <div className="mt-16 rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-neutral-400 backdrop-blur">
+            Want to peek at the real interface? Press “Explore the workspace (no sign-in needed)” to launch an embedded tour that mirrors the production layout with explanations for every page.
           </div>
         )}
       </div>
