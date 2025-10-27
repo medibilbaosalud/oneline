@@ -41,3 +41,7 @@ NEXTAUTH_SECRET
 ```
 
 Rotate the GitHub OAuth client secret when you set the `GITHUB_SECRET` value.
+
+After updating the variables and redeploying, verify the configuration at
+`https://oneline-one.vercel.app/api/auth/health`. The endpoint responds with
+`ok: true` when all required variables are present.
