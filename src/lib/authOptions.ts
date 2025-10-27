@@ -73,28 +73,32 @@ export const createAuthOptions = (): NextAuthOptions & {
   trustHost?: boolean;
   redirectProxyUrl?: string;
   basePath?: string;
-} => ({
-  secret: AUTH_ENV.NEXTAUTH_SECRET,
-  providers: [
-    GitHubProvider({
-      clientId: AUTH_ENV.GITHUB_ID as string,
-      clientSecret: AUTH_ENV.GITHUB_SECRET as string,
-    }),
-  ],
-  pages: {
-    error: "/auth/error",
-  },
-  basePath: "/api/auth",
-  trustHost: true,
-  redirectProxyUrl: REDIRECT_PROXY.url,
-  callbacks: shouldLogRedirects()
-    ? {
-        async redirect({ url }) {
+} => {
+  const logRedirects = shouldLogRedirects();
+
+  return {
+    secret: AUTH_ENV.NEXTAUTH_SECRET,
+    providers: [
+      GitHubProvider({
+        clientId: AUTH_ENV.GITHUB_ID as string,
+        clientSecret: AUTH_ENV.GITHUB_SECRET as string,
+      }),
+    ],
+    pages: {
+      error: "/auth/error",
+    },
+    basePath: "/api/auth",
+    trustHost: true,
+    redirectProxyUrl: REDIRECT_PROXY.url,
+    callbacks: {
+      async redirect({ url }) {
+        if (logRedirects) {
           console.debug(`[auth] redirect -> ${url}`);
-          return url;
-        },
-      }
-    : undefined,
-});
+        }
+        return url;
+      },
+    },
+  };
+};
 
 export const authOptions = createAuthOptions();
