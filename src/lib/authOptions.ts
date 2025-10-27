@@ -57,8 +57,8 @@ export const authOptions: NextAuthOptions = {
   secret: AUTH_ENV.NEXTAUTH_SECRET,
   providers: [
     GitHubProvider({
-      clientId: AUTH_ENV.GITHUB_ID ?? "missing-github-id",
-      clientSecret: AUTH_ENV.GITHUB_SECRET ?? "missing-github-secret",
+      clientId: AUTH_ENV.GITHUB_ID ?? "",
+      clientSecret: AUTH_ENV.GITHUB_SECRET ?? "",
     }),
   ],
   pages: {
