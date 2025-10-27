@@ -1,22 +1,49 @@
 import NextAuth from "next-auth";
-import {
-  authOptions,
-  getMissingAuthEnv,
-  getRuntimeHost,
-  resolveCanonicalOrigin,
-} from "@/lib/authOptions";
+import GitHubProvider from "next-auth/providers/github";
 
-const nextAuthHandler = NextAuth(authOptions);
+const requiredEnvKeys = ["GITHUB_ID", "GITHUB_SECRET", "NEXTAUTH_SECRET"] as const;
 
-const respondWithMissingEnv = (missing: string[]) =>
+const readEnv = (key: (typeof requiredEnvKeys)[number]) => {
+  const value = process.env[key];
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const authEnv = {
+  GITHUB_ID: readEnv("GITHUB_ID"),
+  GITHUB_SECRET: readEnv("GITHUB_SECRET"),
+  NEXTAUTH_SECRET: readEnv("NEXTAUTH_SECRET"),
+};
+
+const missingEnv = requiredEnvKeys.filter((key) => !authEnv[key]);
+
+const nextAuthHandler =
+  missingEnv.length === 0
+    ? NextAuth({
+        secret: authEnv.NEXTAUTH_SECRET,
+        providers: [
+          GitHubProvider({
+            clientId: authEnv.GITHUB_ID!,
+            clientSecret: authEnv.GITHUB_SECRET!,
+          }),
+        ],
+        pages: {
+          error: "/auth/error",
+        },
+      })
+    : null;
+
+const respondWithMissingEnv = () =>
   new Response(
     JSON.stringify({
       ok: false,
       message:
         "NextAuth is not configured. Define the missing env vars in Vercel and redeploy.",
-      missing,
-      docs:
-        "https://next-auth.js.org/configuration/options#nextauth_secret",
+      missing: missingEnv,
     }),
     {
       status: 500,
@@ -26,59 +53,12 @@ const respondWithMissingEnv = (missing: string[]) =>
     },
   );
 
-const respondWithRedirectMismatch = (
-  redirectUri: string,
-  canonicalOrigin: string,
-  runtimeHost: string,
-) =>
-  new Response(
-    JSON.stringify({
-      ok: false,
-      message: "GitHub redirected to an unregistered URL.",
-      redirectUri,
-      canonicalOrigin,
-      runtimeHost,
-      hint:
-        "Copia esta URL y añádela en GitHub Settings → Developer settings → OAuth Apps → Authorization callback URL, o fija NEXTAUTH_URL en Vercel a tu dominio canonical y redeploy.",
-    }),
-    {
-      status: 422,
-      headers: {
-        "content-type": "application/json",
-      },
-    },
-  );
-
-async function handleAuthRequest(req: Request) {
-  const missing = getMissingAuthEnv();
-  if (missing.length > 0) {
-    console.error(`[auth] Missing env vars: ${missing.join(", ")}`);
-    return respondWithMissingEnv(missing);
-  }
-
-  const url = new URL(req.url);
-  const redirectUri = url.searchParams.get("redirect_uri");
-  const canonicalOrigin = resolveCanonicalOrigin(req);
-  const runtimeHost = getRuntimeHost(req);
-
-  if (redirectUri) {
-    console.info(`[auth] Incoming redirect_uri=${redirectUri}`);
-  }
-
-  if (redirectUri && canonicalOrigin && !redirectUri.startsWith(canonicalOrigin)) {
-    console.error(
-      `[auth] Redirect mismatch detected. redirect_uri=${redirectUri} canonicalOrigin=${canonicalOrigin} runtimeHost=${runtimeHost}`,
-    );
-    return respondWithRedirectMismatch(redirectUri, canonicalOrigin, runtimeHost);
+const handler = (req: Request) => {
+  if (!nextAuthHandler) {
+    return respondWithMissingEnv();
   }
 
   return nextAuthHandler(req);
-}
+};
 
-export function GET(req: Request) {
-  return handleAuthRequest(req);
-}
-
-export function POST(req: Request) {
-  return handleAuthRequest(req);
-}
+export { handler as GET, handler as POST };

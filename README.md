@@ -54,6 +54,20 @@ Rotate the GitHub OAuth client secret if you replace it with a new one.
 
 After updating the variables and redeploying, verify the configuration at `https://oneline-one.vercel.app/api/auth/health`. The endpoint responds with `ok: true` when all required variables are present.
 
+## Preview setup
+
+For Vercel preview deployments, add these environment variables in the Preview environment before triggering a build:
+
+```
+AUTH_TRUST_HOST=true
+GITHUB_ID
+GITHUB_SECRET
+NEXTAUTH_SECRET
+NEXTAUTH_URL=<preview-domain-or-canonical-domain>
+```
+
+Then open your GitHub OAuth App (GitHub → Settings → Developer settings → OAuth Apps) and ensure the **Authorization callback URL** matches exactly `https://<your-domain>/api/auth/callback/github`. Update the value whenever you test a new preview domain so the redirect URI remains valid.
+
 ## GitHub OAuth redirect mismatch — how to fix
 
 1. **Quick unblock:** Copy the exact `redirect_uri` from the browser URL (or the error page) and add it under **Authorization callback URL** inside your GitHub OAuth App.
