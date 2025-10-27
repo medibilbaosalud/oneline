@@ -1,31 +1,24 @@
-import { resolvedAuthConfig } from "@/lib/authOptions";
+import { getAuthEnvDiagnostics, getRuntimeHost } from "@/lib/authOptions";
 
-export function GET() {
-  const vars = {
-    GITHUB_ID: Boolean(resolvedAuthConfig.GITHUB_ID),
-    GITHUB_SECRET: Boolean(resolvedAuthConfig.GITHUB_SECRET),
-    NEXTAUTH_SECRET: Boolean(resolvedAuthConfig.NEXTAUTH_SECRET),
-    NEXTAUTH_URL: resolvedAuthConfig.NEXTAUTH_URL,
+export function GET(req: Request) {
+  const diagnostics = getAuthEnvDiagnostics();
+  const runtimeHost = getRuntimeHost(req);
+  const redirectAttempt = new URL(req.url).searchParams.get("redirect_uri") ?? undefined;
+
+  const body = {
+    ok: diagnostics.missing.length === 0,
+    missing: diagnostics.missing,
+    runtimeHost,
+    redirectAttempt,
+    hint:
+      "If redirectAttempt isn't in GitHub OAuth callbacks, add it in GitHub settings or set NEXTAUTH_URL to your canonical domain.",
   } as const;
 
-  const ok = vars.GITHUB_ID && vars.GITHUB_SECRET && vars.NEXTAUTH_SECRET && Boolean(vars.NEXTAUTH_URL);
-
-  return new Response(
-    JSON.stringify({
-      ok,
-      vars: {
-        GITHUB_ID: vars.GITHUB_ID,
-        GITHUB_SECRET: vars.GITHUB_SECRET,
-        NEXTAUTH_SECRET: vars.NEXTAUTH_SECRET,
-        NEXTAUTH_URL: vars.NEXTAUTH_URL,
-      },
-    }),
-    {
-      headers: {
-        "content-type": "application/json",
-        "cache-control": "no-store",
-      },
-      status: ok ? 200 : 500,
+  return new Response(JSON.stringify(body), {
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store",
     },
-  );
+    status: body.ok ? 200 : 503,
+  });
 }

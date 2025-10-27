@@ -5,15 +5,11 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, add the authentication environment variables required by NextAuth. Create a `.env.local` file (this repo already ignores it) with:
 
 ```
-GITHUB_ID={{PON_AQUI_TU_CLIENT_ID}}
-GITHUB_SECRET={{PON_AQUI_TU_NUEVO_CLIENT_SECRET_ROTADO}}
+GITHUB_ID=<your GitHub OAuth client id>
+GITHUB_SECRET=<your GitHub OAuth client secret>
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET={{GENERA_UNO_ALEATORIO}}
+NEXTAUTH_SECRET=<random 32+ byte base64 string>
 ```
-
-> **Note:** When these environment variables are not provided, the application now falls back to the production credentials:
-> `GITHUB_ID=Ov23liMbWH3KxtbeLdqT`, `GITHUB_SECRET=9787e851ac01d58fa859152942e079f7322a76b7`, `NEXTAUTH_SECRET=reQegr7kph5nyK82UJ9zZ5UnYU6SG/cf+UBaIioDXWs=`, `NEXTAUTH_URL=https://oneline-one.vercel.app`.
-> Configure your own values before deploying to a different environment.
 
 Then, run the development server:
 
@@ -33,19 +29,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+### Health check
+
+To verify the authentication configuration locally or in CI, set `NEXTAUTH_URL` and run:
+
+```bash
+NEXTAUTH_URL=http://localhost:3000 npm run test:auth-health
+```
+
+The command calls `/api/auth/health` and prints the diagnostic JSON so you can confirm all required environment variables are present.
+
 ## Deployment notes
 
 Add the same keys in Vercel → Project → Settings → Environment Variables before redeploying:
 
 ```
-GITHUB_ID=Ov23liMbWH3KxtbeLdqT
-GITHUB_SECRET=9787e851ac01d58fa859152942e079f7322a76b7
+GITHUB_ID
+GITHUB_SECRET
 NEXTAUTH_URL=https://oneline-one.vercel.app
-NEXTAUTH_SECRET=reQegr7kph5nyK82UJ9zZ5UnYU6SG/cf+UBaIioDXWs=
+NEXTAUTH_SECRET
 ```
 
-Rotate the GitHub OAuth client secret if you replace the bundled default value with a new one.
+Rotate the GitHub OAuth client secret if you replace it with a new one.
 
-After updating the variables and redeploying, verify the configuration at
-`https://oneline-one.vercel.app/api/auth/health`. The endpoint responds with
-`ok: true` when all required variables are present.
+After updating the variables and redeploying, verify the configuration at `https://oneline-one.vercel.app/api/auth/health`. The endpoint responds with `ok: true` when all required variables are present.
+
+## GitHub OAuth redirect mismatch — how to fix
+
+1. **Quick unblock:** Copy the exact `redirect_uri` from the browser URL (or the error page) and add it under **Authorization callback URL** inside your GitHub OAuth App.
+2. **Recommended:** Set `NEXTAUTH_URL` in Vercel to your canonical production domain and redeploy so NextAuth always generates the correct redirect URL. Keep `http://localhost:3000` configured in your GitHub OAuth App for local development.
+3. **Optional for previews:** If you rely on Vercel preview deployments, register a separate GitHub OAuth App for previews or temporarily add the preview URL to the callback list.
