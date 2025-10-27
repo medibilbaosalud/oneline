@@ -5,12 +5,17 @@ export function GET(req: Request) {
   const runtimeHost = getRuntimeHost(req);
   const redirectAttempt = new URL(req.url).searchParams.get("redirect_uri") ?? undefined;
 
+  const ok = diagnostics.missing.length === 0;
+
   const body = {
-    ok: diagnostics.missing.length === 0,
+    ok,
     missing: diagnostics.missing,
     runtimeHost,
     redirectAttempt,
-    hint: "Add redirect_uri to GitHub OAuth App or set NEXTAUTH_URL in Vercel.",
+    redirectProxyUrl: diagnostics.redirectProxyUrl ?? null,
+    hint: ok
+      ? undefined
+      : "Add the missing env vars in Vercel. For previews set AUTH_REDIRECT_PROXY_URL to your production /api/auth endpoint.",
   } as const;
 
   return new Response(JSON.stringify(body), {
@@ -18,6 +23,6 @@ export function GET(req: Request) {
       "content-type": "application/json",
       "cache-control": "no-store",
     },
-    status: body.ok ? 200 : 503,
+    status: ok ? 200 : 503,
   });
 }

@@ -14,6 +14,7 @@ const AUTH_ENV = {
   GITHUB_SECRET: cleanEnvValue(process.env.GITHUB_SECRET),
   NEXTAUTH_SECRET: cleanEnvValue(process.env.NEXTAUTH_SECRET),
   NEXTAUTH_URL: cleanEnvValue(process.env.NEXTAUTH_URL),
+  AUTH_REDIRECT_PROXY_URL: cleanEnvValue(process.env.AUTH_REDIRECT_PROXY_URL),
 };
 
 export const REQUIRED_AUTH_ENV_KEYS = ["GITHUB_ID", "GITHUB_SECRET", "NEXTAUTH_SECRET"] as const;
@@ -24,6 +25,7 @@ export const getMissingAuthEnv = () => REQUIRED_AUTH_ENV_KEYS.filter((key) => !A
 export const getAuthEnvDiagnostics = () => ({
   missing: getMissingAuthEnv(),
   nextAuthUrl: AUTH_ENV.NEXTAUTH_URL,
+  redirectProxyUrl: AUTH_ENV.AUTH_REDIRECT_PROXY_URL,
 });
 
 export const getRuntimeHost = (req: Request) => {
@@ -31,37 +33,22 @@ export const getRuntimeHost = (req: Request) => {
   return host ?? "unknown";
 };
 
-export const resolveCanonicalOrigin = (req?: Request) => {
-  if (AUTH_ENV.NEXTAUTH_URL) {
-    try {
-      return new URL(AUTH_ENV.NEXTAUTH_URL).origin;
-    } catch (error) {
-      console.error(`NEXTAUTH_URL is not a valid URL: ${AUTH_ENV.NEXTAUTH_URL}`, error);
-    }
-  }
-
-  if (!req) {
-    return undefined;
-  }
-
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  if (!host) {
-    return undefined;
-  }
-
-  const proto = req.headers.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
+type ExtendedAuthOptions = NextAuthOptions & {
+  trustHost?: boolean;
+  redirectProxyUrl?: string;
 };
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: ExtendedAuthOptions = {
   secret: AUTH_ENV.NEXTAUTH_SECRET,
   providers: [
     GitHubProvider({
-      clientId: AUTH_ENV.GITHUB_ID ?? "",
-      clientSecret: AUTH_ENV.GITHUB_SECRET ?? "",
+      clientId: AUTH_ENV.GITHUB_ID as string,
+      clientSecret: AUTH_ENV.GITHUB_SECRET as string,
     }),
   ],
   pages: {
     error: "/auth/error",
   },
+  trustHost: true,
+  redirectProxyUrl: AUTH_ENV.AUTH_REDIRECT_PROXY_URL,
 };
