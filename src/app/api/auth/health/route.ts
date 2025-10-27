@@ -13,6 +13,7 @@ export function GET(req: Request) {
     runtimeHost,
     redirectAttempt,
     redirectProxyUrl: diagnostics.redirectProxyUrl ?? null,
+    redirectProxySource: diagnostics.redirectProxySource ?? null,
     nextauthUrl: diagnostics.nextAuthUrl ?? null,
     hint: ok
       ? undefined

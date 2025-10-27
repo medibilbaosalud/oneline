@@ -15,7 +15,37 @@ const AUTH_ENV = {
   NEXTAUTH_SECRET: cleanEnvValue(process.env.NEXTAUTH_SECRET),
   NEXTAUTH_URL: cleanEnvValue(process.env.NEXTAUTH_URL),
   AUTH_REDIRECT_PROXY_URL: cleanEnvValue(process.env.AUTH_REDIRECT_PROXY_URL),
+} as const;
+
+const resolveRedirectProxyUrl = () => {
+  if (AUTH_ENV.AUTH_REDIRECT_PROXY_URL) {
+    return {
+      url: AUTH_ENV.AUTH_REDIRECT_PROXY_URL,
+      source: "AUTH_REDIRECT_PROXY_URL" as const,
+    };
+  }
+
+  if (AUTH_ENV.NEXTAUTH_URL) {
+    try {
+      return {
+        url: new URL("/api/auth", AUTH_ENV.NEXTAUTH_URL).toString(),
+        source: "NEXTAUTH_URL" as const,
+      };
+    } catch (error) {
+      console.warn(
+        "[auth] Failed to derive redirect proxy URL from NEXTAUTH_URL. Set AUTH_REDIRECT_PROXY_URL explicitly.",
+        error,
+      );
+    }
+  }
+
+  return {
+    url: undefined,
+    source: null,
+  } as const;
 };
+
+const REDIRECT_PROXY = resolveRedirectProxyUrl();
 
 export const REQUIRED_AUTH_ENV_KEYS = ["GITHUB_ID", "GITHUB_SECRET", "NEXTAUTH_SECRET"] as const;
 export type AuthEnvKey = (typeof REQUIRED_AUTH_ENV_KEYS)[number];
@@ -25,7 +55,8 @@ export const getMissingAuthEnv = () => REQUIRED_AUTH_ENV_KEYS.filter((key) => !A
 export const getAuthEnvDiagnostics = () => ({
   missing: getMissingAuthEnv(),
   nextAuthUrl: AUTH_ENV.NEXTAUTH_URL,
-  redirectProxyUrl: AUTH_ENV.AUTH_REDIRECT_PROXY_URL,
+  redirectProxyUrl: REDIRECT_PROXY.url,
+  redirectProxySource: REDIRECT_PROXY.source,
 });
 
 export const getRuntimeHost = (req: Request) => {
@@ -55,7 +86,7 @@ export const createAuthOptions = (): NextAuthOptions & {
   },
   basePath: "/api/auth",
   trustHost: true,
-  redirectProxyUrl: AUTH_ENV.AUTH_REDIRECT_PROXY_URL,
+  redirectProxyUrl: REDIRECT_PROXY.url,
   callbacks: shouldLogRedirects()
     ? {
         async redirect({ url }) {
