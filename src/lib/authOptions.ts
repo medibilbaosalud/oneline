@@ -8,29 +8,40 @@ const FALLBACK_ENV = {
   NEXTAUTH_URL: "https://oneline-one.vercel.app",
 } as const;
 
-const resolvedAuthEnv = {
-  GITHUB_ID: process.env.GITHUB_ID ?? FALLBACK_ENV.GITHUB_ID,
-  GITHUB_SECRET: process.env.GITHUB_SECRET ?? FALLBACK_ENV.GITHUB_SECRET,
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? FALLBACK_ENV.NEXTAUTH_SECRET,
+type AuthEnvKey = keyof typeof FALLBACK_ENV;
+
+const getEnvWithFallback = (key: AuthEnvKey) => {
+  const rawValue = process.env[key];
+  if (rawValue && rawValue.trim().length > 0) {
+    return rawValue;
+  }
+
+  console.warn(`Missing NextAuth configuration for ${key}. Falling back to bundled default.`);
+  return FALLBACK_ENV[key];
 };
 
-const resolvedNextAuthUrl = process.env.NEXTAUTH_URL ?? FALLBACK_ENV.NEXTAUTH_URL;
+const resolvedAuthEnv = {
+  GITHUB_ID: getEnvWithFallback("GITHUB_ID"),
+  GITHUB_SECRET: getEnvWithFallback("GITHUB_SECRET"),
+  NEXTAUTH_SECRET: getEnvWithFallback("NEXTAUTH_SECRET"),
+};
 
-const missingKeys = Object.entries(resolvedAuthEnv)
-  .filter(([, value]) => !value)
-  .map(([key]) => key);
+const resolvedNextAuthUrl = (() => {
+  const explicit = process.env.NEXTAUTH_URL?.trim();
+  if (explicit) {
+    return explicit;
+  }
 
-if (missingKeys.length > 0) {
-  console.warn(
-    `Missing NextAuth configuration: ${missingKeys.join(", ")}. GitHub login will fall back to built-in defaults.`,
-  );
-}
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    const formatted = vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
+    console.warn(`NEXTAUTH_URL not set. Falling back to inferred Vercel URL: ${formatted}.`);
+    return formatted;
+  }
 
-if (!process.env.NEXTAUTH_URL) {
-  console.warn(
-    `NEXTAUTH_URL is not set. Falling back to ${FALLBACK_ENV.NEXTAUTH_URL}.`,
-  );
-}
+  console.warn(`NEXTAUTH_URL not set. Falling back to bundled default: ${FALLBACK_ENV.NEXTAUTH_URL}.`);
+  return FALLBACK_ENV.NEXTAUTH_URL;
+})();
 
 export const authOptions: NextAuthOptions = {
   secret: resolvedAuthEnv.NEXTAUTH_SECRET,
@@ -42,5 +53,4 @@ export const authOptions: NextAuthOptions = {
   ],
 };
 
-export const missingAuthEnv = missingKeys;
 export const resolvedAuthConfig = { ...resolvedAuthEnv, NEXTAUTH_URL: resolvedNextAuthUrl };
