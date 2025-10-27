@@ -12,9 +12,9 @@ const missingKeys = Object.entries(requiredEnv)
   .map(([key]) => key);
 
 if (missingKeys.length > 0) {
-  const message = `Missing NextAuth configuration: ${missingKeys.join(", ")}. Check your environment variables.`;
-  console.error(message);
-  throw new Error(message);
+  console.warn(
+    `Missing NextAuth configuration: ${missingKeys.join(", ")}. GitHub login will be disabled until these environment variables are provided.`,
+  );
 }
 
 if (!process.env.NEXTAUTH_URL) {
@@ -27,8 +27,10 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GitHubProvider({
-      clientId: process.env.GITHUB_ID as string,
-      clientSecret: process.env.GITHUB_SECRET as string,
+      clientId: (process.env.GITHUB_ID ?? "") as string,
+      clientSecret: (process.env.GITHUB_SECRET ?? "") as string,
     }),
   ],
 };
+
+export const missingAuthEnv = missingKeys;
