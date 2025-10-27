@@ -51,6 +51,7 @@ GITHUB_SECRET
 NEXTAUTH_URL=https://oneline-one.vercel.app
 NEXTAUTH_SECRET
 AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
+AUTH_TRUST_HOST=true
 ```
 
 Rotate the GitHub OAuth client secret if you replace it with a new one.
@@ -67,9 +68,10 @@ GITHUB_SECRET
 NEXTAUTH_SECRET
 NEXTAUTH_URL=https://oneline-one.vercel.app
 AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
+AUTH_TRUST_HOST=true
 ```
 
-NextAuth will proxy preview callbacks through your production domain, so GitHub only needs a single callback URL.
+NextAuth will proxy preview callbacks through your production domain, so GitHub only needs a single callback URL. Set `AUTH_TRUST_HOST=true` and keep `AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth` so previews inherit the production callback automatically. For additional diagnostics (non-production only), you can add `DEBUG="auth*,next-auth*"` to preview environments to mirror the local redirect logs.
 
 Open your GitHub OAuth App (GitHub → Settings → Developer settings → OAuth Apps) and ensure the **Authorization callback URL** matches exactly `https://oneline-one.vercel.app/api/auth/callback/github`.
 

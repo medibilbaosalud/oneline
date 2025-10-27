@@ -13,6 +13,7 @@ export function GET(req: Request) {
     runtimeHost,
     redirectAttempt,
     redirectProxyUrl: diagnostics.redirectProxyUrl ?? null,
+    nextauthUrl: diagnostics.nextAuthUrl ?? null,
     hint: ok
       ? undefined
       : "Add the missing env vars in Vercel. For previews set AUTH_REDIRECT_PROXY_URL to your production /api/auth endpoint.",
