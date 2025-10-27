@@ -11,6 +11,10 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET={{GENERA_UNO_ALEATORIO}}
 ```
 
+> **Note:** When these environment variables are not provided, the application now falls back to the production credentials:
+> `GITHUB_ID=Ov23liMbWH3KxtbeLdqT`, `GITHUB_SECRET=9787e851ac01d58fa859152942e079f7322a76b7`, `NEXTAUTH_SECRET=reQegr7kph5nyK82UJ9zZ5UnYU6SG/cf+UBaIioDXWs=`, `NEXTAUTH_URL=https://oneline-one.vercel.app`.
+> Configure your own values before deploying to a different environment.
+
 Then, run the development server:
 
 ```bash
@@ -34,13 +38,13 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 Add the same keys in Vercel → Project → Settings → Environment Variables before redeploying:
 
 ```
-GITHUB_ID
-GITHUB_SECRET
+GITHUB_ID=Ov23liMbWH3KxtbeLdqT
+GITHUB_SECRET=9787e851ac01d58fa859152942e079f7322a76b7
 NEXTAUTH_URL=https://oneline-one.vercel.app
-NEXTAUTH_SECRET
+NEXTAUTH_SECRET=reQegr7kph5nyK82UJ9zZ5UnYU6SG/cf+UBaIioDXWs=
 ```
 
-Rotate the GitHub OAuth client secret when you set the `GITHUB_SECRET` value.
+Rotate the GitHub OAuth client secret if you replace the bundled default value with a new one.
 
 After updating the variables and redeploying, verify the configuration at
 `https://oneline-one.vercel.app/api/auth/health`. The endpoint responds with
