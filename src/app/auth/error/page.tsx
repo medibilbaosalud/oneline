@@ -38,8 +38,10 @@ const AuthErrorPage = ({ searchParams }: AuthErrorPageProps) => {
         <div>
           <h1 className="text-2xl font-semibold">Login failed — redirect mismatch</h1>
           <p className="mt-2 text-sm text-slate-300">
-            GitHub redirected back to a URL that is not registered in your OAuth application. Update the callback list or set
-            <code className="ml-1 rounded bg-black/50 px-1 py-0.5 text-xs">NEXTAUTH_URL</code> to your canonical domain.
+            GitHub redirected back to a URL that is not registered in your OAuth application. Copy the URL below into GitHub →
+            Settings → Developer settings → OAuth Apps → Authorization callback URL, or set
+            <code className="ml-1 rounded bg-black/50 px-1 py-0.5 text-xs">NEXTAUTH_URL</code> to your canonical domain before
+            redeploying.
           </p>
         </div>
 
@@ -69,7 +71,10 @@ const AuthErrorPage = ({ searchParams }: AuthErrorPageProps) => {
         <div className="space-y-2 rounded-lg border border-white/10 bg-black/40 p-4 text-sm text-slate-300">
           <p className="font-semibold text-slate-100">How to fix</p>
           <ol className="list-decimal space-y-1 pl-4">
-            <li>Copy the exact redirect URL shown above and add it under Authorization callback URLs in your GitHub OAuth App.</li>
+            <li>
+              Copy the exact redirect URL shown above and paste it into **Authorization callback URL** inside your GitHub OAuth
+              App (GitHub → Settings → Developer settings → OAuth Apps → Edit).
+            </li>
             <li>Set <code className="rounded bg-black/50 px-1 py-0.5 text-xs">NEXTAUTH_URL</code> to your production domain and redeploy.</li>
             <li className="text-slate-400">
               Optional: configure a separate OAuth App or additional callbacks for preview / localhost environments.

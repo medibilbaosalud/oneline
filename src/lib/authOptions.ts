@@ -16,10 +16,10 @@ const AUTH_ENV = {
   NEXTAUTH_URL: cleanEnvValue(process.env.NEXTAUTH_URL),
 };
 
-const REQUIRED_ENV_KEYS = ["GITHUB_ID", "GITHUB_SECRET", "NEXTAUTH_SECRET"] as const;
-export type AuthEnvKey = (typeof REQUIRED_ENV_KEYS)[number];
+export const REQUIRED_AUTH_ENV_KEYS = ["GITHUB_ID", "GITHUB_SECRET", "NEXTAUTH_SECRET"] as const;
+export type AuthEnvKey = (typeof REQUIRED_AUTH_ENV_KEYS)[number];
 
-export const getMissingAuthEnv = () => REQUIRED_ENV_KEYS.filter((key) => !AUTH_ENV[key]);
+export const getMissingAuthEnv = () => REQUIRED_AUTH_ENV_KEYS.filter((key) => !AUTH_ENV[key]);
 
 export const getAuthEnvDiagnostics = () => ({
   missing: getMissingAuthEnv(),

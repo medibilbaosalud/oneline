@@ -37,7 +37,7 @@ To verify the authentication configuration locally or in CI, set `NEXTAUTH_URL` 
 NEXTAUTH_URL=http://localhost:3000 npm run test:auth-health
 ```
 
-The command calls `/api/auth/health` and prints the diagnostic JSON so you can confirm all required environment variables are present.
+The command calls `/api/auth/health` and prints the diagnostic JSON so you can confirm all required environment variables are present (the script tolerates non-200 responses so you can review the payload).
 
 ## Deployment notes
 

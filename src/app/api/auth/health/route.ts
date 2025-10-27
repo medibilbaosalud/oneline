@@ -10,8 +10,7 @@ export function GET(req: Request) {
     missing: diagnostics.missing,
     runtimeHost,
     redirectAttempt,
-    hint:
-      "If redirectAttempt isn't in GitHub OAuth callbacks, add it in GitHub settings or set NEXTAUTH_URL to your canonical domain.",
+    hint: "Add redirect_uri to GitHub OAuth App or set NEXTAUTH_URL in Vercel.",
   } as const;
 
   return new Response(JSON.stringify(body), {

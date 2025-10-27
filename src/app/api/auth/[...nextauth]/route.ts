@@ -13,13 +13,13 @@ const respondWithMissingEnv = (missing: string[]) =>
     JSON.stringify({
       ok: false,
       message:
-        "NextAuth is not configured. Add the missing environment variables and redeploy.",
+        "NextAuth is not configured. Define the missing env vars in Vercel and redeploy.",
       missing,
       docs:
         "https://next-auth.js.org/configuration/options#nextauth_secret",
     }),
     {
-      status: 503,
+      status: 500,
       headers: {
         "content-type": "application/json",
       },
@@ -39,7 +39,7 @@ const respondWithRedirectMismatch = (
       canonicalOrigin,
       runtimeHost,
       hint:
-        "Add redirectUri as an Authorization callback URL in GitHub or set NEXTAUTH_URL to your canonical domain.",
+        "Copia esta URL y añádela en GitHub Settings → Developer settings → OAuth Apps → Authorization callback URL, o fija NEXTAUTH_URL en Vercel a tu dominio canonical y redeploy.",
     }),
     {
       status: 422,
@@ -52,6 +52,7 @@ const respondWithRedirectMismatch = (
 async function handleAuthRequest(req: Request) {
   const missing = getMissingAuthEnv();
   if (missing.length > 0) {
+    console.error(`[auth] Missing env vars: ${missing.join(", ")}`);
     return respondWithMissingEnv(missing);
   }
 
@@ -59,6 +60,10 @@ async function handleAuthRequest(req: Request) {
   const redirectUri = url.searchParams.get("redirect_uri");
   const canonicalOrigin = resolveCanonicalOrigin(req);
   const runtimeHost = getRuntimeHost(req);
+
+  if (redirectUri) {
+    console.info(`[auth] Incoming redirect_uri=${redirectUri}`);
+  }
 
   if (redirectUri && canonicalOrigin && !redirectUri.startsWith(canonicalOrigin)) {
     console.error(
