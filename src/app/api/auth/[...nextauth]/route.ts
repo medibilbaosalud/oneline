@@ -54,27 +54,9 @@ if (missingEnv.length === 0) {
   console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
 }
 
-type NextAuthContext =
-  | { params: { nextauth: string[] } }
-  | { params: Promise<{ nextauth: string[] }> };
-
-const resolveContext = async (context: NextAuthContext) => {
-  const paramsCandidate = context.params as
-    | { nextauth: string[] }
-    | Promise<{ nextauth: string[] }>;
-
-  const params =
-    typeof (paramsCandidate as Promise<unknown>)?.then === "function"
-      ? await (paramsCandidate as Promise<{ nextauth: string[] }>)
-      : (paramsCandidate as { nextauth: string[] });
-
-  return { params } as { params: { nextauth: string[] } };
-};
-
 const dispatchToAuth = async (
   req: NextRequest,
   method: "GET" | "POST",
-  context: NextAuthContext,
 ) => {
   if (!authInstance) {
     return respondWithMissingEnv();
@@ -89,18 +71,15 @@ const dispatchToAuth = async (
 
   try {
     const handler = authInstance.handlers[method];
-    const resolvedContext = await resolveContext(context);
-    return await handler(req, resolvedContext);
+    return await handler(req);
   } catch (error) {
     console.error("[auth:init]", error);
     throw error;
   }
 };
 
-export const GET = (req: NextRequest, context: NextAuthContext) =>
-  dispatchToAuth(req, "GET", context);
-export const POST = (req: NextRequest, context: NextAuthContext) =>
-  dispatchToAuth(req, "POST", context);
+export const GET = (req: NextRequest) => dispatchToAuth(req, "GET");
+export const POST = (req: NextRequest) => dispatchToAuth(req, "POST");
 
 export const handlers = { GET, POST } as const;
 export const auth = authInstance?.auth;
