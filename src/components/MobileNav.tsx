@@ -9,6 +9,7 @@ const links = [
   { href: "/today", label: "Today" },
   { href: "/history", label: "History" },
   { href: "/summaries", label: "Summaries" },
+  { href: "/vista-financiera", label: "Vista financiera" },
   { href: "/settings", label: "Settings" },
 ];
 

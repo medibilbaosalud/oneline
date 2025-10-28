@@ -59,6 +59,7 @@ export default function TopNav() {
             <NavLink href="/today" label="Today" />
             <NavLink href="/history" label="History" />
             <NavLink href="/summaries" label="Summaries" />
+            <NavLink href="/vista-financiera" label="Vista financiera" />
             <NavLink href="/settings" label="Settings" />
           </div>
         </div>
@@ -115,6 +116,7 @@ export default function TopNav() {
               <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
               <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
               <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
+              <NavLink href="/vista-financiera" label="Vista financiera" onClick={() => setOpen(false)} />
               <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
               <div className="mt-2 border-t border-white/10 pt-2">
                 <AuthButton />
