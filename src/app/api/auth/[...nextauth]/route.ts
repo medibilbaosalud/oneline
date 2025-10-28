@@ -50,7 +50,7 @@ const logPreviewContext = () => {
   );
 };
 
-const nextAuthHandler = missingEnv.length === 0 ? NextAuth(createAuthOptions()) : null;
+const authInstance = missingEnv.length === 0 ? NextAuth(createAuthOptions()) : undefined;
 
 if (missingEnv.length === 0) {
   logPreviewContext();
@@ -58,8 +58,8 @@ if (missingEnv.length === 0) {
   console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
 }
 
-const handleRequest = async (req: Request) => {
-  if (missingEnv.length > 0 || !nextAuthHandler) {
+const dispatchToAuth = async (req: Request, method: "GET" | "POST") => {
+  if (!authInstance) {
     return respondWithMissingEnv();
   }
 
@@ -71,13 +71,18 @@ const handleRequest = async (req: Request) => {
   }
 
   try {
-    return await nextAuthHandler(req);
+    const handler = authInstance.handlers[method];
+    return await handler(req);
   } catch (error) {
     console.error("[auth:init]", error);
     throw error;
   }
 };
 
-export const GET = handleRequest;
-export const POST = handleRequest;
+export const GET = (req: Request) => dispatchToAuth(req, "GET");
+export const POST = (req: Request) => dispatchToAuth(req, "POST");
+
 export const handlers = { GET, POST } as const;
+export const auth = authInstance?.auth;
+export const signIn = authInstance?.signIn;
+export const signOut = authInstance?.signOut;
