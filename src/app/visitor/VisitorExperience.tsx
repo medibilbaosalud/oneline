@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 const MAX = 333;
@@ -45,8 +45,8 @@ function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: S
             onClick={() => onChange(section.id)}
             className={
               selected
-                ? 'rounded-full bg-white/15 px-4 py-2 text-white shadow-lg shadow-indigo-500/20 transition'
-                : 'rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:bg-white/10'
+                ? 'rounded-full bg-gradient-to-r from-indigo-500/80 via-purple-500/80 to-emerald-400/80 px-4 py-2 text-white shadow-[0_10px_24px_rgba(79,70,229,0.25)] transition'
+                : 'rounded-full border border-white/10 bg-white/5 px-4 py-2 text-neutral-200 transition hover:border-white/20 hover:bg-white/10'
             }
           >
             {section.label}
@@ -60,14 +60,14 @@ function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: S
 function TodayPreview() {
   const quote = useMemo(() => quoteOfToday(), []);
   return (
-    <section className="grid gap-8 md:grid-cols-[1.05fr_0.95fr]">
-      <div className="flex flex-col rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
-        <header className="flex flex-wrap items-start justify-between gap-3">
+    <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/55 p-5 shadow-sm">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Today</p>
             <h2 className="mt-2 text-xl font-semibold text-white">Demo entry (read-only)</h2>
           </div>
-          <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+          <span className="inline-flex w-max rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
             Locked
           </span>
         </header>
@@ -80,19 +80,19 @@ function TodayPreview() {
           value={'This is where your 333 characters go. Entries stay encrypted end to end until you unlock them with your passphrase.'}
           readOnly
           maxLength={MAX}
-          className="mt-6 min-h-[220px] flex-1 resize-none rounded-xl border border-white/5 bg-black/30 px-4 py-3 text-base leading-relaxed text-zinc-100 opacity-70 outline-none"
+          className="mt-6 min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-base leading-relaxed text-zinc-100 opacity-80 outline-none"
         />
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-neutral-500">
-          <span>118/{MAX}</span>
-          <div className="flex gap-2">
+        <div className="mt-6 flex flex-col gap-3 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+          <span className="font-medium text-neutral-400">118/{MAX}</span>
+          <div className="flex flex-wrap items-center gap-3">
             <button type="button" disabled className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-400">
               Clear
             </button>
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-lg bg-indigo-500/60 px-4 py-2 text-sm font-medium text-white/70"
+              className="cursor-not-allowed rounded-lg bg-indigo-500/60 px-4 py-2 text-sm font-medium text-white/80"
             >
               Save entry
             </button>
@@ -104,7 +104,7 @@ function TodayPreview() {
         </p>
       </div>
 
-      <aside className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-neutral-900/40 p-6 shadow-xl">
+      <aside className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-neutral-900/55 p-5 shadow-sm">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
           <h2 className="mt-2 text-xl font-semibold text-white">Streaks stay private too</h2>
@@ -295,29 +295,101 @@ function ActiveSection({ active }: { active: SectionId }) {
 
 export default function VisitorExperience() {
   const [active, setActive] = useState<SectionId>('today');
+  const [showInterface, setShowInterface] = useState(false);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (showInterface && shellRef.current) {
+      shellRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showInterface]);
 
   const activeMeta = SECTIONS.find((section) => section.id === active);
 
+  const handleReveal = () => {
+    if (showInterface) {
+      shellRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    setActive('today');
+    setShowInterface(true);
+  };
+
   return (
-    <main className="min-h-screen bg-[#07080B] text-zinc-100">
-      <div className="mx-auto w-full max-w-6xl px-6 py-16">
-        <header className="mb-10 max-w-3xl text-pretty text-center md:text-left">
-          <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Visitor mode</p>
-          <h1 className="mt-3 text-4xl font-semibold md:text-5xl">Walk through the OneLine workspace</h1>
+    <main className="relative min-h-screen overflow-hidden bg-[#07080B] text-zinc-100 selection:bg-indigo-600/30 selection:text-white">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -left-[12rem] top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.3),_transparent_65%)] blur-3xl" />
+        <div className="absolute right-[-10rem] top-72 h-80 w-80 rounded-full bg-[radial-gradient(circle_at_bottom,_rgba(16,185,129,0.22),_transparent_60%)] blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#07080B] via-transparent to-transparent" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-6xl px-6 py-16">
+        <header className="max-w-3xl text-pretty text-center md:text-left">
+          <p className="text-xs uppercase tracking-[0.28em] text-neutral-500">Visitor mode</p>
+          <h1 className="mt-3 text-4xl font-semibold md:text-5xl">
+            Walk through the OneLine workspace
+          </h1>
           <p className="mt-4 text-sm text-neutral-400 md:text-base">
             Explore the editor, history, summaries, and settings without creating an account. Everything is read-only here — to save your own encrypted entries you’ll need to sign in and unlock your vault with a passphrase only you know.
           </p>
         </header>
 
-        <SectionTabs active={active} onChange={setActive} />
-
-        {activeMeta && (
-          <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>
-        )}
-
-        <div className="mt-10 space-y-16">
-          <ActiveSection active={active} />
+        <div className="mt-10 flex flex-col items-center gap-4 text-center md:items-start md:text-left">
+          <button
+            type="button"
+            onClick={handleReveal}
+            className="group relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/20 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 px-9 py-4 text-base font-semibold text-white shadow-[0_18px_40px_rgba(79,70,229,0.45)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07080B] hover:shadow-[0_22px_48px_rgba(79,70,229,0.55)]"
+          >
+            <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.35),_transparent_70%)]" />
+            </span>
+            <span className="relative flex items-center gap-2 text-lg">
+              <span className="text-xl">👀</span>
+              Explore the workspace (no sign-in needed)
+            </span>
+          </button>
+          <p className="max-w-xl text-sm text-neutral-400 md:text-base">
+            Press the button to open a full, read-only replica of the Today, History, Summaries, and Settings pages — exactly how members see them, just with demo data and callouts.
+          </p>
         </div>
+
+        {showInterface ? (
+          <div ref={shellRef} className="mt-16">
+            <div className="overflow-hidden rounded-3xl border border-white/10 bg-neutral-900/40 shadow-2xl shadow-black/40 backdrop-blur">
+              <div className="border-b border-white/5 bg-black/40 px-6 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-left">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/20 text-xl">🦊</span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">OneLine demo workspace</p>
+                      <p className="text-xs text-neutral-500">All encryption-sensitive actions stay disabled here.</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1">Visitor preview</span>
+                    <span className="hidden rounded-full border border-white/10 bg-white/5 px-3 py-1 md:inline">No login required</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-8">
+                <SectionTabs active={active} onChange={setActive} />
+
+                {activeMeta && (
+                  <p className="mt-4 max-w-2xl text-sm text-neutral-400">{activeMeta.blurb}</p>
+                )}
+
+                <div className="mt-10 space-y-16">
+                  <ActiveSection active={active} />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-16 rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-neutral-400 backdrop-blur">
+            Want to peek at the real interface? Press “Explore the workspace (no sign-in needed)” to launch an embedded tour that mirrors the production layout with explanations for every page.
+          </div>
+        )}
       </div>
     </main>
   );
