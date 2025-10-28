@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
-export default function AuthButton() {
+export default function SupabaseAuthButton() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
