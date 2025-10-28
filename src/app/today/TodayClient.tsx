@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ProductTourAssistant } from '@/components/ProductTourAssistant';
 import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
@@ -335,189 +336,192 @@ export default function TodayClient() {
   const progressPercent = Math.round((streak?.progress ?? 0) * 100);
 
   return (
-    <VaultGate>
-      <div className="space-y-6">
-        {summaryReminder && summaryReminder.due && showSummaryReminder && (
-          <div className="rounded-2xl border border-indigo-500/40 bg-indigo-500/15 p-4 text-sm text-indigo-100">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-white">{humanizePeriod(summaryReminder.period)} story ready</p>
-                <p className="mt-1 text-xs text-indigo-100/80">
-                  Generate your recap for {formatWindowLabel(summaryReminder.window)} with your saved preferences.
-                </p>
+    <div className="space-y-6">
+      <ProductTourAssistant />
+      <VaultGate>
+        <div className="space-y-6">
+          {summaryReminder && summaryReminder.due && showSummaryReminder && (
+            <div className="rounded-2xl border border-indigo-500/40 bg-indigo-500/15 p-4 text-sm text-indigo-100">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">{humanizePeriod(summaryReminder.period)} story ready</p>
+                  <p className="mt-1 text-xs text-indigo-100/80">
+                    Generate your recap for {formatWindowLabel(summaryReminder.window)} with your saved preferences.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSummaryReminder(false);
+                      router.push(`/summaries?from=${summaryReminder.window.start}&to=${summaryReminder.window.end}`);
+                    }}
+                    className="rounded-xl bg-indigo-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-400"
+                  >
+                    Generate now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSummaryReminder(false)}
+                    className="rounded-xl border border-white/20 px-4 py-2 text-xs font-medium text-indigo-100 transition hover:bg-indigo-500/10"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSummaryReminder(false);
-                    router.push(`/summaries?from=${summaryReminder.window.start}&to=${summaryReminder.window.end}`);
-                  }}
-                  className="rounded-xl bg-indigo-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-400"
-                >
-                  Generate now
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSummaryReminder(false)}
-                  className="rounded-xl border border-white/20 px-4 py-2 text-xs font-medium text-indigo-100 transition hover:bg-indigo-500/10"
-                >
-                  Dismiss
-                </button>
-              </div>
             </div>
-          </div>
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-          <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
-              <h2 className="mt-1 text-xl font-semibold text-white">{displayDate}</h2>
-              {!isToday && (
-                <p className="text-xs text-neutral-400">Use the exact same passphrase — older entries stay locked without it.</p>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="date"
-                max={todayString}
-                value={selectedDay}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  if (/^\d{4}-\d{2}-\d{2}$/.test(next)) {
-                    const capped = next > todayString ? todayString : next;
-                    setSelectedDay(capped);
-                  }
-                }}
-                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
-              />
-              <button
-                type="button"
-                onClick={() => setSelectedDay(todayString)}
-                disabled={isToday}
-                className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDay(yesterdayString)}
-                disabled={selectedDay === yesterdayString}
-                className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
-              >
-                Yesterday
-              </button>
-            </div>
-          </div>
-          <p className="mb-4 italic text-neutral-300">
-            “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
-          </p>
-
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={MAX}
-            disabled={legacyReadOnly || saving || loadingEntry}
-            placeholder="One line that captures your day…"
-            className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
-          />
-
-          {!loadingEntry && !legacyReadOnly && !text && !pendingEntry?.content_cipher && (
-            <p className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-300">
-              No entry saved for this date yet — write up to 333 characters to backfill it securely.
-            </p>
           )}
 
-          {legacyReadOnly && (
-            <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-              Legacy entry detected. Press “Save entry” once to encrypt it with your new vault.
-            </p>
-          )}
-
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
-              {text.length}/{MAX}
-            </span>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {msg && <span className="text-sm text-emerald-400">{msg}</span>}
-              <button
-                type="button"
-                onClick={() => {
-                  setText('');
-                  setLegacyReadOnly(false);
-                }}
-                disabled={saving || loadingEntry}
-                className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-200 transition hover:bg-neutral-700 disabled:opacity-50"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={save}
-                disabled={!text.trim() || saving || loadingEntry}
-                className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
-              >
-                {saving ? 'Saving…' : 'Save entry'}
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <aside className="rounded-2xl border border-white/10 bg-neutral-900/40 p-5 shadow-sm">
-          <header className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
-              <h2 className="mt-2 text-lg font-semibold text-white">Your streak & companion</h2>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
-              Auto-synced
-            </span>
-          </header>
-
-          <div className="mt-6 space-y-4 text-sm text-neutral-300">
-            <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/40 text-2xl">
-                {currentCompanion.emoji}
-              </span>
-              <div>
-                <p className="text-base font-semibold text-white">{currentCompanion.name}</p>
-                <p className="text-neutral-400">{currentCompanion.blurb}</p>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+            <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
+                  <h2 className="mt-1 text-xl font-semibold text-white">{displayDate}</h2>
+                  {!isToday && (
+                    <p className="text-xs text-neutral-400">Use the exact same passphrase — older entries stay locked without it.</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    max={todayString}
+                    value={selectedDay}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(next)) {
+                        const capped = next > todayString ? todayString : next;
+                        setSelectedDay(capped);
+                      }
+                    }}
+                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDay(todayString)}
+                    disabled={isToday}
+                    className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDay(yesterdayString)}
+                    disabled={selectedDay === yesterdayString}
+                    className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
+                  >
+                    Yesterday
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-              <p className="text-xs uppercase tracking-wider text-neutral-500">Current streak</p>
-              <p className="mt-1 text-3xl font-semibold text-white">{streak?.current ?? 0} days</p>
-              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
-                <div
-                  className="h-full rounded-full bg-indigo-500 transition-all"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              {upcomingCompanion ? (
-                <p className="mt-3 text-xs text-neutral-400">
-                  {upcomingCompanion.emoji} Unlock {upcomingCompanion.name} at {upcomingCompanion.min} days.
-                </p>
-              ) : (
-                <p className="mt-3 text-xs text-neutral-400">Keep the ritual alive — you’ve met every companion we have.</p>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-              <p className="text-xs uppercase tracking-wider text-neutral-500">Longest run</p>
-              <p className="mt-1 text-2xl font-semibold text-white">{streak?.longest ?? 0} days</p>
-              <p className="mt-2 text-xs text-neutral-400">
-                Your encrypted vault ensures only you can read your reflections.
+              <p className="mb-4 italic text-neutral-300">
+                “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
               </p>
-            </div>
+
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                maxLength={MAX}
+                disabled={legacyReadOnly || saving || loadingEntry}
+                placeholder="One line that captures your day…"
+                className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
+              />
+
+              {!loadingEntry && !legacyReadOnly && !text && !pendingEntry?.content_cipher && (
+                <p className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-300">
+                  No entry saved for this date yet — write up to 333 characters to backfill it securely.
+                </p>
+              )}
+
+              {legacyReadOnly && (
+                <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+                  Legacy entry detected. Press “Save entry” once to encrypt it with your new vault.
+                </p>
+              )}
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
+                  {text.length}/{MAX}
+                </span>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {msg && <span className="text-sm text-emerald-400">{msg}</span>}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setText('');
+                      setLegacyReadOnly(false);
+                    }}
+                    disabled={saving || loadingEntry}
+                    className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-200 transition hover:bg-neutral-700 disabled:opacity-50"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={save}
+                    disabled={!text.trim() || saving || loadingEntry}
+                    className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
+                  >
+                    {saving ? 'Saving…' : 'Save entry'}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <aside className="rounded-2xl border border-white/10 bg-neutral-900/40 p-5 shadow-sm">
+              <header className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
+                  <h2 className="mt-2 text-lg font-semibold text-white">Your streak & companion</h2>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
+                  Auto-synced
+                </span>
+              </header>
+
+              <div className="mt-6 space-y-4 text-sm text-neutral-300">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/40 text-2xl">
+                    {currentCompanion.emoji}
+                  </span>
+                  <div>
+                    <p className="text-base font-semibold text-white">{currentCompanion.name}</p>
+                    <p className="text-neutral-400">{currentCompanion.blurb}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+                  <p className="text-xs uppercase tracking-wider text-neutral-500">Current streak</p>
+                  <p className="mt-1 text-3xl font-semibold text-white">{streak?.current ?? 0} days</p>
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
+                    <div
+                      className="h-full rounded-full bg-indigo-500 transition-all"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  {upcomingCompanion ? (
+                    <p className="mt-3 text-xs text-neutral-400">
+                      {upcomingCompanion.emoji} Unlock {upcomingCompanion.name} at {upcomingCompanion.min} days.
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-xs text-neutral-400">Keep the ritual alive — you’ve met every companion we have.</p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+                  <p className="text-xs uppercase tracking-wider text-neutral-500">Longest run</p>
+                  <p className="mt-1 text-2xl font-semibold text-white">{streak?.longest ?? 0} days</p>
+                  <p className="mt-2 text-xs text-neutral-400">
+                    Your encrypted vault ensures only you can read your reflections.
+                  </p>
+                </div>
+              </div>
+            </aside>
           </div>
-        </aside>
-      </div>
+        </div>
+      </VaultGate>
     </div>
-    </VaultGate>
   );
 }
 
