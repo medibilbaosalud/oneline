@@ -48,19 +48,32 @@ if (diagnostics.missing.length === 0) {
 
 const handlers: NextAuthResult["handlers"] | undefined = authInstance?.handlers;
 
-const missingThrower = <T extends (...args: any[]) => Promise<unknown>>(label: string) =>
-  (async (..._args: Parameters<T>) => {
-    throw new Error(`Missing NextAuth env vars (${label}): ${diagnostics.missing.join(", ")}`);
-  }) as T;
+const missingAuth = ((..._args: Parameters<NextAuthResult["auth"]>) =>
+  Promise.reject(
+    new Error(
+      `Missing NextAuth env vars (auth): ${diagnostics.missing.join(", ")}`,
+    ),
+  )) as NextAuthResult["auth"];
 
-export const auth: NextAuthResult["auth"] =
-  authInstance?.auth ?? missingThrower<NextAuthResult["auth"]>("auth");
+const missingSignIn = ((..._args: Parameters<NextAuthResult["signIn"]>) =>
+  Promise.reject(
+    new Error(
+      `Missing NextAuth env vars (signIn): ${diagnostics.missing.join(", ")}`,
+    ),
+  )) as NextAuthResult["signIn"];
 
-export const signIn: NextAuthResult["signIn"] =
-  authInstance?.signIn ?? missingThrower<NextAuthResult["signIn"]>("signIn");
+const missingSignOut = ((..._args: Parameters<NextAuthResult["signOut"]>) =>
+  Promise.reject(
+    new Error(
+      `Missing NextAuth env vars (signOut): ${diagnostics.missing.join(", ")}`,
+    ),
+  )) as NextAuthResult["signOut"];
 
-export const signOut: NextAuthResult["signOut"] =
-  authInstance?.signOut ?? missingThrower<NextAuthResult["signOut"]>("signOut");
+export const auth: NextAuthResult["auth"] = authInstance?.auth ?? missingAuth;
+
+export const signIn: NextAuthResult["signIn"] = authInstance?.signIn ?? missingSignIn;
+
+export const signOut: NextAuthResult["signOut"] = authInstance?.signOut ?? missingSignOut;
 
 export async function GET(req: NextRequest) {
   if (!handlers) {
