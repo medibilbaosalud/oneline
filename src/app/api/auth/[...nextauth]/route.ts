@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const diagnostics = getAuthDiagnostics();
 
-const respondMissing = () =>
+const respondMissing = async () =>
   NextResponse.json(
     {
       ok: false,
