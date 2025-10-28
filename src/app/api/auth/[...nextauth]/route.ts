@@ -16,7 +16,7 @@ type UpdateFn = NextAuthResult["unstable_update"];
 
 const diagnostics = getAuthDiagnostics();
 
-const respondMissing = () =>
+const respondMissing: HandlerMap["GET"] = async (_req, _ctx) =>
   NextResponse.json(
     {
       ok: false,
@@ -27,44 +27,30 @@ const respondMissing = () =>
     { status: 500 },
   );
 
-const createThrower = <T extends (...args: any[]) => Promise<unknown>>(label: string) =>
-  (async (..._args: Parameters<T>): Promise<never> => {
+const createThrower = <T extends (...args: any[]) => unknown>(label: string) =>
+  ((..._args: Parameters<T>) => {
     throw new Error(`Missing NextAuth env vars (${label}): ${diagnostics.missing.join(", ")}`);
   }) as T;
 
-const fallbackHandlers: HandlerMap = {
-  GET: async (_req: NextRequest, _ctx) => respondMissing(),
-  POST: async (_req: NextRequest, _ctx) => respondMissing(),
-};
+const fallbackAuth = (() => {
+  const handlers: HandlerMap = {
+    GET: respondMissing,
+    POST: async (req, ctx) => respondMissing(req, ctx),
+  };
 
-let handlers: HandlerMap;
-let auth: AuthFn;
-let signIn: SignInFn;
-let signOut: SignOutFn;
-let unstable_update: UpdateFn;
+  return {
+    handlers,
+    auth: createThrower<AuthFn>("auth"),
+    signIn: createThrower<SignInFn>("signIn"),
+    signOut: createThrower<SignOutFn>("signOut"),
+    unstable_update: createThrower<UpdateFn>("unstable_update"),
+  } as unknown as NextAuthResult;
+})();
 
-if (diagnostics.missing.length === 0) {
-  const authInstance = NextAuth(createAuthConfig());
-  handlers = authInstance.handlers;
-  auth = authInstance.auth;
-  signIn = authInstance.signIn;
-  signOut = authInstance.signOut;
-  unstable_update = authInstance.unstable_update;
-} else {
-  console.error(
-    "[auth:config] Missing NextAuth env vars",
-    JSON.stringify({ missing: diagnostics.missing }, null, 2),
-  );
-  handlers = fallbackHandlers;
-  auth = createThrower<AuthFn>("auth");
-  signIn = createThrower<SignInFn>("signIn");
-  signOut = createThrower<SignOutFn>("signOut");
-  unstable_update = createThrower<UpdateFn>("unstable_update");
-}
+const authInstance: NextAuthResult =
+  diagnostics.missing.length === 0 ? NextAuth(createAuthConfig()) : fallbackAuth;
 
-export { handlers, auth, signIn, signOut, unstable_update };
+export const { handlers, auth, signIn, signOut, unstable_update } = authInstance;
 
-export const GET = (req: NextRequest, context: Parameters<HandlerMap["GET"]>[1]) =>
-  handlers.GET(req, context);
-export const POST = (req: NextRequest, context: Parameters<HandlerMap["POST"]>[1]) =>
-  handlers.POST(req, context);
+export const GET: HandlerMap["GET"] = (req: NextRequest, ctx) => handlers.GET(req, ctx);
+export const POST: HandlerMap["POST"] = (req: NextRequest, ctx) => handlers.POST(req, ctx);
