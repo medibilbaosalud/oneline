@@ -54,7 +54,22 @@ if (missingEnv.length === 0) {
   console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
 }
 
-type NextAuthContext = { params: { nextauth: string[] } };
+type NextAuthContext =
+  | { params: { nextauth: string[] } }
+  | { params: Promise<{ nextauth: string[] }> };
+
+const resolveContext = async (context: NextAuthContext) => {
+  const paramsCandidate = context.params as
+    | { nextauth: string[] }
+    | Promise<{ nextauth: string[] }>;
+
+  const params =
+    typeof (paramsCandidate as Promise<unknown>)?.then === "function"
+      ? await (paramsCandidate as Promise<{ nextauth: string[] }>)
+      : (paramsCandidate as { nextauth: string[] });
+
+  return { params } as { params: { nextauth: string[] } };
+};
 
 const dispatchToAuth = async (
   req: NextRequest,
@@ -74,7 +89,8 @@ const dispatchToAuth = async (
 
   try {
     const handler = authInstance.handlers[method];
-    return await handler(req, context);
+    const resolvedContext = await resolveContext(context);
+    return await handler(req, resolvedContext);
   } catch (error) {
     console.error("[auth:init]", error);
     throw error;
