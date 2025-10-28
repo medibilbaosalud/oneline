@@ -27,10 +27,10 @@ const respondMissing = (async (_req: NextRequest) =>
     { status: 500 },
   )) as HandlerMap["GET"];
 
-const createThrower = <T extends (...args: any[]) => unknown>(label: string) =>
-  ((..._args: Parameters<T>) => {
+const createThrower = (label: string) =>
+  ((..._args: unknown[]) => {
     throw new Error(`Missing NextAuth env vars (${label}): ${diagnostics.missing.join(", ")}`);
-  }) as T;
+  }) as unknown;
 
 const fallbackAuth = (() => {
   const handlers: HandlerMap = {
@@ -40,10 +40,10 @@ const fallbackAuth = (() => {
 
   return {
     handlers,
-    auth: createThrower<AuthFn>("auth"),
-    signIn: createThrower<SignInFn>("signIn"),
-    signOut: createThrower<SignOutFn>("signOut"),
-    unstable_update: createThrower<UpdateFn>("unstable_update"),
+    auth: createThrower("auth") as AuthFn,
+    signIn: createThrower("signIn") as SignInFn,
+    signOut: createThrower("signOut") as SignOutFn,
+    unstable_update: createThrower("unstable_update") as UpdateFn,
   } as unknown as NextAuthResult;
 })();
 
