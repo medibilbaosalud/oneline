@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
 
 import {
   createAuthOptions,
@@ -12,19 +13,14 @@ export const dynamic = "force-dynamic";
 const missingEnv = getMissingAuthEnv();
 
 const respondWithMissingEnv = () =>
-  new Response(
-    JSON.stringify({
+  NextResponse.json(
+    {
       ok: false,
       message:
         "NextAuth is not configured. Define the missing env vars in Vercel and redeploy.",
       missing: missingEnv,
-    }),
-    {
-      status: 500,
-      headers: {
-        "content-type": "application/json",
-      },
     },
+    { status: 500 },
   );
 
 const shouldLog = () =>
@@ -58,7 +54,7 @@ if (missingEnv.length === 0) {
   console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
 }
 
-const dispatchToAuth = async (req: Request, method: "GET" | "POST") => {
+const dispatchToAuth = async (req: NextRequest, method: "GET" | "POST") => {
   if (!authInstance) {
     return respondWithMissingEnv();
   }
@@ -79,8 +75,8 @@ const dispatchToAuth = async (req: Request, method: "GET" | "POST") => {
   }
 };
 
-export const GET = (req: Request) => dispatchToAuth(req, "GET");
-export const POST = (req: Request) => dispatchToAuth(req, "POST");
+export const GET = (req: NextRequest) => dispatchToAuth(req, "GET");
+export const POST = (req: NextRequest) => dispatchToAuth(req, "POST");
 
 export const handlers = { GET, POST } as const;
 export const auth = authInstance?.auth;
