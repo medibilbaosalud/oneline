@@ -1,4 +1,3 @@
-import type { AuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 
 const cleanEnvValue = (value?: string | null) => {
@@ -92,9 +91,9 @@ export const getRuntimeHost = (req: Request) => {
   return host ?? "unknown";
 };
 
-export const createAuthConfig = (): AuthConfig => {
+export const createAuthConfig = () => {
   const redirectProxyUrl = REDIRECT_PROXY.url;
-  const config: AuthConfig = {
+  const config = {
     secret: resolveSecret(),
     providers: [
       GitHubProvider({
