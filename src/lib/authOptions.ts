@@ -93,7 +93,8 @@ export const getRuntimeHost = (req: Request) => {
 
 export const createAuthConfig = () => {
   const redirectProxyUrl = REDIRECT_PROXY.url;
-  const config = {
+
+  return {
     secret: resolveSecret(),
     providers: [
       GitHubProvider({
@@ -105,11 +106,6 @@ export const createAuthConfig = () => {
       error: "/auth/error",
     },
     trustHost: true,
+    ...(redirectProxyUrl ? { redirectProxyUrl } : {}),
   };
-
-  if (redirectProxyUrl) {
-    config.redirectProxyUrl = redirectProxyUrl;
-  }
-
-  return config;
 };
