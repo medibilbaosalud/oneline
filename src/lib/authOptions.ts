@@ -1,111 +1,86 @@
 import GitHubProvider from "next-auth/providers/github";
 
-const cleanEnvValue = (value?: string | null) => {
-  if (!value) {
-    return undefined;
-  }
+type RequiredAuthEnvKey = "GITHUB_ID" | "GITHUB_SECRET" | "NEXTAUTH_SECRET";
 
+type NullableEnv = string | undefined | null;
+
+const cleanEnvValue = (value: NullableEnv) => {
+  if (!value) return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const AUTH_ENV = {
+const env = {
   GITHUB_ID: cleanEnvValue(process.env.GITHUB_ID),
   GITHUB_SECRET: cleanEnvValue(process.env.GITHUB_SECRET),
-  AUTH_SECRET: cleanEnvValue(process.env.AUTH_SECRET),
-  NEXTAUTH_SECRET: cleanEnvValue(process.env.NEXTAUTH_SECRET),
-  AUTH_URL: cleanEnvValue(process.env.AUTH_URL),
-  NEXTAUTH_URL: cleanEnvValue(process.env.NEXTAUTH_URL),
+  NEXTAUTH_SECRET: cleanEnvValue(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET),
   AUTH_REDIRECT_PROXY_URL: cleanEnvValue(process.env.AUTH_REDIRECT_PROXY_URL),
+  NEXTAUTH_URL: cleanEnvValue(process.env.NEXTAUTH_URL ?? process.env.AUTH_URL),
 } as const;
 
-const resolveSecret = () => AUTH_ENV.AUTH_SECRET ?? AUTH_ENV.NEXTAUTH_SECRET;
-
-const resolveBaseAuthUrl = () => AUTH_ENV.AUTH_URL ?? AUTH_ENV.NEXTAUTH_URL;
-
-const resolveRedirectProxyUrl = () => {
-  if (AUTH_ENV.AUTH_REDIRECT_PROXY_URL) {
-    return {
-      url: AUTH_ENV.AUTH_REDIRECT_PROXY_URL,
-      source: "AUTH_REDIRECT_PROXY_URL" as const,
-    };
+const deriveRedirectProxyUrl = () => {
+  if (env.AUTH_REDIRECT_PROXY_URL) {
+    return { url: env.AUTH_REDIRECT_PROXY_URL, source: "AUTH_REDIRECT_PROXY_URL" as const };
   }
 
-  const baseAuthUrl = resolveBaseAuthUrl();
-  if (baseAuthUrl) {
+  if (env.NEXTAUTH_URL) {
     try {
       return {
-        url: new URL("/api/auth", baseAuthUrl).toString(),
-        source: AUTH_ENV.AUTH_URL ? "AUTH_URL" : "NEXTAUTH_URL",
-      } as const;
+        url: new URL("/api/auth", env.NEXTAUTH_URL).toString(),
+        source: "NEXTAUTH_URL" as const,
+      };
     } catch (error) {
-      console.warn(
-        "[auth] Failed to derive redirect proxy URL from configured auth URL. Set AUTH_REDIRECT_PROXY_URL explicitly.",
-        error,
-      );
+      console.warn("[auth] Failed to derive redirect proxy URL", error);
     }
   }
 
-  return {
-    url: undefined,
-    source: null,
-  } as const;
+  return { url: undefined, source: null as const };
 };
 
-const REDIRECT_PROXY = resolveRedirectProxyUrl();
-
-export const resolveAuthRedirectProxy = () => REDIRECT_PROXY;
-
-const REQUIRED_AUTH_ENV_KEYS = ["GITHUB_ID", "GITHUB_SECRET"] as const;
-
-export type AuthEnvKey = (typeof REQUIRED_AUTH_ENV_KEYS)[number] | "AUTH_SECRET" | "NEXTAUTH_SECRET";
+const redirectProxy = deriveRedirectProxyUrl();
 
 export const getMissingAuthEnv = () => {
-  const missing = new Set<AuthEnvKey>();
-
-  for (const key of REQUIRED_AUTH_ENV_KEYS) {
-    if (!AUTH_ENV[key]) {
-      missing.add(key);
-    }
-  }
-
-  if (!resolveSecret()) {
-    missing.add("AUTH_SECRET");
-    missing.add("NEXTAUTH_SECRET");
-  }
-
-  return Array.from(missing);
+  const missing: RequiredAuthEnvKey[] = [];
+  if (!env.GITHUB_ID) missing.push("GITHUB_ID");
+  if (!env.GITHUB_SECRET) missing.push("GITHUB_SECRET");
+  if (!env.NEXTAUTH_SECRET) missing.push("NEXTAUTH_SECRET");
+  return missing;
 };
 
-export const getAuthEnvDiagnostics = () => ({
+export const getAuthDiagnostics = () => ({
   missing: getMissingAuthEnv(),
-  authUrl: AUTH_ENV.AUTH_URL ?? null,
-  nextAuthUrl: AUTH_ENV.NEXTAUTH_URL ?? null,
-  redirectProxyUrl: REDIRECT_PROXY.url,
-  redirectProxySource: REDIRECT_PROXY.source,
-  secretSource: AUTH_ENV.AUTH_SECRET ? "AUTH_SECRET" : AUTH_ENV.NEXTAUTH_SECRET ? "NEXTAUTH_SECRET" : null,
+  redirectProxyUrl: redirectProxy.url,
+  redirectProxySource: redirectProxy.source,
+  nextAuthUrl: env.NEXTAUTH_URL,
 });
 
-export const getRuntimeHost = (req: Request) => {
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  return host ?? "unknown";
-};
+export const getRuntimeHost = (req: Request) =>
+  req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "unknown";
 
 export const createAuthConfig = () => {
-  const redirectProxyUrl = REDIRECT_PROXY.url;
+  const missing = getMissingAuthEnv();
+  if (missing.length > 0) {
+    throw new Error(`Missing NextAuth env vars: ${missing.join(", ")}`);
+  }
 
   return {
-    secret: resolveSecret(),
+    secret: env.NEXTAUTH_SECRET,
     providers: [
       GitHubProvider({
-        clientId: AUTH_ENV.GITHUB_ID as string,
-        clientSecret: AUTH_ENV.GITHUB_SECRET as string,
+        clientId: env.GITHUB_ID as string,
+        clientSecret: env.GITHUB_SECRET as string,
       }),
     ],
+    trustHost: true,
+    basePath: "/api/auth",
+    callbacks: {
+      async redirect({ url }: { url: string }) {
+        return url;
+      },
+    },
+    ...(redirectProxy.url ? { redirectProxyUrl: redirectProxy.url } : {}),
     pages: {
       error: "/auth/error",
     },
-    trustHost: true,
-    ...(redirectProxyUrl ? { redirectProxyUrl } : {}),
   };
 };

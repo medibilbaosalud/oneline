@@ -1,100 +1,43 @@
 import NextAuth from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import {
-  createAuthConfig,
-  getMissingAuthEnv,
-  resolveAuthRedirectProxy,
-} from "@/lib/authOptions";
+import { createAuthConfig, getAuthDiagnostics } from "@/lib/authOptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const shouldLog = () =>
-  process.env.NODE_ENV !== "production" &&
-  typeof process.env.DEBUG === "string" &&
-  /auth|next-auth/.test(process.env.DEBUG);
+const diagnostics = getAuthDiagnostics();
 
-const missingEnvAtBoot = getMissingAuthEnv();
-
-if (missingEnvAtBoot.length > 0) {
-  console.error(`[auth] Missing env vars: ${missingEnvAtBoot.join(", ")}`);
-}
-
-const logPreviewContext = () => {
-  if (!shouldLog()) {
-    return;
-  }
-
-  const resolvedProxy = resolveAuthRedirectProxy();
-  console.debug(
-    `[auth] redirect proxy ${resolvedProxy.url ?? "<none>"} (source=${
-      resolvedProxy.source ?? "none"
-    })`,
-  );
-};
-
-const respondWithMissingEnv = () =>
+const respondMissing = () =>
   NextResponse.json(
     {
       ok: false,
       message:
-        "NextAuth is not configured. Define the missing env vars (GITHUB_ID, GITHUB_SECRET, NEXTAUTH_SECRET/AUTH_SECRET) in Vercel and redeploy.",
-      missing: missingEnvAtBoot,
+        "NextAuth is not configured. Add GITHUB_ID, GITHUB_SECRET, and NEXTAUTH_SECRET in Vercel, then redeploy.",
+      missing: diagnostics.missing,
     },
     { status: 500 },
   );
 
-let authInstance: ReturnType<typeof NextAuth> | undefined;
+const fallbackHandlers = {
+  GET: (_req: NextRequest) => respondMissing(),
+  POST: (_req: NextRequest) => respondMissing(),
+} satisfies ReturnType<typeof NextAuth>["handlers"];
 
-const ensureAuthInstance = () => {
-  if (authInstance) {
-    return authInstance;
-  }
+const authInstance =
+  diagnostics.missing.length === 0
+    ? NextAuth(createAuthConfig())
+    : ({
+        handlers: fallbackHandlers,
+        auth: async () => null,
+        signIn: async () => {
+          throw new Error(`Missing NextAuth env vars: ${diagnostics.missing.join(", ")}`);
+        },
+        signOut: async () => {
+          throw new Error(`Missing NextAuth env vars: ${diagnostics.missing.join(", ")}`);
+        },
+      } as ReturnType<typeof NextAuth>);
 
-  try {
-    authInstance = NextAuth(createAuthConfig());
-    logPreviewContext();
-  } catch (error) {
-    console.error("[auth:init]", error);
-    throw error;
-  }
-
-  return authInstance;
-};
-
-const logRedirectAttempt = (req: NextRequest) => {
-  if (!shouldLog()) {
-    return;
-  }
-
-  const attempted = new URL(req.url).searchParams.get("redirect_uri");
-  if (attempted) {
-    console.debug(`[auth] incoming redirect_uri=${attempted}`);
-  }
-};
-
-export const GET = (req: NextRequest) => {
-  if (missingEnvAtBoot.length > 0) {
-    return respondWithMissingEnv();
-  }
-
-  logRedirectAttempt(req);
-  return ensureAuthInstance().handlers.GET(req);
-};
-
-export const POST = (req: NextRequest) => {
-  if (missingEnvAtBoot.length > 0) {
-    return respondWithMissingEnv();
-  }
-
-  logRedirectAttempt(req);
-  return ensureAuthInstance().handlers.POST(req);
-};
-
-const exported = missingEnvAtBoot.length === 0 ? ensureAuthInstance() : undefined;
-
-export const handlers = exported?.handlers ?? { GET, POST };
-export const auth = exported?.auth;
-export const signIn = exported?.signIn;
-export const signOut = exported?.signOut;
+export const { handlers, auth, signIn, signOut } = authInstance;
+export const { GET, POST } = handlers;
