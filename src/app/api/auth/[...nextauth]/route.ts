@@ -37,7 +37,10 @@ const authInstance =
         signOut: async () => {
           throw new Error(`Missing NextAuth env vars: ${diagnostics.missing.join(", ")}`);
         },
-      } as ReturnType<typeof NextAuth>);
+        unstable_update: async () => {
+          throw new Error(`Missing NextAuth env vars: ${diagnostics.missing.join(", ")}`);
+        },
+      } satisfies ReturnType<typeof NextAuth>);
 
 export const { handlers, auth, signIn, signOut } = authInstance;
 export const { GET, POST } = handlers;
