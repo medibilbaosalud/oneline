@@ -47,6 +47,8 @@ const resolveRedirectProxyUrl = () => {
 
 const REDIRECT_PROXY = resolveRedirectProxyUrl();
 
+export const resolveAuthRedirectProxy = () => REDIRECT_PROXY;
+
 export const REQUIRED_AUTH_ENV_KEYS = ["GITHUB_ID", "GITHUB_SECRET", "NEXTAUTH_SECRET"] as const;
 export type AuthEnvKey = (typeof REQUIRED_AUTH_ENV_KEYS)[number];
 
