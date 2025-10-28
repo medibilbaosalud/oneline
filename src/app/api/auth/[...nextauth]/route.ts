@@ -1,63 +1,67 @@
 import NextAuth from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { createAuthOptions, getMissingAuthEnv, resolveAuthRedirectProxy } from "@/lib/authOptions";
+import {
+  createAuthConfig,
+  getMissingAuthEnv,
+  resolveAuthRedirectProxy,
+} from "@/lib/authOptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const missingEnv = getMissingAuthEnv();
-
-const respondWithMissingEnv = () =>
-  NextResponse.json(
-    {
-      ok: false,
-      message:
-        "NextAuth is not configured. Define the missing env vars in Vercel and redeploy.",
-      missing: missingEnv,
-    },
-    { status: 500 },
-  );
 
 const shouldLog = () =>
   process.env.NODE_ENV !== "production" &&
   typeof process.env.DEBUG === "string" &&
   /auth|next-auth/.test(process.env.DEBUG);
 
-const resolvedProxy = resolveAuthRedirectProxy();
-const baseUrl =
-  process.env.AUTH_REDIRECT_PROXY_URL?.trim() ||
-  process.env.NEXTAUTH_URL?.trim() ||
-  undefined;
+const missingEnvAtBoot = getMissingAuthEnv();
+
+if (missingEnvAtBoot.length > 0) {
+  console.error(`[auth] Missing env vars: ${missingEnvAtBoot.join(", ")}`);
+}
 
 const logPreviewContext = () => {
   if (!shouldLog()) {
     return;
   }
 
+  const resolvedProxy = resolveAuthRedirectProxy();
   console.debug(
-    `[auth] resolved redirect proxy: ${resolvedProxy.url ?? "<none>"} (source=${
+    `[auth] redirect proxy ${resolvedProxy.url ?? "<none>"} (source=${
       resolvedProxy.source ?? "none"
-    }), baseUrl=${baseUrl ?? "<none>"}`,
+    })`,
   );
 };
 
-const createAuthInstance = () => {
+const respondWithMissingEnv = () =>
+  NextResponse.json(
+    {
+      ok: false,
+      message:
+        "NextAuth is not configured. Define the missing env vars (GITHUB_ID, GITHUB_SECRET, NEXTAUTH_SECRET/AUTH_SECRET) in Vercel and redeploy.",
+      missing: missingEnvAtBoot,
+    },
+    { status: 500 },
+  );
+
+let authInstance: ReturnType<typeof NextAuth> | undefined;
+
+const ensureAuthInstance = () => {
+  if (authInstance) {
+    return authInstance;
+  }
+
   try {
-    const instance = NextAuth(createAuthOptions());
+    authInstance = NextAuth(createAuthConfig());
     logPreviewContext();
-    return instance;
   } catch (error) {
     console.error("[auth:init]", error);
     throw error;
   }
+
+  return authInstance;
 };
-
-const authInstance = missingEnv.length === 0 ? createAuthInstance() : undefined;
-
-if (missingEnv.length > 0) {
-  console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
-}
 
 const logRedirectAttempt = (req: NextRequest) => {
   if (!shouldLog()) {
@@ -71,24 +75,26 @@ const logRedirectAttempt = (req: NextRequest) => {
 };
 
 export const GET = (req: NextRequest) => {
-  if (!authInstance) {
+  if (missingEnvAtBoot.length > 0) {
     return respondWithMissingEnv();
   }
 
   logRedirectAttempt(req);
-  return authInstance.handlers.GET(req);
+  return ensureAuthInstance().handlers.GET(req);
 };
 
 export const POST = (req: NextRequest) => {
-  if (!authInstance) {
+  if (missingEnvAtBoot.length > 0) {
     return respondWithMissingEnv();
   }
 
   logRedirectAttempt(req);
-  return authInstance.handlers.POST(req);
+  return ensureAuthInstance().handlers.POST(req);
 };
 
-export const handlers = authInstance?.handlers ?? { GET, POST };
-export const auth = authInstance?.auth;
-export const signIn = authInstance?.signIn;
-export const signOut = authInstance?.signOut;
+const exported = missingEnvAtBoot.length === 0 ? ensureAuthInstance() : undefined;
+
+export const handlers = exported?.handlers ?? { GET, POST };
+export const auth = exported?.auth;
+export const signIn = exported?.signIn;
+export const signOut = exported?.signOut;

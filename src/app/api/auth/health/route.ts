@@ -14,7 +14,9 @@ export function GET(req: Request) {
     redirectAttempt,
     redirectProxyUrl: diagnostics.redirectProxyUrl ?? null,
     redirectProxySource: diagnostics.redirectProxySource ?? null,
-    nextauthUrl: diagnostics.nextAuthUrl ?? null,
+    authUrl: diagnostics.authUrl,
+    nextauthUrl: diagnostics.nextAuthUrl,
+    secretSource: diagnostics.secretSource,
     hint: ok
       ? undefined
       : "Add the missing env vars in Vercel. For previews set AUTH_REDIRECT_PROXY_URL to your production /api/auth endpoint.",

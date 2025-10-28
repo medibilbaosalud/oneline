@@ -8,7 +8,9 @@ First, add the authentication environment variables required by NextAuth. Create
 GITHUB_ID=<your GitHub OAuth client id>
 GITHUB_SECRET=<your GitHub OAuth client secret>
 NEXTAUTH_URL=http://localhost:3000
+# Either AUTH_SECRET or NEXTAUTH_SECRET is required (Auth.js v5 still honours the legacy name):
 NEXTAUTH_SECRET=<random 32+ byte base64 string>
+# AUTH_SECRET=<random 32+ byte base64 string>
 # Optional (mirrors the production proxy behaviour for previews)
 # AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
 ```
@@ -49,7 +51,7 @@ Add the same keys in Vercel → Project → Settings → Environment Variables b
 GITHUB_ID
 GITHUB_SECRET
 NEXTAUTH_URL=https://oneline-one.vercel.app
-NEXTAUTH_SECRET
+NEXTAUTH_SECRET (or AUTH_SECRET)
 AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
 AUTH_TRUST_HOST=true
 ```
@@ -65,7 +67,7 @@ For Vercel preview deployments, add these environment variables in the Preview e
 ```
 GITHUB_ID
 GITHUB_SECRET
-NEXTAUTH_SECRET
+NEXTAUTH_SECRET (or AUTH_SECRET)
 NEXTAUTH_URL=https://oneline-one.vercel.app
 AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
 AUTH_TRUST_HOST=true
@@ -78,6 +80,6 @@ Open your GitHub OAuth App (GitHub → Settings → Developer settings → OAuth
 ## GitHub OAuth redirect mismatch — how to fix
 
 1. Confirm `NEXTAUTH_URL=https://oneline-one.vercel.app` and `AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth` exist in the relevant Vercel environment (Production and Preview) and redeploy.
-2. Rotate and paste your GitHub OAuth credentials into `GITHUB_ID` and `GITHUB_SECRET`, and generate a new `NEXTAUTH_SECRET` with `openssl rand -base64 32` if needed.
+2. Rotate and paste your GitHub OAuth credentials into `GITHUB_ID` and `GITHUB_SECRET`, and generate a new `NEXTAUTH_SECRET` (or `AUTH_SECRET`) with `openssl rand -base64 32` if needed.
 3. In GitHub → Settings → Developer settings → OAuth Apps, ensure the **Authorization callback URL** is exactly `https://oneline-one.vercel.app/api/auth/callback/github`. Local development can keep `http://localhost:3000/api/auth/callback/github` on a separate dev app if required.
 4. Visit `/api/auth/health` (locally or on the deployment) to verify `ok: true` before retrying the login.
