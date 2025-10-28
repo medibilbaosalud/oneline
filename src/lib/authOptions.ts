@@ -18,23 +18,28 @@ const env = {
   NEXTAUTH_URL: cleanEnvValue(process.env.NEXTAUTH_URL ?? process.env.AUTH_URL),
 } as const;
 
-const deriveRedirectProxyUrl = () => {
+type RedirectProxy = {
+  url: string | undefined;
+  source: "AUTH_REDIRECT_PROXY_URL" | "NEXTAUTH_URL" | null;
+};
+
+const deriveRedirectProxyUrl = (): RedirectProxy => {
   if (env.AUTH_REDIRECT_PROXY_URL) {
-    return { url: env.AUTH_REDIRECT_PROXY_URL, source: "AUTH_REDIRECT_PROXY_URL" as const };
+    return { url: env.AUTH_REDIRECT_PROXY_URL, source: "AUTH_REDIRECT_PROXY_URL" };
   }
 
   if (env.NEXTAUTH_URL) {
     try {
       return {
         url: new URL("/api/auth", env.NEXTAUTH_URL).toString(),
-        source: "NEXTAUTH_URL" as const,
+        source: "NEXTAUTH_URL",
       };
     } catch (error) {
       console.warn("[auth] Failed to derive redirect proxy URL", error);
     }
   }
 
-  return { url: undefined, source: null as const };
+  return { url: undefined, source: null };
 };
 
 const redirectProxy = deriveRedirectProxyUrl();
