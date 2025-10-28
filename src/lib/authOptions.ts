@@ -1,4 +1,3 @@
-import type { AuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 
 const cleanEnvValue = (value?: string | null) => {
@@ -71,11 +70,7 @@ const shouldLogRedirects = () =>
   typeof process.env.DEBUG === "string" &&
   /auth|next-auth/.test(process.env.DEBUG);
 
-export const createAuthOptions = (): AuthConfig & {
-  trustHost?: boolean;
-  redirectProxyUrl?: string;
-  basePath?: string;
-} => {
+export const createAuthOptions = () => {
   const logRedirects = shouldLogRedirects();
 
   return {
@@ -93,7 +88,7 @@ export const createAuthOptions = (): AuthConfig & {
     trustHost: true,
     redirectProxyUrl: REDIRECT_PROXY.url,
     callbacks: {
-      async redirect({ url }) {
+      async redirect({ url }: { url: string }) {
         if (logRedirects) {
           console.debug(`[auth] redirect -> ${url}`);
         }
