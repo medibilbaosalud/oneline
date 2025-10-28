@@ -1,11 +1,7 @@
 import NextAuth from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  createAuthOptions,
-  getMissingAuthEnv,
-  resolveAuthRedirectProxy,
-} from "@/lib/authOptions";
+import { createAuthOptions, getMissingAuthEnv, resolveAuthRedirectProxy } from "@/lib/authOptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,42 +42,53 @@ const logPreviewContext = () => {
   );
 };
 
-const authInstance = missingEnv.length === 0 ? NextAuth(createAuthOptions()) : undefined;
-
-if (missingEnv.length === 0) {
-  logPreviewContext();
-} else {
-  console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
-}
-
-const dispatchToAuth = async (
-  req: NextRequest,
-  method: "GET" | "POST",
-) => {
-  if (!authInstance) {
-    return respondWithMissingEnv();
-  }
-
-  if (shouldLog()) {
-    const attempted = new URL(req.url).searchParams.get("redirect_uri");
-    if (attempted) {
-      console.debug(`[auth] incoming redirect_uri=${attempted}`);
-    }
-  }
-
+const createAuthInstance = () => {
   try {
-    const handler = authInstance.handlers[method];
-    return await handler(req);
+    const instance = NextAuth(createAuthOptions());
+    logPreviewContext();
+    return instance;
   } catch (error) {
     console.error("[auth:init]", error);
     throw error;
   }
 };
 
-export const GET = (req: NextRequest) => dispatchToAuth(req, "GET");
-export const POST = (req: NextRequest) => dispatchToAuth(req, "POST");
+const authInstance = missingEnv.length === 0 ? createAuthInstance() : undefined;
 
-export const handlers = { GET, POST } as const;
+if (missingEnv.length > 0) {
+  console.error(`[auth] Missing env vars: ${missingEnv.join(", ")}`);
+}
+
+const logRedirectAttempt = (req: NextRequest) => {
+  if (!shouldLog()) {
+    return;
+  }
+
+  const attempted = new URL(req.url).searchParams.get("redirect_uri");
+  if (attempted) {
+    console.debug(`[auth] incoming redirect_uri=${attempted}`);
+  }
+};
+
+export const GET = (req: NextRequest) => {
+  if (!authInstance) {
+    return respondWithMissingEnv();
+  }
+
+  logRedirectAttempt(req);
+  return authInstance.handlers.GET(req);
+};
+
+export const POST = (req: NextRequest) => {
+  if (!authInstance) {
+    return respondWithMissingEnv();
+  }
+
+  logRedirectAttempt(req);
+  return authInstance.handlers.POST(req);
+};
+
+export const handlers = authInstance?.handlers ?? { GET, POST };
 export const auth = authInstance?.auth;
 export const signIn = authInstance?.signIn;
 export const signOut = authInstance?.signOut;

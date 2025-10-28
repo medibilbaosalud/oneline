@@ -65,14 +65,7 @@ export const getRuntimeHost = (req: Request) => {
   return host ?? "unknown";
 };
 
-const shouldLogRedirects = () =>
-  process.env.NODE_ENV !== "production" &&
-  typeof process.env.DEBUG === "string" &&
-  /auth|next-auth/.test(process.env.DEBUG);
-
 export const createAuthOptions = () => {
-  const logRedirects = shouldLogRedirects();
-
   return {
     secret: AUTH_ENV.NEXTAUTH_SECRET,
     providers: [
@@ -84,17 +77,12 @@ export const createAuthOptions = () => {
     pages: {
       error: "/auth/error",
     },
-    basePath: "/api/auth",
     trustHost: true,
-    redirectProxyUrl: REDIRECT_PROXY.url,
-    callbacks: {
-      async redirect({ url }: { url: string }) {
-        if (logRedirects) {
-          console.debug(`[auth] redirect -> ${url}`);
+    ...(REDIRECT_PROXY.url
+      ? {
+          redirectProxyUrl: REDIRECT_PROXY.url,
         }
-        return url;
-      },
-    },
+      : {}),
   };
 };
 
