@@ -48,10 +48,13 @@ if (diagnostics.missing.length === 0) {
   });
 }
 
-const createMissingThrower = <T extends (...args: any[]) => Promise<unknown>>(): T =>
-  (async (..._args: Parameters<T>) => {
+const createMissingThrower = <T extends (...args: any[]) => Promise<unknown>>(): T => {
+  const fn = async (..._args: Parameters<T>) => {
     throw new Error(`Missing NextAuth env vars: ${diagnostics.missing.join(", ")}`);
-  }) as T;
+  };
+
+  return fn as unknown as T;
+};
 
 const handlers: HandlerMap = authInstance?.handlers ?? {
   GET: async () => missingResponse(),
