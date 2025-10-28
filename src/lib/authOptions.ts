@@ -1,5 +1,7 @@
 export type RequiredAuthEnvKey = "GITHUB_ID" | "GITHUB_SECRET" | "NEXTAUTH_SECRET";
 
+const CANONICAL_HOST = "https://oneline-one.vercel.app";
+
 const cleanEnvValue = (value?: string | null) => {
   if (!value) return undefined;
   const trimmed = value.trim();
@@ -19,9 +21,15 @@ const env = {
 export const getMissingAuthEnv = (): RequiredAuthEnvKey[] =>
   requiredEnvKeys.filter((key) => !env[key]);
 
+type RedirectProxySource =
+  | "AUTH_REDIRECT_PROXY_URL"
+  | "NEXTAUTH_URL"
+  | "FALLBACK_CANONICAL"
+  | null;
+
 type RedirectProxy = {
   url: string | undefined;
-  source: "AUTH_REDIRECT_PROXY_URL" | "NEXTAUTH_URL" | null;
+  source: RedirectProxySource;
 };
 
 export const resolveRedirectProxy = (): RedirectProxy => {
@@ -40,7 +48,7 @@ export const resolveRedirectProxy = (): RedirectProxy => {
     }
   }
 
-  return { url: undefined, source: null };
+  return { url: `${CANONICAL_HOST}/api/auth`, source: "FALLBACK_CANONICAL" };
 };
 
 export const getAuthDiagnostics = () => {
@@ -50,7 +58,7 @@ export const getAuthDiagnostics = () => {
     missing: getMissingAuthEnv(),
     redirectProxyUrl: redirectProxy.url,
     redirectProxySource: redirectProxy.source,
-    nextAuthUrl: env.NEXTAUTH_URL,
+    nextAuthUrl: env.NEXTAUTH_URL ?? CANONICAL_HOST,
   };
 };
 

@@ -45,7 +45,9 @@ The command calls `/api/auth/health` and prints the diagnostic JSON so you can c
 
 ## Deployment notes
 
-Add the same keys in Vercel → Project → Settings → Environment Variables before redeploying:
+Add the same keys in Vercel → Project → Settings → Environment Variables before redeploying (the app falls back to
+`https://oneline-one.vercel.app/api/auth` if no proxy is set, but configuring these values explicitly keeps diagnostics
+and previews aligned with production):
 
 ```
 GITHUB_ID
