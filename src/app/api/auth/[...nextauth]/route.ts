@@ -1,63 +1,75 @@
 import NextAuth from "next-auth";
+import GitHub from "next-auth/providers/github";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { createAuthConfig, getAuthDiagnostics } from "@/lib/authOptions";
+import { getAuthDiagnostics, resolveRedirectProxy, type RequiredAuthEnvKey } from "@/lib/authOptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type NextAuthResult = ReturnType<typeof NextAuth>;
-type HandlerMap = NextAuthResult["handlers"];
-type AuthFn = NextAuthResult["auth"];
-type SignInFn = NextAuthResult["signIn"];
-type SignOutFn = NextAuthResult["signOut"];
-type UpdateFn = NextAuthResult["unstable_update"];
-
 const diagnostics = getAuthDiagnostics();
+const redirectProxy = resolveRedirectProxy();
 
-const respondMissing = (async (_req: NextRequest) =>
+type NextAuthResult = ReturnType<typeof NextAuth>;
+
+type HandlerMap = NextAuthResult["handlers"];
+
+type FallbackResponse = {
+  ok: false;
+  message: string;
+  missing: RequiredAuthEnvKey[];
+};
+
+const missingResponse = (): Response =>
   NextResponse.json(
     {
       ok: false,
       message:
-        "NextAuth is not configured. Add GITHUB_ID, GITHUB_SECRET, and NEXTAUTH_SECRET in Vercel, then redeploy.",
+        "GitHub login is not configured. Add GITHUB_ID, GITHUB_SECRET, and NEXTAUTH_SECRET in Vercel, then redeploy.",
       missing: diagnostics.missing,
-    },
+    } satisfies FallbackResponse,
     { status: 500 },
-  )) as HandlerMap["GET"];
+  );
 
-const createThrower = (label: string) =>
-  ((..._args: unknown[]) => {
-    throw new Error(`Missing NextAuth env vars (${label}): ${diagnostics.missing.join(", ")}`);
-  }) as unknown;
+let authInstance: NextAuthResult | undefined;
 
-const fallbackAuth = (() => {
-  const handlers: HandlerMap = {
-    GET: respondMissing,
-    POST: respondMissing,
-  };
+if (diagnostics.missing.length === 0) {
+  authInstance = NextAuth({
+    providers: [
+      GitHub({
+        clientId: process.env.GITHUB_ID!,
+        clientSecret: process.env.GITHUB_SECRET!,
+      }),
+    ],
+    secret: process.env.NEXTAUTH_SECRET,
+    trustHost: true,
+    ...(redirectProxy.url ? { redirectProxyUrl: redirectProxy.url } : {}),
+  });
+}
 
-  return {
-    handlers,
-    auth: createThrower("auth") as AuthFn,
-    signIn: createThrower("signIn") as SignInFn,
-    signOut: createThrower("signOut") as SignOutFn,
-    unstable_update: createThrower("unstable_update") as UpdateFn,
-  } as unknown as NextAuthResult;
-})();
+const createMissingThrower = <T extends (...args: any[]) => Promise<unknown>>(): T =>
+  (async (..._args: Parameters<T>) => {
+    throw new Error(`Missing NextAuth env vars: ${diagnostics.missing.join(", ")}`);
+  }) as T;
 
-const authInstance: NextAuthResult =
-  diagnostics.missing.length === 0 ? NextAuth(createAuthConfig()) : fallbackAuth;
+const handlers: HandlerMap = authInstance?.handlers ?? {
+  GET: async () => missingResponse(),
+  POST: async () => missingResponse(),
+};
 
-export const { handlers, auth, signIn, signOut, unstable_update } = authInstance;
+export const auth = authInstance?.auth ?? createMissingThrower<NextAuthResult["auth"]>();
 
-type NextAuthRouteContext = { params: Promise<{ nextauth: string[] }> };
+export const signIn =
+  authInstance?.signIn ?? createMissingThrower<NextAuthResult["signIn"]>();
 
-export async function GET(req: NextRequest, _context: NextAuthRouteContext) {
+export const signOut =
+  authInstance?.signOut ?? createMissingThrower<NextAuthResult["signOut"]>();
+
+export async function GET(req: NextRequest) {
   return handlers.GET(req);
 }
 
-export async function POST(req: NextRequest, _context: NextAuthRouteContext) {
+export async function POST(req: NextRequest) {
   return handlers.POST(req);
 }
