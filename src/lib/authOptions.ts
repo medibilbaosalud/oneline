@@ -1,4 +1,4 @@
-import type { NextAuthOptions } from "next-auth";
+import type { AuthConfig } from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 
 const cleanEnvValue = (value?: string | null) => {
@@ -71,7 +71,7 @@ const shouldLogRedirects = () =>
   typeof process.env.DEBUG === "string" &&
   /auth|next-auth/.test(process.env.DEBUG);
 
-export const createAuthOptions = (): NextAuthOptions & {
+export const createAuthOptions = (): AuthConfig & {
   trustHost?: boolean;
   redirectProxyUrl?: string;
   basePath?: string;
