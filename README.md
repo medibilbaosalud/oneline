@@ -49,7 +49,7 @@ To validate production quickly, run:
 npm run check-auth
 ```
 
-The script fetches `https://oneline-one.vercel.app/api/auth/health` and exits non-zero if `ok` is not `true`.
+The script curls `https://oneline-one.vercel.app/api/auth/health` so you can inspect the JSON response from the production deployment.
 
 ## Deployment notes
 

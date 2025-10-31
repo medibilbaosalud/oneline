@@ -2,10 +2,7 @@ import NextAuth from "next-auth";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import {
-  createAuthConfig,
-  getAuthDiagnostics,
-} from "@/lib/authOptions";
+import { createAuthOptions, getAuthDiagnostics } from "@/lib/authOptions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,53 +10,57 @@ export const dynamic = "force-dynamic";
 const diagnostics = getAuthDiagnostics();
 const missing = diagnostics.missing;
 
-const missingResponse = () =>
-  NextResponse.json(
-    {
-      ok: false,
-      message:
-        "GitHub login is not configured. Set GITHUB_ID, GITHUB_SECRET, and NEXTAUTH_SECRET in Vercel, then redeploy.",
-      missing,
-      redirectProxyUrl: diagnostics.redirectProxyUrl,
-    },
-    { status: 500 },
-  );
+const missingResponse = NextResponse.json(
+  {
+    ok: false,
+    message:
+      "GitHub login is not configured. Set GITHUB_ID, GITHUB_SECRET, and NEXTAUTH_SECRET, then redeploy.",
+    missing,
+    redirectProxyUrl: diagnostics.redirectProxyUrl,
+  },
+  { status: 500 },
+);
 
 type NextAuthResult = ReturnType<typeof NextAuth>;
 
 const authInstance: NextAuthResult | null =
-  missing.length === 0 ? NextAuth(createAuthConfig()) : null;
+  missing.length === 0 ? NextAuth(createAuthOptions()) : null;
 
-const handlers = authInstance?.handlers;
+const missingError = () =>
+  new Error(`Missing NextAuth env vars: ${missing.join(", ") || "unknown"}`);
 
-const rejection = (label: string) =>
-  Promise.reject(
-    new Error(`Missing NextAuth env vars (${label}): ${missing.join(", ") || "unknown"}`),
-  );
+const fallbackAuth = (async (..._args: Parameters<NextAuthResult["auth"]>) => {
+  throw missingError();
+}) as NextAuthResult["auth"];
 
-export const auth: NextAuthResult["auth"] =
-  authInstance?.auth ?? ((..._args: Parameters<NextAuthResult["auth"]>) => rejection("auth")) as NextAuthResult["auth"];
+const fallbackSign = (async (
+  ..._args: Parameters<NextAuthResult["signIn"]>
+) => {
+  throw missingError();
+}) as NextAuthResult["signIn"];
 
-export const signIn: NextAuthResult["signIn"] =
-  authInstance?.signIn ??
-  ((..._args: Parameters<NextAuthResult["signIn"]>) => rejection("signIn")) as NextAuthResult["signIn"];
+const fallbackSignOut = (async (
+  ..._args: Parameters<NextAuthResult["signOut"]>
+) => {
+  throw missingError();
+}) as NextAuthResult["signOut"];
 
-export const signOut: NextAuthResult["signOut"] =
-  authInstance?.signOut ??
-  ((..._args: Parameters<NextAuthResult["signOut"]>) => rejection("signOut")) as NextAuthResult["signOut"];
+export const auth = authInstance?.auth ?? fallbackAuth;
+export const signIn = authInstance?.signIn ?? fallbackSign;
+export const signOut = authInstance?.signOut ?? fallbackSignOut;
 
 export async function GET(req: NextRequest) {
-  if (!handlers) {
-    return missingResponse();
+  if (!authInstance) {
+    return missingResponse;
   }
 
-  return handlers.GET(req);
+  return authInstance.handlers.GET(req);
 }
 
 export async function POST(req: NextRequest) {
-  if (!handlers) {
-    return missingResponse();
+  if (!authInstance) {
+    return missingResponse;
   }
 
-  return handlers.POST(req);
+  return authInstance.handlers.POST(req);
 }

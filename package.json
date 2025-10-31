@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test:auth": "next build",
     "test:auth-health": "sh -c 'if [ -z \"$NEXTAUTH_URL\" ]; then echo NEXTAUTH_URL env var is required >&2; exit 1; fi; curl -sS \"$NEXTAUTH_URL/api/auth/health\" || true'",
-    "check-auth": "node -e \"(async()=>{const res=await fetch('https://oneline-one.vercel.app/api/auth/health');const data=await res.json();console.log(JSON.stringify(data,null,2));if(!data.ok){process.exit(1);}})().catch(err=>{console.error(err);process.exit(1);});\""
+    "check-auth": "sh -c 'curl -sS https://oneline-one.vercel.app/api/auth/health'"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
