@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { SignupFeedbackBanner } from "@/components/SignupFeedbackBanner";
+import { LandingOnboardingSection } from "@/components/LandingOnboardingSection";
 
 export const metadata: Metadata = {
   title: "OneLine — One honest line a day",
@@ -82,6 +83,9 @@ export default function Landing({ searchParams }: LandingProps) {
           </div>
         </div>
       </section>
+
+      {/* ONBOARDING ASSISTANT */}
+      <LandingOnboardingSection />
 
       {/* ENCRYPTION PROMISE */}
       <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 md:mt-24">

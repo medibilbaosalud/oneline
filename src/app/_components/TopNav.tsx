@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import AuthButton from './AuthButton';
+import SupabaseAuthButton from './SupabaseAuthButton';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 function NavLink({
@@ -99,7 +99,7 @@ export default function TopNav() {
                 </>
               ) : null}
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <SupabaseAuthButton />
               </div>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function TopNav() {
 
         {/* Right side (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <SupabaseAuthButton />
         </div>
 
             {/* Mobile hamburger button */}
