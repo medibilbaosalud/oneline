@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import AuthButton from './AuthButton';
+import SupabaseAuthButton from './SupabaseAuthButton';
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function SiteHeader() {
 
         {/* Auth (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <SupabaseAuthButton />
         </div>
 
         {/* Hamburger (mobile) */}
@@ -84,7 +84,7 @@ export default function SiteHeader() {
                 Settings
               </Link>
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <SupabaseAuthButton />
               </div>
             </div>
           </div>

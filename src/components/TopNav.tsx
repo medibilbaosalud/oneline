@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import AuthButton from './AuthButton';
+import SupabaseAuthButton from './SupabaseAuthButton';
 
 type NavLinkProps = {
   href: string;
@@ -65,7 +65,7 @@ export default function TopNav() {
 
         {/* Auth (desktop) */}
         <div className="hidden md:flex">
-          <AuthButton />
+          <SupabaseAuthButton />
         </div>
 
         {/* Hamburger (mobile) */}
@@ -117,7 +117,7 @@ export default function TopNav() {
               <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
               <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
               <div className="mt-2 border-t border-white/10 pt-2">
-                <AuthButton />
+                <SupabaseAuthButton />
               </div>
             </div>
           </div>
