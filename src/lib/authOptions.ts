@@ -7,17 +7,26 @@ const readEnv = (key: string) => {
 
 export type RequiredAuthEnvKey = "GITHUB_ID" | "GITHUB_SECRET" | "NEXTAUTH_SECRET";
 
-const resolveRedirectProxyUrl = () => {
+type RedirectProxy = {
+  url: string | null;
+};
+
+const resolveRedirectProxyUrl = (): RedirectProxy => {
   const explicit = readEnv("AUTH_REDIRECT_PROXY_URL");
-  if (explicit) return explicit;
+  if (explicit) {
+    return { url: explicit };
+  }
 
   const canonicalHost = readEnv("AUTH_URL") ?? readEnv("NEXTAUTH_URL");
-  if (!canonicalHost) return undefined;
+  if (!canonicalHost) {
+    return { url: null };
+  }
 
   try {
-    return new URL("/api/auth", canonicalHost).toString();
-  } catch {
-    return undefined;
+    return { url: new URL("/api/auth", canonicalHost).toString() };
+  } catch (error) {
+    console.error("[auth] Failed to derive redirect proxy URL", error);
+    return { url: null };
   }
 };
 
@@ -30,17 +39,33 @@ export const getAuthDiagnostics = () => {
     missing.push("NEXTAUTH_SECRET");
   }
 
+  const proxy = resolveRedirectProxyUrl();
+
   return {
     missing,
-    redirectProxyUrl: resolveRedirectProxyUrl() ?? null,
+    redirectProxyUrl: proxy.url,
   };
 };
 
 export const createAuthOptions = () => {
-  const redirectProxyUrl = resolveRedirectProxyUrl();
+  const diagnostics = getAuthDiagnostics();
+  if (diagnostics.missing.length > 0) {
+    console.error(
+      "[auth] Missing NextAuth environment variables:",
+      diagnostics.missing.join(", "),
+    );
+    throw new Error(
+      `Missing NextAuth env vars: ${diagnostics.missing.join(", ") || "unknown"}`,
+    );
+  }
 
-  return {
-    secret: readEnv("NEXTAUTH_SECRET") ?? readEnv("AUTH_SECRET"),
+  const secret = readEnv("NEXTAUTH_SECRET") ?? readEnv("AUTH_SECRET");
+  if (!secret) {
+    throw new Error("Missing NEXTAUTH_SECRET (or AUTH_SECRET) environment variable");
+  }
+
+  const config = {
+    secret,
     providers: [
       GitHub({
         clientId: readEnv("GITHUB_ID")!,
@@ -48,8 +73,12 @@ export const createAuthOptions = () => {
       }),
     ],
     trustHost: true,
-    ...(redirectProxyUrl ? { redirectProxyUrl } : {}),
+    session: { strategy: "jwt" as const },
   };
+
+  return diagnostics.redirectProxyUrl
+    ? { ...config, redirectProxyUrl: diagnostics.redirectProxyUrl }
+    : config;
 };
 
 export const getRuntimeHost = (req: Request) =>
