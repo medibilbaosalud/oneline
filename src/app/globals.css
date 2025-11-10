@@ -99,3 +99,18 @@ textarea, input, button {
   .aurora { animation: none !important; }
   .shiny-cta .sweep::after { animation: none !important; }
 }
+
+.google-btn-fallback {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.google-btn-fallback:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+

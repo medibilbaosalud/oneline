@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { getEmailHint } from "@/lib/emailHint";
+import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 
 type Mode = "signin" | "signup";
 
@@ -140,6 +141,8 @@ export default function LoginClient() {
           >
             {pending ? (mode === "signin" ? "Signing in…" : "Creating account…") : (mode === "signin" ? "Sign in" : "Create account")}
           </button>
+
+          <GoogleSignInButton className="w-full rounded-lg border border-white/15 px-4 py-2 font-medium text-neutral-100 hover:bg-neutral-800 disabled:opacity-40" />
 
           <p className="mt-2 text-center text-xs text-neutral-500">
             You’ll be redirected back to <span className="font-medium">{next}</span> after auth.
