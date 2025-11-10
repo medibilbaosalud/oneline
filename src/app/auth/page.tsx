@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
-import AuthButton from '@/components/AuthButton';
 
 export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -192,17 +191,10 @@ export default function AuthPage() {
               </button>
             </form>
 
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-zinc-500">
-                <span className="h-px flex-1 bg-white/10" aria-hidden />
-                <span>or</span>
-                <span className="h-px flex-1 bg-white/10" aria-hidden />
-              </div>
-              <AuthButton variant="card" />
-              <p className="text-center text-xs text-zinc-500">
-                Use your GitHub account to create or access your vault instantly.
-              </p>
-            </div>
+            <p className="mt-6 text-center text-xs text-zinc-500">
+              GitHub sign-in has been removed. Continue with your email and
+              password to access your encrypted vault.
+            </p>
 
             <div className="mt-4 text-center text-sm text-zinc-400">
               {mode === 'signin' ? (

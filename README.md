@@ -2,17 +2,12 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, add the authentication environment variables required by NextAuth. Create a `.env.local` file (this repo already ignores it) with:
+First, add the Supabase environment variables so the client libraries can authenticate. Create a `.env.local` file (this repo already ignores it) with:
 
 ```
-GITHUB_ID=<your GitHub OAuth client id>
-GITHUB_SECRET=<your GitHub OAuth client secret>
-NEXTAUTH_SECRET=<random 32+ byte base64 string>
-# Optional: Auth.js also supports AUTH_SECRET
-# AUTH_SECRET=<random 32+ byte base64 string>
-# Optional (mirrors the production proxy behaviour for previews)
-# AUTH_URL=http://localhost:3000
-# AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
+NEXT_PUBLIC_SUPABASE_URL=<your Supabase project URL>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your Supabase anon key>
+SUPABASE_SERVICE_ROLE_KEY=<optional — required for background jobs and admin routes>
 ```
 
 Then, run the development server:
@@ -33,24 +28,6 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-### Health check
-
-To verify the authentication configuration locally or in CI, set `NEXTAUTH_URL` (or `AUTH_URL`) and run:
-
-```bash
-NEXTAUTH_URL=http://localhost:3000 npm run test:auth-health
-```
-
-The command calls `/api/auth/health` and prints the diagnostic JSON so you can confirm all required environment variables are present (the script tolerates non-200 responses so you can review the payload).
-
-To validate production quickly, run:
-
-```bash
-npm run check-auth
-```
-
-The script curls `https://oneline-one.vercel.app/api/auth/health` so you can inspect the JSON response from the production deployment.
-
 ## Deployment notes
 
 ### Production deployment
@@ -58,40 +35,14 @@ The script curls `https://oneline-one.vercel.app/api/auth/health` so you can ins
 Add these keys in Vercel → Project → Settings → Environment Variables (Production) before redeploying:
 
 ```
-GITHUB_ID
-GITHUB_SECRET
-NEXTAUTH_SECRET (or AUTH_SECRET)
-AUTH_URL=https://oneline-one.vercel.app
-AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
-AUTH_TRUST_HOST=true
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
 ```
-
-Rotate the GitHub OAuth client secret if you replace it with a new one.
-
-After updating the variables and redeploying, verify the configuration at `https://oneline-one.vercel.app/api/auth/health`. The endpoint responds with `ok: true` when all required variables are present.
 
 ### Preview setup
 
-For Vercel preview deployments, add these environment variables in the Preview environment before triggering a build:
-
-```
-GITHUB_ID
-GITHUB_SECRET
-NEXTAUTH_SECRET (or AUTH_SECRET)
-AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
-AUTH_TRUST_HOST=true
-```
-
-Avoid setting `AUTH_URL` or `NEXTAUTH_URL` in previews so Auth.js uses the preview host while proxying callbacks back to production via `AUTH_REDIRECT_PROXY_URL`. For additional diagnostics (non-production only), you can add `DEBUG="auth*,next-auth*"` to preview environments to mirror the local redirect logs.
-
-Open your GitHub OAuth App (GitHub → Settings → Developer settings → OAuth Apps) and ensure the **Authorization callback URL** matches exactly `https://oneline-one.vercel.app/api/auth/callback/github`. Preview builds reuse this canonical callback through `AUTH_REDIRECT_PROXY_URL`, so no additional preview callbacks are required.
-
-## GitHub OAuth redirect mismatch — how to fix
-
-1. Confirm `AUTH_URL=https://oneline-one.vercel.app` (production only) and `AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth` exist in the relevant Vercel environment and redeploy.
-2. Rotate and paste your GitHub OAuth credentials into `GITHUB_ID` and `GITHUB_SECRET`, and generate a new `NEXTAUTH_SECRET` (or `AUTH_SECRET`) with `openssl rand -base64 32` if needed.
-3. In GitHub → Settings → Developer settings → OAuth Apps, ensure the **Authorization callback URL** is exactly `https://oneline-one.vercel.app/api/auth/callback/github`. Local development can keep `http://localhost:3000/api/auth/callback/github` on a separate dev app if required.
-4. Visit `/api/auth/health` (locally or on the deployment) to verify `ok: true` before retrying the login.
+For Vercel preview deployments, add at least `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. If background jobs or admin endpoints are required in previews, also add `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Progressive Web App
 
@@ -110,16 +61,7 @@ The app ships with a web manifest, vector maskable icons, and a lightweight serv
    npm run start
    ```
 
-3. Deploy to Vercel. Ensure these environment variables are present in both Preview and Production so previews proxy to the production callback while the service worker runs on the Node.js runtime:
-
-   ```
-   AUTH_URL=https://oneline-one.vercel.app
-   AUTH_REDIRECT_PROXY_URL=https://oneline-one.vercel.app/api/auth
-   AUTH_TRUST_HOST=true
-   GITHUB_ID
-   GITHUB_SECRET
-   NEXTAUTH_SECRET (or AUTH_SECRET)
-   ```
+3. Deploy to Vercel. Ensure the Supabase environment variables listed above are present in both Preview and Production so the service worker runs on the Node.js runtime and authenticated routes work everywhere.
 
 4. After the deployment finishes, open the Preview URL, run Lighthouse, and confirm the **Installable** checklist is green. Repeat on production (`https://oneline-one.vercel.app`).
 

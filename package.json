@@ -6,10 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint",
-    "test:auth": "next build",
-    "test:auth-health": "sh -c 'if [ -z \"$NEXTAUTH_URL\" ]; then echo NEXTAUTH_URL env var is required >&2; exit 1; fi; curl -sS \"$NEXTAUTH_URL/api/auth/health\" || true'",
-    "check-auth": "sh -c 'curl -sS https://oneline-one.vercel.app/api/auth/health'"
+    "lint": "eslint"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -17,7 +14,6 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.75.0",
     "next": "15.5.4",
-    "next-auth": "5.0.0-beta.24",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "swr": "^2.3.6",

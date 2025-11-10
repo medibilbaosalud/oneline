@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { getEmailHint } from "@/lib/emailHint";
-import AuthButton from "@/components/AuthButton";
 
 type Mode = "signin" | "signup";
 
@@ -147,17 +146,10 @@ export default function LoginClient() {
           </p>
         </form>
 
-        <div className="mt-6 space-y-3">
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
-            <span className="h-px flex-1 bg-white/10" aria-hidden />
-            <span>or</span>
-            <span className="h-px flex-1 bg-white/10" aria-hidden />
-          </div>
-          <AuthButton variant="card" />
-          <p className="text-center text-xs text-neutral-500">
-            Continue with GitHub for fast access—no email link required.
-          </p>
-        </div>
+        <p className="mt-6 text-center text-xs text-neutral-500">
+          GitHub sign-in is no longer available. Use your email and password to
+          access OneLine.
+        </p>
       </div>
     </div>
   );

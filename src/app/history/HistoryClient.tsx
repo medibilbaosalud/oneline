@@ -68,14 +68,32 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
     };
   }, [dataKey, rawEntries]);
 
+  const parseDayString = (value?: string | null): Date | null => {
+    if (!value) return null;
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) {
+      return null;
+    }
+    return new Date(year, month - 1, day);
+  };
+
+  const resolveEntryDate = (entry: DecryptedEntry) =>
+    parseDayString(entry.day) ?? new Date(entry.created_at);
+
   const sortedItems = useMemo(
     () =>
-      [...items].sort((a, b) => new Date(b.created_at).valueOf() - new Date(a.created_at).valueOf()),
+      [...items].sort(
+        (a, b) => resolveEntryDate(b).valueOf() - resolveEntryDate(a).valueOf(),
+      ),
     [items],
   );
 
-  function fmtDate(iso: string) {
-    const d = new Date(iso);
+  function fmtDate(entry: DecryptedEntry) {
+    const d = resolveEntryDate(entry);
     return d.toLocaleDateString(undefined, {
       weekday: 'short',
       month: 'short',
@@ -191,7 +209,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
         return (
           <article key={entry.id} className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-sm">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm text-zinc-400">
-              <span>{fmtDate(entry.created_at)}</span>
+              <span>{fmtDate(entry)}</span>
               {entry.legacy && (
                 <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
                   Legacy — re-save to encrypt
