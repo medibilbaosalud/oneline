@@ -137,12 +137,17 @@ export default function LoginClient() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+            className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {pending ? (mode === "signin" ? "Signing in…" : "Creating account…") : (mode === "signin" ? "Sign in" : "Create account")}
           </button>
 
-          <GoogleSignInButton className="w-full rounded-lg border border-white/15 px-4 py-2 font-medium text-neutral-100 hover:bg-neutral-800 disabled:opacity-40" />
+          {mode === "signin" && (
+            <GoogleSignInButton
+              callbackUrl={next}
+              className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-neutral-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          )}
 
           <p className="mt-2 text-center text-xs text-neutral-500">
             You’ll be redirected back to <span className="font-medium">{next}</span> after auth.
@@ -150,7 +155,7 @@ export default function LoginClient() {
         </form>
 
         <p className="mt-6 text-center text-xs text-neutral-500">
-          GitHub sign-in is no longer available. Use your email and password to
+          Sign in with email and password or use your Google account above to
           access OneLine.
         </p>
       </div>

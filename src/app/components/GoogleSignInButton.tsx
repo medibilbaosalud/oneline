@@ -26,7 +26,15 @@ function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export default function GoogleSignInButton({ className }: { className?: string }) {
+type GoogleSignInButtonProps = {
+  className?: string;
+  callbackUrl?: string;
+};
+
+export default function GoogleSignInButton({
+  className,
+  callbackUrl,
+}: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
 
   return (
@@ -36,15 +44,16 @@ export default function GoogleSignInButton({ className }: { className?: string }
       onClick={async () => {
         try {
           setLoading(true);
-          await signIn("google");
+          await signIn("google", callbackUrl ? { callbackUrl } : undefined);
         } finally {
           setLoading(false);
         }
       }}
       className={className ?? "google-btn-fallback"}
       disabled={loading}
+      aria-busy={loading}
     >
-      <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+      <span style={{ display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
         <GoogleIcon />
         {loading ? "Connecting…" : "Sign in with Google"}
       </span>
