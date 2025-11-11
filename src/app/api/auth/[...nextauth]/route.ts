@@ -8,7 +8,11 @@ import type { Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import { env } from '@/lib/env';
 
-const events: Partial<EventCallbacks> = {
+type ExtendedEvents = Partial<EventCallbacks> & {
+  error?: (error: unknown) => void | Promise<void>;
+};
+
+const events: ExtendedEvents = {
   error(error) {
     console.error('[next-auth:error]', error);
   },
