@@ -28,5 +28,10 @@ export async function supabaseServer() {
         } catch {}
       },
     },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+    },
   });
 }

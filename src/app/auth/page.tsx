@@ -2,7 +2,6 @@
 
 import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 
@@ -50,6 +49,7 @@ function AuthPageInner() {
           throw new Error('Passwords do not match. Please re-enter them.');
         }
       }
+      const { supabaseBrowser } = await import('@/lib/supabaseBrowser');
       const sb = supabaseBrowser();
 
       if (mode === 'signin') {
@@ -214,7 +214,7 @@ function AuthPageInner() {
                   </span>
                   <span className="w-full border-t border-white/10" />
                 </div>
-                <GoogleSignInButton callbackUrl={nextPath} />
+                <GoogleSignInButton />
               </div>
             )}
 

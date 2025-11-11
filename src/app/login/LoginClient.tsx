@@ -143,10 +143,7 @@ export default function LoginClient() {
           </button>
 
           {mode === "signin" && (
-            <GoogleSignInButton
-              callbackUrl={next}
-              className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-neutral-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-            />
+            <GoogleSignInButton className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-neutral-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50" />
           )}
 
           <p className="mt-2 text-center text-xs text-neutral-500">
