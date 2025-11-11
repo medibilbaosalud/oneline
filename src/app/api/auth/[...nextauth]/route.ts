@@ -2,11 +2,23 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import NextAuth from 'next-auth';
-import type { NextAuthOptions } from 'next-auth';
+import type { EventCallbacks, NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import type { Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import { env } from '@/lib/env';
+
+const events: Partial<EventCallbacks> = {
+  error(error) {
+    console.error('[next-auth:error]', error);
+  },
+  signIn(message) {
+    console.log('[next-auth:signIn]', message?.user?.email, message?.account?.provider);
+  },
+  session(message) {
+    console.log('[next-auth:session]', !!message?.session?.user);
+  },
+};
 
 const authOptions: NextAuthOptions & { trustHost: true } = {
   providers: [
@@ -85,21 +97,7 @@ const authOptions: NextAuthOptions & { trustHost: true } = {
     },
   },
   debug: true,
-  events: {
-    error(error: unknown) {
-      console.error('[next-auth:error]', error);
-    },
-    signIn(message: any) {
-      console.log(
-        '[next-auth:signIn]',
-        message?.user?.email,
-        message?.account?.provider
-      );
-    },
-    session(message: any) {
-      console.log('[next-auth:session]', !!message?.session?.user);
-    },
-  } as any,
+  events,
 };
 
 const handler = NextAuth(authOptions);
