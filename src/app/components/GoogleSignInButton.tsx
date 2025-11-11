@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, type SVGProps } from "react";
-import { signIn } from "next-auth/react";
+import { useState, type SVGProps } from 'react';
+import { signIn } from 'next-auth/react';
+
+type GoogleSignInButtonProps = {
+  className?: string;
+  callbackUrl?: string;
+};
 
 function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -26,16 +31,9 @@ function GoogleIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-type GoogleSignInButtonProps = {
-  className?: string;
-  callbackUrl?: string;
-};
-
-export default function GoogleSignInButton({
-  className,
-  callbackUrl,
-}: GoogleSignInButtonProps) {
+export default function GoogleSignInButton({ className, callbackUrl }: GoogleSignInButtonProps) {
   const [loading, setLoading] = useState(false);
+  const targetUrl = callbackUrl ?? '/today';
 
   return (
     <button
@@ -44,18 +42,18 @@ export default function GoogleSignInButton({
       onClick={async () => {
         try {
           setLoading(true);
-          await signIn("google", callbackUrl ? { callbackUrl } : undefined);
+          await signIn('google', { callbackUrl: targetUrl });
         } finally {
           setLoading(false);
         }
       }}
-      className={className ?? "google-btn-fallback"}
+      className={className ?? 'google-btn-fallback'}
       disabled={loading}
       aria-busy={loading}
     >
-      <span style={{ display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
+      <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
         <GoogleIcon />
-        {loading ? "Connecting…" : "Sign in with Google"}
+        {loading ? 'Connecting…' : 'Sign in with Google'}
       </span>
     </button>
   );
