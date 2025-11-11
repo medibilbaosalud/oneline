@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
@@ -16,6 +16,19 @@ export default function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const nextParam = searchParams?.get('next');
+  const nextPath = useMemo(() => {
+    if (!nextParam) return '/today';
+    try {
+      const decoded = decodeURIComponent(nextParam);
+      if (!decoded.startsWith('/')) return '/today';
+      return decoded;
+    } catch {
+      return '/today';
+    }
+  }, [nextParam]);
 
   const emailHint = useMemo(
     () => (mode === 'signup' ? getEmailHint(email) : null),
@@ -44,7 +57,7 @@ export default function AuthPage() {
         if (error) throw error;
 
         router.refresh();
-        router.push('/today');
+        router.push(nextPath);
         return;
       }
 
@@ -60,7 +73,7 @@ export default function AuthPage() {
 
       if (data.session) {
         router.refresh();
-        router.push('/today');
+        router.push(nextPath);
         return;
       }
 
@@ -201,7 +214,10 @@ export default function AuthPage() {
                   </span>
                   <span className="w-full border-t border-white/10" />
                 </div>
-                <GoogleSignInButton className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" />
+                <GoogleSignInButton
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  callbackUrl={nextPath}
+                />
               </div>
             )}
 

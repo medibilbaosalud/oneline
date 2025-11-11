@@ -1,5 +1,7 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import type { Session } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import { env } from '@/lib/env';
 
 const handler = NextAuth({
@@ -15,14 +17,40 @@ const handler = NextAuth({
   secret: env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, account, profile }) {
-      if (account?.provider === 'google' && profile) {
-        token.picture = (profile as any)?.picture ?? token.picture;
+      if (account?.provider === 'google') {
+        const enrichedToken = token as JWT & {
+          googleIdToken?: string;
+          googleAccessToken?: string;
+        };
+        enrichedToken.picture = (profile as any)?.picture ?? enrichedToken.picture;
+        if (account.id_token) {
+          enrichedToken.googleIdToken = account.id_token;
+        }
+        if (account.access_token) {
+          enrichedToken.googleAccessToken = account.access_token;
+        }
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user)
-        (session.user as any).image = (token as any)?.picture ?? session.user.image;
+      const enrichedToken = token as JWT & {
+        googleIdToken?: string;
+        googleAccessToken?: string;
+      };
+      if (session.user) {
+        (session.user as typeof session.user & { image?: string }).image =
+          enrichedToken.picture ?? session.user.image;
+      }
+      const enrichedSession = session as Session & {
+        googleIdToken?: string;
+        googleAccessToken?: string;
+      };
+      if (enrichedToken.googleIdToken) {
+        enrichedSession.googleIdToken = enrichedToken.googleIdToken;
+      }
+      if (enrichedToken.googleAccessToken) {
+        enrichedSession.googleAccessToken = enrichedToken.googleAccessToken;
+      }
       return session;
     },
     async redirect({ url, baseUrl }) {

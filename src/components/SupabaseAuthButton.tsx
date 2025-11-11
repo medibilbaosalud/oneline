@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { signOut as nextAuthSignOut } from "next-auth/react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 export default function SupabaseAuthButton() {
@@ -64,7 +65,10 @@ export default function SupabaseAuthButton() {
       </div>
       <button
         onClick={async () => {
-          await supabase.auth.signOut();
+          await Promise.allSettled([
+            supabase.auth.signOut(),
+            nextAuthSignOut({ redirect: false }),
+          ]);
           router.replace("/today");
           router.refresh();
         }}
