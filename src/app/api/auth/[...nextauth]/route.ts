@@ -102,7 +102,10 @@ const authOptions: NextAuthOptions & { trustHost: true } = {
   },
   debug: true,
   logger: {
-    error(code: string, metadata?: Record<string, unknown>) {
+    error(
+      code: string,
+      metadata: Error | { [key: string]: unknown; error: Error }
+    ) {
       console.error('[next-auth:logger]', code, metadata);
     },
   },
