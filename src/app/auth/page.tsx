@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 
-export default function AuthPage() {
+function AuthPageInner() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -283,5 +283,50 @@ export default function AuthPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function AuthPageFallback() {
+  return (
+    <main className="min-h-[calc(100vh-56px)] bg-neutral-950 text-zinc-100">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 px-6 py-12 lg:grid-cols-2">
+        <section className="order-2 lg:order-1">
+          <h1 className="bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
+            One honest line a day.
+            <span className="block bg-gradient-to-r from-emerald-300 to-indigo-400 bg-clip-text text-transparent">
+              A tiny habit that compounds.
+            </span>
+          </h1>
+          <p className="mt-6 max-w-xl text-zinc-400">
+            Capture one line in seconds. Private by design. Generate month/quarter/year stories when you want.
+          </p>
+        </section>
+
+        <section className="order-1 lg:order-2">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
+            <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.15),transparent_60%)] blur-2xl" />
+            <div className="space-y-4">
+              <div className="h-6 w-24 rounded-full bg-white/10" />
+              <div className="h-4 w-32 rounded-full bg-white/10" />
+              <div className="space-y-3">
+                <div className="h-10 rounded-xl bg-white/10" />
+                <div className="h-10 rounded-xl bg-white/10" />
+                <div className="h-10 rounded-xl bg-white/10" />
+              </div>
+              <div className="h-10 rounded-xl bg-indigo-600/60" />
+              <div className="h-4 w-48 rounded-full bg-white/10" />
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <AuthPageInner />
+    </Suspense>
   );
 }
