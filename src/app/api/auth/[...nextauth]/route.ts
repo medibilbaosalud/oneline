@@ -12,7 +12,6 @@ const handler = NextAuth({
   ],
   session: { strategy: 'jwt' },
   pages: { signIn: '/auth' },
-  trustHost: true,
   secret: env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, account, profile }) {
