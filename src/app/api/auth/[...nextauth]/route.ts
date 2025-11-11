@@ -1,10 +1,14 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import NextAuth from 'next-auth';
+import type { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import type { Session } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import { env } from '@/lib/env';
 
-const handler = NextAuth({
+const authOptions: NextAuthOptions & { trustHost: true } = {
   providers: [
     GoogleProvider({
       clientId: env.GOOGLE_ID,
@@ -12,8 +16,9 @@ const handler = NextAuth({
       authorization: { params: { prompt: 'select_account' } },
     }),
   ],
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
   pages: { signIn: '/auth' },
+  trustHost: true,
   secret: env.NEXTAUTH_SECRET,
   callbacks: {
     async jwt({ token, account, profile }) {
@@ -37,6 +42,7 @@ const handler = NextAuth({
     },
     async session({ session, token }) {
       const enrichedToken = token as JWT & {
+        picture?: unknown;
         googleIdToken?: string;
         googleAccessToken?: string;
       };
@@ -48,7 +54,9 @@ const handler = NextAuth({
           (typeof session.user.image === 'string' && session.user.image.length > 0
             ? session.user.image
             : undefined);
-        (session.user as typeof session.user & { image?: string }).image = picture;
+        if (picture) {
+          (session.user as typeof session.user & { image?: string }).image = picture;
+        }
       }
       const enrichedSession = session as Session & {
         googleIdToken?: string;
@@ -65,26 +73,31 @@ const handler = NextAuth({
     async redirect({ url, baseUrl }) {
       const base = env.ORIGIN || baseUrl;
       if (url.startsWith('/')) url = `${base}${url}`;
+      let u: URL;
       try {
-        const u = new URL(url);
-        if (u.origin !== base) return `${base}/`;
-        if (u.pathname === '/auth' || u.pathname === '/api/auth/signin') return `${base}/`;
-        return u.toString();
+        u = new URL(url);
       } catch {
         return `${base}/`;
       }
+      if (u.origin !== base) return `${base}/`;
+      if (u.pathname === '/auth' || u.pathname === '/api/auth/signin') return `${base}/`;
+      return u.toString();
     },
   },
-  ...(process.env.NODE_ENV === 'production'
-    ? {
-        cookies: {
-          sessionToken: {
-            name: '__Secure-next-auth.session-token',
-            options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
-          },
-        },
-      }
-    : {}),
-});
+  debug: process.env.NODE_ENV !== 'production',
+  events: {
+    error(error) {
+      console.error('[next-auth:error]', error);
+    },
+    signIn(message) {
+      console.log('[next-auth:signIn]', message?.user?.email);
+    },
+    session(message) {
+      console.log('[next-auth:session]', !!message?.session?.user);
+    },
+  },
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

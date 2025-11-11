@@ -3,13 +3,8 @@ export const ORIGIN =
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
 export const env = {
-  GOOGLE_ID:
-    process.env.AUTH_GOOGLE_ID ??
-    process.env.NEXT_PUBLIC_GOOGLE_ID ??
-    process.env.NEXTAUTH_GOOGLE_CLIENT_ID ??
-    '',
-  GOOGLE_SECRET:
-    process.env.AUTH_GOOGLE_SECRET ?? process.env.NEXTAUTH_GOOGLE_CLIENT_SECRET ?? '',
+  GOOGLE_ID: process.env.AUTH_GOOGLE_ID ?? '',
+  GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET ?? '',
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? '',
   ORIGIN,
 };

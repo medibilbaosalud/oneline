@@ -214,10 +214,7 @@ function AuthPageInner() {
                   </span>
                   <span className="w-full border-t border-white/10" />
                 </div>
-                <GoogleSignInButton
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                  callbackUrl={nextPath}
-                />
+                <GoogleSignInButton callbackUrl={nextPath} />
               </div>
             )}
 
