@@ -84,15 +84,22 @@ const authOptions: NextAuthOptions & { trustHost: true } = {
       return u.toString();
     },
   },
-  debug: process.env.NODE_ENV !== 'production',
+  debug: true,
   events: {
+    error(error) {
+      console.error('[next-auth:error]', error);
+    },
     signIn(message) {
-      console.log('[next-auth:signIn]', message?.user?.email);
+      console.log(
+        '[next-auth:signIn]',
+        message?.user?.email,
+        message?.account?.provider
+      );
     },
     session(message) {
       console.log('[next-auth:session]', !!message?.session?.user);
     },
-  },
+  } as any,
 };
 
 const handler = NextAuth(authOptions);
