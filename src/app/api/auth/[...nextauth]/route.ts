@@ -22,7 +22,10 @@ const handler = NextAuth({
           googleIdToken?: string;
           googleAccessToken?: string;
         };
-        enrichedToken.picture = (profile as any)?.picture ?? enrichedToken.picture;
+        const profilePicture = (profile as any)?.picture;
+        if (typeof profilePicture === 'string' && profilePicture.length > 0) {
+          enrichedToken.picture = profilePicture;
+        }
         if (account.id_token) {
           enrichedToken.googleIdToken = account.id_token;
         }
@@ -38,8 +41,14 @@ const handler = NextAuth({
         googleAccessToken?: string;
       };
       if (session.user) {
-        (session.user as typeof session.user & { image?: string }).image =
-          enrichedToken.picture ?? session.user.image;
+        const picture =
+          (typeof enrichedToken.picture === 'string' && enrichedToken.picture.length > 0
+            ? enrichedToken.picture
+            : undefined) ??
+          (typeof session.user.image === 'string' && session.user.image.length > 0
+            ? session.user.image
+            : undefined);
+        (session.user as typeof session.user & { image?: string }).image = picture;
       }
       const enrichedSession = session as Session & {
         googleIdToken?: string;
