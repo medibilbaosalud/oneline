@@ -86,17 +86,17 @@ const authOptions: NextAuthOptions & { trustHost: true } = {
   },
   debug: true,
   events: {
-    error(error) {
+    error(error: unknown) {
       console.error('[next-auth:error]', error);
     },
-    signIn(message) {
+    signIn(message: any) {
       console.log(
         '[next-auth:signIn]',
         message?.user?.email,
         message?.account?.provider
       );
     },
-    session(message) {
+    session(message: any) {
       console.log('[next-auth:session]', !!message?.session?.user);
     },
   } as any,
