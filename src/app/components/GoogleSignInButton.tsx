@@ -4,6 +4,7 @@ import { signIn } from 'next-auth/react';
 
 type GoogleSignInButtonProps = {
   callbackUrl?: string;
+  className?: string;
 };
 
 function GoogleIcon() {
@@ -29,13 +30,17 @@ function GoogleIcon() {
   );
 }
 
-export default function GoogleSignInButton({ callbackUrl = '/' }: GoogleSignInButtonProps) {
+export default function GoogleSignInButton({ callbackUrl = '/', className }: GoogleSignInButtonProps) {
+  const defaultClasses =
+    "flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500";
+  const resolvedClassName = className ?? defaultClasses;
+
   return (
     <button
       type="button"
       aria-label="Sign in with Google"
       onClick={() => signIn('google', { callbackUrl })}
-      className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      className={resolvedClassName}
     >
       <span className="inline-flex items-center gap-3">
         <GoogleIcon />
