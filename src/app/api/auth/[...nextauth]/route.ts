@@ -86,9 +86,6 @@ const authOptions: NextAuthOptions & { trustHost: true } = {
   },
   debug: process.env.NODE_ENV !== 'production',
   events: {
-    error(error) {
-      console.error('[next-auth:error]', error);
-    },
     signIn(message) {
       console.log('[next-auth:signIn]', message?.user?.email);
     },
