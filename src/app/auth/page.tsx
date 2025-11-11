@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { getEmailHint } from '@/lib/emailHint';
+import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 
 export default function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -191,9 +192,23 @@ export default function AuthPage() {
               </button>
             </form>
 
+            {mode === 'signin' && (
+              <div className="mt-4 space-y-3">
+                <div className="relative flex items-center">
+                  <span className="w-full border-t border-white/10" />
+                  <span className="px-3 text-xs uppercase tracking-wide text-zinc-500">
+                    or
+                  </span>
+                  <span className="w-full border-t border-white/10" />
+                </div>
+                <GoogleSignInButton className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" />
+              </div>
+            )}
+
             <p className="mt-6 text-center text-xs text-zinc-500">
-              GitHub sign-in has been removed. Continue with your email and
-              password to access your encrypted vault.
+              {mode === 'signin'
+                ? 'Continue with your email, password, or Google to access your encrypted vault.'
+                : 'Continue with your email and password to access your encrypted vault.'}
             </p>
 
             <div className="mt-4 text-center text-sm text-zinc-400">
