@@ -9,7 +9,13 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const supabase = createRouteHandlerClient({ cookies });
 
-  const { error } = await supabase.auth.exchangeCodeForSession();
+  const code = url.searchParams.get('code');
+  if (!code) {
+    console.error('exchangeCodeForSession ERROR: missing code param');
+    return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
+  }
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     console.error('exchangeCodeForSession ERROR:', error);
     return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
