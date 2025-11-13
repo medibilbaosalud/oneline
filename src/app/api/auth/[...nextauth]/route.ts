@@ -24,12 +24,17 @@ const events: ExtendedEvents = {
   },
 };
 
+const googleAuthorizationParams: Record<string, string> = { prompt: 'select_account' };
+if (env.GOOGLE_REDIRECT_URI) {
+  googleAuthorizationParams.redirect_uri = env.GOOGLE_REDIRECT_URI;
+}
+
 export const authOptions: NextAuthOptions & { trustHost: true } = {
   providers: [
     GoogleProvider({
       clientId: env.GOOGLE_ID,
       clientSecret: env.GOOGLE_SECRET,
-      authorization: { params: { prompt: 'select_account' } },
+      authorization: { params: googleAuthorizationParams },
     }),
   ],
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
