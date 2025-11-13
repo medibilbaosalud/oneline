@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 let browserClient: SupabaseClient | undefined;
 
-export function supabaseBrowser() {
+export function supabaseBrowser(): SupabaseClient {
   if (!browserClient) {
     browserClient = createBrowserSupabaseClient({
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
