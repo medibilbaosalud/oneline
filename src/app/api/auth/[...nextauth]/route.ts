@@ -24,7 +24,7 @@ const events: ExtendedEvents = {
   },
 };
 
-const authOptions: NextAuthOptions & { trustHost: true } = {
+export const authOptions: NextAuthOptions & { trustHost: true } = {
   providers: [
     GoogleProvider({
       clientId: env.GOOGLE_ID,
