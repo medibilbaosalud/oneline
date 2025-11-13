@@ -1,9 +1,12 @@
 "use client";
 
-import { signIn } from 'next-auth/react';
+import { useMemo, useState } from 'react';
+
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 type GoogleSignInButtonProps = {
   className?: string;
+  nextPath?: string;
 };
 
 function GoogleIcon() {
@@ -29,7 +32,9 @@ function GoogleIcon() {
   );
 }
 
-export default function GoogleSignInButton({ className }: GoogleSignInButtonProps) {
+export default function GoogleSignInButton({ className, nextPath }: GoogleSignInButtonProps) {
+  const supabase = useMemo(() => supabaseBrowser(), []);
+  const [loading, setLoading] = useState(false);
   const defaultClasses =
     "flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500";
   const resolvedClassName = className ?? defaultClasses;
@@ -38,12 +43,31 @@ export default function GoogleSignInButton({ className }: GoogleSignInButtonProp
     <button
       type="button"
       aria-label="Sign in with Google"
-      onClick={() => signIn('google', { callbackUrl: '/today' })}
+      onClick={async () => {
+        try {
+          setLoading(true);
+          const origin = window.location.origin;
+          const next = nextPath && nextPath.startsWith('/') ? nextPath : '/today';
+          const redirectTo = `${origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`;
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo },
+          });
+          if (error) {
+            console.error('[auth] Google OAuth launch failed', error);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('[auth] Google OAuth launch failed', error);
+          setLoading(false);
+        }
+      }}
       className={resolvedClassName}
+      disabled={loading}
     >
       <span className="inline-flex items-center gap-3">
         <GoogleIcon />
-        Sign in with Google
+        {loading ? 'Redirecting…' : 'Sign in with Google'}
       </span>
     </button>
   );

@@ -51,6 +51,7 @@ function AuthPageInner() {
       }
       const { supabaseBrowser } = await import('@/lib/supabaseBrowser');
       const sb = supabaseBrowser();
+      const origin = window.location.origin;
 
       if (mode === 'signin') {
         const { error } = await sb.auth.signInWithPassword({ email, password });
@@ -65,8 +66,7 @@ function AuthPageInner() {
         email,
         password,
         options: {
-          emailRedirectTo:
-            'https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback',
+          emailRedirectTo: `${origin}/auth/callback`,
         },
       });
       if (error) throw error;
@@ -214,7 +214,7 @@ function AuthPageInner() {
                   </span>
                   <span className="w-full border-t border-white/10" />
                 </div>
-                <GoogleSignInButton />
+                <GoogleSignInButton nextPath={nextPath} />
               </div>
             )}
 

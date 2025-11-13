@@ -1,7 +1,7 @@
 // src/app/login/LoginClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { getEmailHint } from "@/lib/emailHint";
@@ -12,9 +12,18 @@ type Mode = "signin" | "signup";
 export default function LoginClient() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = decodeURIComponent(params.get("next") || "/today");
+  const rawNext = params.get("next");
+  const next = useMemo(() => {
+    if (!rawNext) return "/today";
+    try {
+      const decoded = decodeURIComponent(rawNext);
+      return decoded.startsWith("/") ? decoded : "/today";
+    } catch {
+      return "/today";
+    }
+  }, [rawNext]);
 
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClientComponentClient(), []);
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -39,6 +48,8 @@ export default function LoginClient() {
     setPending(true);
 
     try {
+      const origin = window.location.origin;
+
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -49,8 +60,7 @@ export default function LoginClient() {
           email,
           password,
           options: {
-            emailRedirectTo:
-              "https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback",
+            emailRedirectTo: `${origin}/auth/callback`,
           },
         });
         if (error) throw error;
@@ -143,7 +153,10 @@ export default function LoginClient() {
           </button>
 
           {mode === "signin" && (
-            <GoogleSignInButton className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-neutral-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50" />
+            <GoogleSignInButton
+              nextPath={next}
+              className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-neutral-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+            />
           )}
 
           <p className="mt-2 text-center text-xs text-neutral-500">
