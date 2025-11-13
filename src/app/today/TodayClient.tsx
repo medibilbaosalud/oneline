@@ -113,6 +113,7 @@ export default function TodayClient() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [needLogin, setNeedLogin] = useState(false);
+  const [syncSignal, setSyncSignal] = useState(0);
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
   const [pendingEntry, setPendingEntry] = useState<EntryPayload | null>(null);
@@ -194,6 +195,18 @@ export default function TodayClient() {
   }, []);
 
   useEffect(() => {
+    function handleSynced() {
+      setSyncSignal((value) => value + 1);
+    }
+
+    window.addEventListener('supabase-session-synced', handleSynced);
+
+    return () => {
+      window.removeEventListener('supabase-session-synced', handleSynced);
+    };
+  }, []);
+
+  useEffect(() => {
     let active = true;
     (async () => {
       setLoadingEntry(true);
@@ -230,7 +243,7 @@ export default function TodayClient() {
     return () => {
       active = false;
     };
-  }, [isToday, loadStreak, selectedDay]);
+  }, [isToday, loadStreak, selectedDay, syncSignal]);
 
   useEffect(() => {
     if (!pendingEntry) {
