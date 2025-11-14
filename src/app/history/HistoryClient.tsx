@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { decryptText, encryptText } from '@/lib/crypto';
 import { useVault } from '@/hooks/useVault';
+import { useEntryLimits } from '@/hooks/useEntryLimits';
+import { ENTRY_LIMIT_BASE } from '@/lib/summaryPreferences';
 
 type EntryPayload = {
   id: string;
@@ -21,7 +23,14 @@ type DecryptedEntry = EntryPayload & {
   error?: string | null;
 };
 
-export default function HistoryClient({ initialEntries }: { initialEntries: EntryPayload[] }) {
+export default function HistoryClient({
+  initialEntries,
+  initialEntryLimit = ENTRY_LIMIT_BASE,
+}: {
+  initialEntries: EntryPayload[];
+  initialEntryLimit?: number;
+}) {
+  const { entryLimit } = useEntryLimits({ entryLimit: initialEntryLimit });
   const { dataKey } = useVault();
   const [rawEntries, setRawEntries] = useState<EntryPayload[]>(initialEntries);
   const [items, setItems] = useState<DecryptedEntry[]>([]);
@@ -104,7 +113,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
 
   function startEditing(entry: DecryptedEntry) {
     setEditingId(entry.id);
-    setDraft(entry.text);
+    setDraft(entry.text.slice(0, entryLimit));
   }
 
   function cancelEditing() {
@@ -117,7 +126,7 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
       alert('Unlock your vault before editing.');
       return;
     }
-    const trimmed = draft.trim();
+    const trimmed = draft.trim().slice(0, entryLimit);
     if (!trimmed) {
       alert('Entry cannot be empty.');
       return;
@@ -228,9 +237,9 @@ export default function HistoryClient({ initialEntries }: { initialEntries: Entr
             ) : (
               <textarea
                 value={draft}
-                onChange={(ev) => setDraft(ev.target.value)}
+                onChange={(ev) => setDraft(ev.target.value.slice(0, entryLimit))}
                 rows={4}
-                maxLength={333}
+                maxLength={entryLimit}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500"
               />
             )}

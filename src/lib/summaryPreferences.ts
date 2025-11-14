@@ -25,8 +25,19 @@ export type SummaryReminder = {
   lastSummaryAt: string | null;
 };
 
-export const GUIDANCE_NOTES_LIMIT_BASE = 333;
-export const GUIDANCE_NOTES_LIMIT_EXTENDED = 666;
+export const ENTRY_LIMIT_BASE = 333;
+export const ENTRY_LIMIT_EXTENDED = 666;
+
+export const GUIDANCE_NOTES_LIMIT_BASE = ENTRY_LIMIT_BASE;
+export const GUIDANCE_NOTES_LIMIT_EXTENDED = ENTRY_LIMIT_EXTENDED;
+
+export function guidanceLimitFor(extended: boolean) {
+  return extended ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
+}
+
+export function entryLimitFor(extended: boolean) {
+  return extended ? ENTRY_LIMIT_EXTENDED : ENTRY_LIMIT_BASE;
+}
 
 export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   length: 'medium',
@@ -82,7 +93,7 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
     typeof extendedSource === 'boolean' ? extendedSource : DEFAULT_SUMMARY_PREFERENCES.extendedGuidance;
 
   const notesSource = source.notes ?? source.summary_notes;
-  const noteLimit = GUIDANCE_NOTES_LIMIT_EXTENDED;
+  const noteLimit = guidanceLimitFor(nextExtendedGuidance);
 
   return {
     length: isSummaryLength(lengthSource) ? lengthSource : DEFAULT_SUMMARY_PREFERENCES.length,

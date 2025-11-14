@@ -8,8 +8,8 @@ import { ProductTourAssistant } from '@/components/ProductTourAssistant';
 import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
-
-const MAX = 333;
+import { ENTRY_LIMIT_BASE } from '@/lib/summaryPreferences';
+import { useEntryLimits } from '@/hooks/useEntryLimits';
 const QUOTES = [
   { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
   { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
@@ -106,7 +106,12 @@ type SummaryReminder = {
   lastSummaryAt: string | null;
 };
 
-export default function TodayClient() {
+type TodayClientProps = {
+  initialEntryLimit?: number;
+};
+
+export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
+  const { entryLimit } = useEntryLimits({ entryLimit: initialEntryLimit });
   const { dataKey } = useVault();
   const router = useRouter();
   const [text, setText] = useState('');
@@ -255,12 +260,12 @@ export default function TodayClient() {
       if (!dataKey) return;
       decryptText(dataKey, pendingEntry.content_cipher, pendingEntry.iv)
         .then((plain) => {
-          setText(plain);
+          setText(plain.slice(0, entryLimit));
           setLegacyReadOnly(false);
         })
         .catch(() => {
           if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
-            setText(pendingEntry.content);
+            setText(pendingEntry.content.slice(0, entryLimit));
             setLegacyReadOnly(true);
             setMsg(
               'Encrypted copy could not be unlocked — showing legacy text. Press “Save entry” to re-encrypt it with your vault.',
@@ -274,13 +279,13 @@ export default function TodayClient() {
           }
         });
     } else if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
-      setText(pendingEntry.content);
+      setText(pendingEntry.content.slice(0, entryLimit));
       setLegacyReadOnly(true);
     } else {
       setLegacyReadOnly(false);
       setText('');
     }
-  }, [pendingEntry, dataKey]);
+  }, [pendingEntry, dataKey, entryLimit]);
 
   async function save() {
     if (needLogin) {
@@ -291,7 +296,7 @@ export default function TodayClient() {
       setMsg('Unlock your vault to save.');
       return;
     }
-    const trimmed = text.trim();
+    const trimmed = text.trim().slice(0, entryLimit);
     if (!trimmed) return;
     setSaving(true);
     setMsg(null);
@@ -433,8 +438,8 @@ export default function TodayClient() {
 
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
-                maxLength={MAX}
+                onChange={(e) => setText(e.target.value.slice(0, entryLimit))}
+                maxLength={entryLimit}
                 disabled={legacyReadOnly || saving || loadingEntry}
                 placeholder="One line that captures your day…"
                 className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
@@ -442,7 +447,7 @@ export default function TodayClient() {
 
               {!loadingEntry && !legacyReadOnly && !text && !pendingEntry?.content_cipher && (
                 <p className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-300">
-                  No entry saved for this date yet — write up to 333 characters to backfill it securely.
+                  No entry saved for this date yet — write up to {entryLimit} characters to backfill it securely.
                 </p>
               )}
 
@@ -453,8 +458,8 @@ export default function TodayClient() {
               )}
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className={`text-sm ${text.length === MAX ? 'text-rose-400' : 'text-neutral-400'}`}>
-                  {text.length}/{MAX}
+                <span className={`text-sm ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-400'}`}>
+                  {text.length}/{entryLimit}
                 </span>
 
                 <div className="flex flex-wrap items-center gap-3">

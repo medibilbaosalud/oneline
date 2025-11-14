@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GUIDANCE_NOTES_LIMIT_BASE, GUIDANCE_NOTES_LIMIT_EXTENDED } from "@/lib/summaryPreferences";
+import {
+  GUIDANCE_NOTES_LIMIT_BASE,
+  GUIDANCE_NOTES_LIMIT_EXTENDED,
+  entryLimitFor,
+  guidanceLimitFor,
+} from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
@@ -136,7 +142,14 @@ export default function SettingsClient() {
               setStoryIncludeHighlights(prefs.includeHighlights);
               const nextExtended = !!prefs.extendedGuidance;
               setExtendedGuidance(nextExtended);
-              setStoryNotes(clampGuidanceNotes(prefs.notes ?? "", GUIDANCE_NOTES_LIMIT_EXTENDED));
+              setStoryNotes(
+                clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtended)),
+              );
+              primeEntryLimitsCache({
+                entryLimit: entryLimitFor(nextExtended),
+                guidanceLimit: guidanceLimitFor(nextExtended),
+                extendedGuidance: nextExtended,
+              });
             }
             setReminder(json.settings.reminder ?? null);
           }
@@ -211,9 +224,16 @@ export default function SettingsClient() {
       setStoryIncludeHighlights(prefs.includeHighlights);
       const nextExtended = !!prefs.extendedGuidance;
       setExtendedGuidance(nextExtended);
-      setStoryNotes(clampGuidanceNotes(prefs.notes ?? "", GUIDANCE_NOTES_LIMIT_EXTENDED));
+      setStoryNotes(
+        clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtended)),
+      );
       setReminder(json.settings.reminder ?? null);
       setFeedback("Saved.");
+      primeEntryLimitsCache({
+        entryLimit: entryLimitFor(nextExtended),
+        guidanceLimit: guidanceLimitFor(nextExtended),
+        extendedGuidance: nextExtended,
+      });
     } catch (err: unknown) {
       setError(messageFromError(err, "Could not update your preferences."));
     } finally {
