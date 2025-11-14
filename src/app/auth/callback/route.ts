@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies });
 
   const code = url.searchParams.get('code');
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
   }
 
-  const codeVerifier = cookieStore.get('sb-code-verifier')?.value;
+  const codeVerifier = cookieStore.get?.('sb-code-verifier')?.value;
   if (!codeVerifier) {
     console.warn('exchangeCodeForSession WARN: missing sb-code-verifier cookie');
   }
