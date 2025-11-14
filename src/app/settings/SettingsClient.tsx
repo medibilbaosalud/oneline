@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { GUIDANCE_NOTES_LIMIT_BASE, GUIDANCE_NOTES_LIMIT_EXTENDED } from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type Frequency = "weekly" | "monthly" | "yearly";
@@ -15,6 +16,7 @@ type SummaryPreferences = {
   pov: StoryPov;
   includeHighlights: boolean;
   notes: string | null;
+  extendedGuidance: boolean;
 };
 
 type SummaryReminder = {
@@ -36,7 +38,10 @@ type SettingsResponse = {
   };
 };
 
-const NOTES_LIMIT = 500;
+function clampGuidanceNotes(value: string | null, limit: number) {
+  if (!value) return "";
+  return value.length > limit ? value.slice(0, limit) : value;
+}
 
 function messageFromError(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
@@ -83,7 +88,10 @@ export default function SettingsClient() {
   const [storyPov, setStoryPov] = useState<StoryPov>("auto");
   const [storyIncludeHighlights, setStoryIncludeHighlights] = useState(true);
   const [storyNotes, setStoryNotes] = useState("");
+  const [extendedGuidance, setExtendedGuidance] = useState(false);
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
+
+  const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +130,9 @@ export default function SettingsClient() {
               setStoryTone(prefs.tone);
               setStoryPov(prefs.pov);
               setStoryIncludeHighlights(prefs.includeHighlights);
-              setStoryNotes(prefs.notes ?? "");
+              const nextExtended = !!prefs.extendedGuidance;
+              setExtendedGuidance(nextExtended);
+              setStoryNotes(clampGuidanceNotes(prefs.notes ?? "", GUIDANCE_NOTES_LIMIT_EXTENDED));
             }
             setReminder(json.settings.reminder ?? null);
           }
@@ -171,7 +181,15 @@ export default function SettingsClient() {
             tone: storyTone,
             pov: storyPov,
             includeHighlights: storyIncludeHighlights,
-            notes: storyNotes.trim() ? storyNotes.trim() : undefined,
+            extendedGuidance,
+            notes: (() => {
+              const trimmed = storyNotes.trim();
+              if (!trimmed) return undefined;
+              const limit = extendedGuidance
+                ? GUIDANCE_NOTES_LIMIT_EXTENDED
+                : GUIDANCE_NOTES_LIMIT_BASE;
+              return trimmed.length > limit ? trimmed.slice(0, limit) : trimmed;
+            })(),
           },
         }),
       });
@@ -187,7 +205,9 @@ export default function SettingsClient() {
       setStoryTone(prefs.tone);
       setStoryPov(prefs.pov);
       setStoryIncludeHighlights(prefs.includeHighlights);
-      setStoryNotes(prefs.notes ?? "");
+      const nextExtended = !!prefs.extendedGuidance;
+      setExtendedGuidance(nextExtended);
+      setStoryNotes(clampGuidanceNotes(prefs.notes ?? "", GUIDANCE_NOTES_LIMIT_EXTENDED));
       setReminder(json.settings.reminder ?? null);
       setFeedback("Saved.");
     } catch (err: unknown) {
@@ -404,7 +424,7 @@ export default function SettingsClient() {
               <textarea
                 id="story-notes"
                 value={storyNotes}
-                maxLength={NOTES_LIMIT}
+                maxLength={guidanceLimit}
                 disabled={settingsLoading || saving}
                 onChange={(event) => setStoryNotes(event.target.value)}
                 placeholder="Anything you want Gemini to emphasise when it writes your recap."
@@ -413,9 +433,33 @@ export default function SettingsClient() {
               <div className="mt-1 flex flex-col gap-1 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
                 <span>We’ll pre-fill the generator with this note — you can still edit it before sending.</span>
                 <span>
-                  {storyNotes.length}/{NOTES_LIMIT}
+                  {storyNotes.length}/{guidanceLimit}
                 </span>
               </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/5 bg-black/20 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-neutral-100">Modo de extensión ampliada</h3>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    Duplica el límite de tu guía personal hasta 666 caracteres para aportar más contexto a tus resúmenes.
+                  </p>
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm text-neutral-200">
+                  <input
+                    type="checkbox"
+                    checked={extendedGuidance}
+                    disabled={settingsLoading || saving}
+                    onChange={(event) => setExtendedGuidance(event.target.checked)}
+                    className="h-4 w-4 rounded border border-white/20 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                  />
+                  Activar
+                </label>
+              </div>
+              <p className="mt-2 text-xs text-neutral-500">
+                Si lo desactivas recortaremos tus notas al límite estándar de {GUIDANCE_NOTES_LIMIT_BASE} caracteres.
+              </p>
             </div>
 
             {reminder && (

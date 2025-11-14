@@ -14,6 +14,7 @@ export type SummaryPreferences = {
   pov: SummaryPov;
   includeHighlights: boolean;
   notes: string | null;
+  extendedGuidance: boolean;
 };
 
 export type SummaryReminder = {
@@ -24,12 +25,16 @@ export type SummaryReminder = {
   lastSummaryAt: string | null;
 };
 
+export const GUIDANCE_NOTES_LIMIT_BASE = 333;
+export const GUIDANCE_NOTES_LIMIT_EXTENDED = 666;
+
 export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   length: 'medium',
   tone: 'auto',
   pov: 'auto',
   includeHighlights: true,
   notes: null,
+  extendedGuidance: false,
 };
 
 export function isSummaryLength(value: unknown): value is SummaryLength {
@@ -48,11 +53,11 @@ export function isSummaryFrequency(value: unknown): value is SummaryFrequency {
   return typeof value === 'string' && FREQUENCIES.includes(value as SummaryFrequency);
 }
 
-function sanitizeNotes(value: unknown): string | null {
+function sanitizeNotes(value: unknown, limit: number): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return trimmed.slice(0, 1000);
+  return trimmed.slice(0, limit);
 }
 
 export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
@@ -65,7 +70,19 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
   const toneSource = source.tone ?? source.summary_tone;
   const povSource = source.pov ?? source.summary_pov;
   const includeSource = source.includeHighlights ?? source.include_highlights;
+  const extendedSource =
+    source.extendedGuidance ??
+    source.extended_guidance ??
+    source.extendedNotes ??
+    source.extended_notes ??
+    source.extendedMode ??
+    source.extended_mode;
+
+  const nextExtendedGuidance =
+    typeof extendedSource === 'boolean' ? extendedSource : DEFAULT_SUMMARY_PREFERENCES.extendedGuidance;
+
   const notesSource = source.notes ?? source.summary_notes;
+  const noteLimit = GUIDANCE_NOTES_LIMIT_EXTENDED;
 
   return {
     length: isSummaryLength(lengthSource) ? lengthSource : DEFAULT_SUMMARY_PREFERENCES.length,
@@ -73,7 +90,8 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
     pov: isSummaryPov(povSource) ? povSource : DEFAULT_SUMMARY_PREFERENCES.pov,
     includeHighlights:
       typeof includeSource === 'boolean' ? includeSource : DEFAULT_SUMMARY_PREFERENCES.includeHighlights,
-    notes: sanitizeNotes(notesSource),
+    notes: sanitizeNotes(notesSource, noteLimit),
+    extendedGuidance: nextExtendedGuidance,
   };
 }
 
