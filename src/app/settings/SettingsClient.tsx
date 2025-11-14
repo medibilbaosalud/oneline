@@ -171,10 +171,30 @@ export default function SettingsClient() {
     };
   }, [supabase]);
 
-  async function handleSaveSettings() {
+  async function handleSaveSettings({
+    nextFrequency,
+    preferenceOverrides,
+    suppressFeedback = false,
+  }: {
+    nextFrequency?: Frequency;
+    preferenceOverrides?: Partial<SummaryPreferences>;
+    suppressFeedback?: boolean;
+  } = {}): Promise<boolean> {
     setSaving(true);
     setFeedback(null);
     setError(null);
+
+    const overrides = preferenceOverrides ?? {};
+    const targetFrequency = nextFrequency ?? frequency;
+    const nextExtended = overrides.extendedGuidance ?? extendedGuidance;
+    const limit = guidanceLimitFor(nextExtended);
+    const rawNotesSource =
+      overrides.notes !== undefined
+        ? overrides.notes ?? ""
+        : storyNotes;
+    const trimmedNotes = typeof rawNotesSource === "string" ? rawNotesSource.trim() : "";
+    const limitedNotes = trimmedNotes.length > limit ? trimmedNotes.slice(0, limit) : trimmedNotes;
+
     try {
       const sessionRes = await supabase.auth.getSession();
       const bearer = sessionRes.data.session?.access_token ?? accessToken;
@@ -192,21 +212,14 @@ export default function SettingsClient() {
         headers,
         credentials: "include",
         body: JSON.stringify({
-          frequency,
+          frequency: targetFrequency,
           storyPreferences: {
-            length: storyLength,
-            tone: storyTone,
-            pov: storyPov,
-            includeHighlights: storyIncludeHighlights,
-            extendedGuidance,
-            notes: (() => {
-              const trimmed = storyNotes.trim();
-              if (!trimmed) return undefined;
-              const limit = extendedGuidance
-                ? GUIDANCE_NOTES_LIMIT_EXTENDED
-                : GUIDANCE_NOTES_LIMIT_BASE;
-              return trimmed.length > limit ? trimmed.slice(0, limit) : trimmed;
-            })(),
+            length: overrides.length ?? storyLength,
+            tone: overrides.tone ?? storyTone,
+            pov: overrides.pov ?? storyPov,
+            includeHighlights: overrides.includeHighlights ?? storyIncludeHighlights,
+            extendedGuidance: nextExtended,
+            notes: limitedNotes.length ? limitedNotes : undefined,
           },
         }),
       });
@@ -222,24 +235,59 @@ export default function SettingsClient() {
       setStoryTone(prefs.tone);
       setStoryPov(prefs.pov);
       setStoryIncludeHighlights(prefs.includeHighlights);
-      const nextExtended = !!prefs.extendedGuidance;
-      setExtendedGuidance(nextExtended);
+      const nextExtendedFromResponse = !!prefs.extendedGuidance;
+      setExtendedGuidance(nextExtendedFromResponse);
       setStoryNotes(
-        clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtended)),
+        clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtendedFromResponse)),
       );
       setReminder(json.settings.reminder ?? null);
-      setFeedback("Saved.");
+      if (!suppressFeedback) {
+        setFeedback("Saved.");
+      }
       primeEntryLimitsCache({
-        entryLimit: entryLimitFor(nextExtended),
-        guidanceLimit: guidanceLimitFor(nextExtended),
-        extendedGuidance: nextExtended,
+        entryLimit: entryLimitFor(nextExtendedFromResponse),
+        guidanceLimit: guidanceLimitFor(nextExtendedFromResponse),
+        extendedGuidance: nextExtendedFromResponse,
       });
+      return true;
     } catch (err: unknown) {
       setError(messageFromError(err, "Could not update your preferences."));
+      return false;
     } finally {
       setSaving(false);
     }
   }
+
+  const handleToggleExtendedGuidance = async () => {
+    if (settingsLoading || saving) return;
+    const previousExtended = extendedGuidance;
+    const previousNotes = storyNotes;
+    const next = !extendedGuidance;
+    const limit = guidanceLimitFor(next);
+    const trimmedNotes = clampGuidanceNotes(previousNotes, limit);
+
+    setExtendedGuidance(next);
+    setStoryNotes(trimmedNotes);
+
+    const success = await handleSaveSettings({
+      preferenceOverrides: {
+        extendedGuidance: next,
+        notes: trimmedNotes,
+      },
+      suppressFeedback: true,
+    });
+
+    if (!success) {
+      setExtendedGuidance(previousExtended);
+      setStoryNotes(previousNotes);
+      primeEntryLimitsCache({
+        entryLimit: entryLimitFor(previousExtended),
+        guidanceLimit: guidanceLimitFor(previousExtended),
+        extendedGuidance: previousExtended,
+      });
+      return;
+    }
+  };
 
   async function handleExport() {
     setFeedback(null);
@@ -351,7 +399,9 @@ export default function SettingsClient() {
                   <option value="yearly">Yearly report</option>
                 </select>
                 <button
-                  onClick={handleSaveSettings}
+                  onClick={() => {
+                    void handleSaveSettings();
+                  }}
                   disabled={settingsLoading || saving}
                   className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -481,16 +531,7 @@ export default function SettingsClient() {
                     aria-pressed={extendedGuidance}
                     aria-label="Toggle extended guidance mode"
                     disabled={settingsLoading || saving}
-                    onClick={() => {
-                      if (settingsLoading || saving) return;
-                      setExtendedGuidance((current) => {
-                        const next = !current;
-                        if (!next) {
-                          setStoryNotes((prev) => clampGuidanceNotes(prev, GUIDANCE_NOTES_LIMIT_BASE));
-                        }
-                        return next;
-                      });
-                    }}
+                    onClick={handleToggleExtendedGuidance}
                     className={extendedToggleClassName}
                   >
                     <span className="sr-only">Toggle extended guidance mode</span>
