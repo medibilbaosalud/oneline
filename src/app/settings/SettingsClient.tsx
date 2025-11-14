@@ -93,6 +93,10 @@ export default function SettingsClient() {
 
   const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
 
+  const extendedToggleClassName = extendedGuidance
+    ? "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-indigo-400/60 bg-indigo-500/20 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60"
+    : "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-white/15 bg-white/5 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60";
+
   useEffect(() => {
     let cancelled = false;
 
@@ -427,7 +431,7 @@ export default function SettingsClient() {
                 maxLength={guidanceLimit}
                 disabled={settingsLoading || saving}
                 onChange={(event) => setStoryNotes(event.target.value)}
-                placeholder="Anything you want Gemini to emphasise when it writes your recap."
+                placeholder="Anything you want Gemini to emphasize when it writes your recap."
                 className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-3 text-sm text-neutral-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <div className="mt-1 flex flex-col gap-1 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
@@ -438,27 +442,52 @@ export default function SettingsClient() {
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/5 bg-black/20 p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-neutral-100">Modo de extensión ampliada</h3>
-                  <p className="mt-1 text-sm text-neutral-400">
-                    Duplica el límite de tu guía personal hasta 666 caracteres para aportar más contexto a tus resúmenes.
-                  </p>
+            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-transparent p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.28em] text-indigo-200/80">
+                    Extended
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-semibold text-neutral-50">Extended guidance mode</h3>
+                    <p className="mt-2 max-w-md text-sm text-neutral-400">
+                      Double your personal brief limit to 666 characters so you can share richer context with every summary request.
+                    </p>
+                  </div>
                 </div>
-                <label className="inline-flex items-center gap-2 text-sm text-neutral-200">
-                  <input
-                    type="checkbox"
-                    checked={extendedGuidance}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-pressed={extendedGuidance}
+                    aria-label="Toggle extended guidance mode"
                     disabled={settingsLoading || saving}
-                    onChange={(event) => setExtendedGuidance(event.target.checked)}
-                    className="h-4 w-4 rounded border border-white/20 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed"
-                  />
-                  Activar
-                </label>
+                    onClick={() => {
+                      if (settingsLoading || saving) return;
+                      setExtendedGuidance((current) => {
+                        const next = !current;
+                        if (!next) {
+                          setStoryNotes((prev) => clampGuidanceNotes(prev, GUIDANCE_NOTES_LIMIT_BASE));
+                        }
+                        return next;
+                      });
+                    }}
+                    className={extendedToggleClassName}
+                  >
+                    <span className="sr-only">Toggle extended guidance mode</span>
+                    <span
+                      aria-hidden
+                      className={`pointer-events-none h-8 w-8 rounded-full bg-white shadow-[0_8px_16px_rgba(15,23,42,0.25)] transition-transform duration-200 ease-out ${
+                        extendedGuidance ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm font-medium text-neutral-200">
+                    {extendedGuidance ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
               </div>
-              <p className="mt-2 text-xs text-neutral-500">
-                Si lo desactivas recortaremos tus notas al límite estándar de {GUIDANCE_NOTES_LIMIT_BASE} caracteres.
+              <p className="mt-4 text-xs text-neutral-500">
+                Turning this off will gently trim your note back to the standard {GUIDANCE_NOTES_LIMIT_BASE}-character limit.
               </p>
             </div>
 
