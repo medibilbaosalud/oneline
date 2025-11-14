@@ -1,6 +1,6 @@
 import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
-type BrowserClient = ReturnType<typeof createBrowserSupabaseClient<any>>;
+type BrowserClient = ReturnType<typeof createBrowserSupabaseClient>;
 
 let browserClient: BrowserClient | undefined;
 
@@ -9,13 +9,6 @@ export function supabaseBrowser(): BrowserClient {
     browserClient = createBrowserSupabaseClient({
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
       supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      options: {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: false,
-        },
-      },
     });
   }
 
