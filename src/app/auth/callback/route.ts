@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const supabase = createRouteHandlerClient({ cookies });
 
   const code = url.searchParams.get('code');
@@ -16,15 +16,12 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
   }
 
-  const codeVerifier = cookieStore.get?.('sb-code-verifier')?.value;
+  const codeVerifier = cookieStore.get('sb-code-verifier')?.value;
   if (!codeVerifier) {
     console.warn('exchangeCodeForSession WARN: missing sb-code-verifier cookie');
   }
 
-  const { error } = await supabase.auth.exchangeCodeForSession({
-    authCode: code,
-    codeVerifier: codeVerifier ?? undefined,
-  });
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     console.error('exchangeCodeForSession ERROR:', error);
     return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
