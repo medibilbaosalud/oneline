@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
+import { ENTRY_LIMIT_EXTENDED } from "@/lib/summaryPreferences";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -24,7 +26,7 @@ export async function PATCH(req: NextRequest, context: any) {
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "invalid json" }, { status: 400 }); }
 
-  const content = String(body?.content ?? "").slice(0, 333);
+  const content = String(body?.content ?? "").slice(0, ENTRY_LIMIT_EXTENDED);
 
   const { data, error } = await supabase
     .from("journal")

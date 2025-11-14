@@ -4,6 +4,9 @@ import * as React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useEntryLimits } from "@/hooks/useEntryLimits";
+import { ENTRY_LIMIT_BASE } from "@/lib/summaryPreferences";
+
 type Entry = {
   id: string;
   content: string;
@@ -12,7 +15,8 @@ type Entry = {
 
 export default function EntryCard({ entry }: { entry: Entry }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(entry.content);
+  const { entryLimit } = useEntryLimits({ entryLimit: ENTRY_LIMIT_BASE });
+  const [value, setValue] = useState(entry.content.slice(0, entryLimit));
   const [loading, setLoading] = useState<"save" | "delete" | null>(null);
   const router = useRouter();
 
@@ -32,7 +36,7 @@ export default function EntryCard({ entry }: { entry: Entry }) {
       const res = await fetch(`/api/journal-item/${entry.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ content: value }),
+        body: JSON.stringify({ content: value.slice(0, entryLimit) }),
       });
       if (!res.ok) throw new Error("Save failed");
       setIsEditing(false);
@@ -83,8 +87,8 @@ export default function EntryCard({ entry }: { entry: Entry }) {
         <textarea
           autoFocus
           value={value}
-          onChange={(e) => setValue(e.target.value)}
-          maxLength={333}
+          onChange={(e) => setValue(e.target.value.slice(0, entryLimit))}
+          maxLength={entryLimit}
           className="
             mt-4 h-40 w-full resize-none rounded-xl
             bg-zinc-950/80 text-zinc-50 placeholder:text-zinc-500
@@ -138,7 +142,7 @@ export default function EntryCard({ entry }: { entry: Entry }) {
               {loading === "save" ? "Saving…" : "Save"}
             </button>
             <button
-              onClick={() => { setIsEditing(false); setValue(entry.content); }}
+              onClick={() => { setIsEditing(false); setValue(entry.content.slice(0, entryLimit)); }}
               className="
                 inline-flex items-center gap-2 rounded-xl
                 bg-transparent text-zinc-400 hover:text-zinc-200

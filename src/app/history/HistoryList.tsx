@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { useEntryLimits } from "@/hooks/useEntryLimits";
+import { ENTRY_LIMIT_BASE } from "@/lib/summaryPreferences";
+
 type Entry = {
   id: string;
   content: string;
@@ -14,10 +17,11 @@ export default function HistoryList({ initialEntries }: { initialEntries: Entry[
   const [draft, setDraft] = useState<string>("");
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { entryLimit } = useEntryLimits({ entryLimit: ENTRY_LIMIT_BASE });
 
   const startEdit = (id: string, current: string) => {
     setEditingId(id);
-    setDraft(current);
+    setDraft(current.slice(0, entryLimit));
     setError(null);
   };
 
@@ -34,13 +38,13 @@ export default function HistoryList({ initialEntries }: { initialEntries: Entry[
       const res = await fetch(`/api/journal/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ content: draft }),
+        body: JSON.stringify({ content: draft.slice(0, entryLimit) }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Could not update");
 
       setEntries(prev =>
-        prev.map(e => (e.id === id ? { ...e, content: json.entry.content } : e))
+        prev.map(e => (e.id === id ? { ...e, content: (json.entry.content ?? '').slice(0, entryLimit) } : e))
       );
       setEditingId(null);
       setDraft("");
@@ -68,10 +72,10 @@ export default function HistoryList({ initialEntries }: { initialEntries: Entry[
             <>
               <textarea
                 value={draft}
-                onChange={(ev) => setDraft(ev.target.value)}
+                onChange={(ev) => setDraft(ev.target.value.slice(0, entryLimit))}
                 className="w-full rounded-md bg-zinc-900 border border-zinc-700 p-3 outline-none"
                 rows={4}
-                maxLength={333}
+                maxLength={entryLimit}
               />
               <div className="flex items-center gap-3 mt-3">
                 <button

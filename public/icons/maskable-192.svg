@@ -1,14 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="maskable" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1d4ed8" />
-      <stop offset="100%" stop-color="#0f172a" />
+    <linearGradient id="maskable-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1018" />
+      <stop offset="100%" stop-color="#111827" />
     </linearGradient>
+    <linearGradient id="maskable-accent" x1="20%" y1="20%" x2="80%" y2="80%">
+      <stop offset="0%" stop-color="#2ee6c8" />
+      <stop offset="100%" stop-color="#7bb0ff" />
+    </linearGradient>
+    <radialGradient id="maskable-sheen" cx="64%" cy="30%" r="44%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.38" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+    <mask id="maskable-ring-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="black" />
+      <circle cx="256" cy="256" r="184" fill="white" />
+      <circle cx="256" cy="256" r="128" fill="black" />
+      <rect x="104" y="220" width="304" height="88" rx="44" fill="black" />
+    </mask>
   </defs>
-  <rect width="512" height="512" fill="url(#maskable)" />
-  <g fill="#f8fafc">
-    <rect x="176" y="128" width="48" height="240" rx="24" />
-    <rect x="224" y="304" width="144" height="64" rx="32" opacity="0.9" />
-    <circle cx="360" cy="192" r="44" opacity="0.35" />
-  </g>
+  <rect width="512" height="512" rx="92" fill="url(#maskable-bg)" />
+  <circle cx="256" cy="256" r="208" fill="#0f172a" opacity="0.5" />
+  <rect width="512" height="512" fill="url(#maskable-accent)" mask="url(#maskable-ring-cut)" />
+  <circle cx="352" cy="168" r="56" fill="url(#maskable-sheen)" />
+  <circle cx="374" cy="188" r="20" fill="#ffffff" opacity="0.26" />
 </svg>

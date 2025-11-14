@@ -1,6 +1,6 @@
 // src/app/layout.tsx
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import TopNav from '@/components/TopNav';
 import Providers from './providers';
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   title: 'OneLine',
   description: 'One honest line a day.',
   manifest: '/manifest.webmanifest',
-  themeColor,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -32,6 +31,10 @@ export const metadata: Metadata = {
       { rel: 'mask-icon', url: '/icons/maskable-512.svg', type: 'image/svg+xml' },
     ],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor,
 };
 
 export default function RootLayout({
