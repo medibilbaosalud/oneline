@@ -2,11 +2,13 @@ const SUMMARY_LENGTHS = ['short', 'medium', 'long'] as const;
 const SUMMARY_TONES = ['auto', 'warm', 'neutral', 'poetic', 'direct'] as const;
 const SUMMARY_POVS = ['auto', 'first', 'third'] as const;
 const FREQUENCIES = ['weekly', 'monthly', 'yearly'] as const;
+const SUMMARY_LANGUAGES = ['es', 'de', 'fr'] as const;
 
 export type SummaryLength = typeof SUMMARY_LENGTHS[number];
 export type SummaryTone = typeof SUMMARY_TONES[number];
 export type SummaryPov = typeof SUMMARY_POVS[number];
 export type SummaryFrequency = typeof FREQUENCIES[number];
+export type SummaryLanguage = typeof SUMMARY_LANGUAGES[number];
 
 export type SummaryPreferences = {
   length: SummaryLength;
@@ -15,6 +17,7 @@ export type SummaryPreferences = {
   includeHighlights: boolean;
   notes: string | null;
   extendedGuidance: boolean;
+  language: SummaryLanguage;
 };
 
 export type SummaryReminder = {
@@ -46,6 +49,7 @@ export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   includeHighlights: true,
   notes: null,
   extendedGuidance: false,
+  language: 'es',
 };
 
 export function isSummaryLength(value: unknown): value is SummaryLength {
@@ -62,6 +66,10 @@ function isSummaryPov(value: unknown): value is SummaryPov {
 
 export function isSummaryFrequency(value: unknown): value is SummaryFrequency {
   return typeof value === 'string' && FREQUENCIES.includes(value as SummaryFrequency);
+}
+
+export function isSummaryLanguage(value: unknown): value is SummaryLanguage {
+  return typeof value === 'string' && SUMMARY_LANGUAGES.includes(value as SummaryLanguage);
 }
 
 function sanitizeNotes(value: unknown, limit: number): string | null {
@@ -94,6 +102,16 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
 
   const notesSource = source.notes ?? source.summary_notes;
   const noteLimit = guidanceLimitFor(nextExtendedGuidance);
+  const languageSource =
+    source.language ??
+    source.summary_language ??
+    source.interfaceLanguage ??
+    source.interface_language ??
+    source.locale;
+
+  const language = isSummaryLanguage(languageSource)
+    ? languageSource
+    : DEFAULT_SUMMARY_PREFERENCES.language;
 
   return {
     length: isSummaryLength(lengthSource) ? lengthSource : DEFAULT_SUMMARY_PREFERENCES.length,
@@ -103,6 +121,7 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
       typeof includeSource === 'boolean' ? includeSource : DEFAULT_SUMMARY_PREFERENCES.includeHighlights,
     notes: sanitizeNotes(notesSource, noteLimit),
     extendedGuidance: nextExtendedGuidance,
+    language,
   };
 }
 

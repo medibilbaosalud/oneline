@@ -84,6 +84,39 @@ export default function Landing({ searchParams }: LandingProps) {
         </div>
       </section>
 
+      <section className="relative mx-auto mt-16 w-full max-w-5xl px-6 md:mt-20">
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl space-y-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
+                Now multilingual
+              </span>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">Available in Spanish, German, and French</h2>
+              <p className="text-sm text-zinc-300 md:text-base">
+                Pick your preferred language directly from Settings. We’ll sync your choice across devices so the interface and guidance stay familiar wherever you write.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 text-sm text-zinc-200 md:text-base">
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2">
+                <span className="text-lg">🇪🇸</span>
+                <span className="font-medium">Spanish</span>
+                <span className="text-xs text-zinc-400">Español</span>
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2">
+                <span className="text-lg">🇩🇪</span>
+                <span className="font-medium">German</span>
+                <span className="text-xs text-zinc-400">Deutsch</span>
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2">
+                <span className="text-lg">🇫🇷</span>
+                <span className="font-medium">French</span>
+                <span className="text-xs text-zinc-400">Français</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ONBOARDING ASSISTANT */}
       <LandingOnboardingSection />
 
