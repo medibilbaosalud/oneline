@@ -38,6 +38,7 @@ export default function HistoryClient({
   const [draft, setDraft] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showEncryptedOnly, setShowEncryptedOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,12 +94,24 @@ export default function HistoryClient({
   const resolveEntryDate = (entry: DecryptedEntry) =>
     parseDayString(entry.day) ?? new Date(entry.created_at);
 
+  const resolveEntryDateFromPayload = (entry: EntryPayload) =>
+    parseDayString(entry.day) ?? new Date(entry.created_at);
+
   const sortedItems = useMemo(
     () =>
       [...items].sort(
         (a, b) => resolveEntryDate(b).valueOf() - resolveEntryDate(a).valueOf(),
       ),
     [items],
+  );
+
+  const encryptedOnlyList = useMemo(
+    () =>
+      [...rawEntries]
+        .map((entry) => ({ ...entry, displayDate: resolveEntryDateFromPayload(entry) }))
+        .sort((a, b) => a.displayDate.valueOf() - b.displayDate.valueOf())
+        .reverse(),
+    [rawEntries],
   );
 
   function fmtDate(entry: DecryptedEntry) {
@@ -195,10 +208,61 @@ export default function HistoryClient({
     setDeletingId(null);
   }
 
-  if (!dataKey) {
+  if (!dataKey && !showEncryptedOnly) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-sm text-zinc-400">
-        Unlock your vault to view history.
+      <div className="space-y-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-sm text-zinc-100">
+        <p className="text-base font-semibold text-white">History is locked</p>
+        <p className="text-sm text-zinc-400">
+          Your entries are stored as encrypted ciphertext in Supabase. Unlock your vault to decrypt them, or preview the locked
+          list to confirm nothing readable ever leaves your device.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setShowEncryptedOnly(true)}
+            className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-100 transition hover:border-indigo-300/60 hover:bg-indigo-500/10"
+          >
+            View encrypted list
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dataKey && showEncryptedOnly) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] via-white/[0.03] to-transparent p-5 text-sm text-zinc-200 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-semibold text-white">Encrypted-only view</p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Entries stay encrypted at rest. We surface only dates and truncated ciphertext so you can verify privacy without unlocking.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowEncryptedOnly(false)}
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-neutral-100 transition hover:border-indigo-300/60 hover:bg-indigo-500/10"
+            >
+              Back to unlock prompt
+            </button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {encryptedOnlyList.map((entry) => (
+            <article
+              key={entry.id}
+              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-sm text-zinc-300"
+            >
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.08em] text-indigo-200/70">
+                <span>{resolveEntryDateFromPayload(entry).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold text-emerald-200/80">Encrypted</span>
+              </div>
+              <p className="mt-2 text-xs text-zinc-500">
+                Ciphertext: {entry.content_cipher ? `${entry.content_cipher.slice(0, 32)}…` : 'No ciphertext stored'}
+              </p>
+            </article>
+          ))}
+        </div>
       </div>
     );
   }

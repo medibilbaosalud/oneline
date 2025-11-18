@@ -28,6 +28,13 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Privacy and data handling
+
+- Entries are encrypted in the browser with your passphrase (AES-GCM) before anything is sent.
+- Only ciphertext plus IVs are stored in Supabase Postgres; plaintext never hits the server or logs.
+- Export/delete controls help you exercise GDPR/Spanish data rights at any time.
+- Interface copy stays in English for clarity, but you can journal and summarise in any language.
+
 ## Deployment notes
 
 ### Production deployment

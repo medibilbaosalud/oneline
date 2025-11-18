@@ -32,22 +32,28 @@ const LANGUAGE_OPTIONS: Array<{
   description: string;
 }> = [
   {
+    value: "en",
+    label: "English",
+    native: "English",
+    description: "The default UI language. Keep everything readable and consistent.",
+  },
+  {
     value: "es",
     label: "Spanish",
     native: "Español",
-    description: "Ideal when you journal or read primarily in Spanish.",
+    description: "Best if you write most entries in Spanish and want summaries to match.",
   },
   {
     value: "de",
     label: "German",
     native: "Deutsch",
-    description: "Surface the interface in German with matching prompts.",
+    description: "Use when your writing voice is primarily German.",
   },
   {
     value: "fr",
     label: "French",
     native: "Français",
-    description: "Keep every control and email in elegant French copy.",
+    description: "Keep generated content aligned with French phrasing.",
   },
 ];
 
@@ -113,7 +119,7 @@ export default function SettingsClient() {
   const [storyIncludeHighlights, setStoryIncludeHighlights] = useState(true);
   const [storyNotes, setStoryNotes] = useState("");
   const [extendedGuidance, setExtendedGuidance] = useState(false);
-  const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("es");
+  const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
 
   const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
@@ -427,12 +433,12 @@ export default function SettingsClient() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="max-w-xl space-y-3">
                 <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
-                  Language
+                  Writing language
                 </span>
                 <div className="space-y-2">
-                  <h2 className="text-lg font-semibold text-neutral-100">Interface language</h2>
+                  <h2 className="text-lg font-semibold text-neutral-100">Keep the UI in English, write in any language</h2>
                   <p className="text-sm text-neutral-400">
-                    Switch OneLine’s copy to match the language you feel most comfortable reading. We’ll keep the preference synced across devices once you sign in.
+                    OneLine’s interface stays in English for clarity, but your entries and summaries can follow the language that feels most natural to you.
                   </p>
                 </div>
               </div>
@@ -468,7 +474,7 @@ export default function SettingsClient() {
               </div>
             </div>
             <p className="mt-4 text-xs text-neutral-500">
-              Change the language anytime — we remember your last choice for every signed-in session.
+              Pick the language that matches your writing voice; the interface remains English for consistency across devices.
             </p>
           </section>
 

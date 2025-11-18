@@ -2,7 +2,7 @@ const SUMMARY_LENGTHS = ['short', 'medium', 'long'] as const;
 const SUMMARY_TONES = ['auto', 'warm', 'neutral', 'poetic', 'direct'] as const;
 const SUMMARY_POVS = ['auto', 'first', 'third'] as const;
 const FREQUENCIES = ['weekly', 'monthly', 'yearly'] as const;
-const SUMMARY_LANGUAGES = ['es', 'de', 'fr'] as const;
+const SUMMARY_LANGUAGES = ['en', 'es', 'de', 'fr'] as const;
 
 export type SummaryLength = typeof SUMMARY_LENGTHS[number];
 export type SummaryTone = typeof SUMMARY_TONES[number];
@@ -49,7 +49,7 @@ export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   includeHighlights: true,
   notes: null,
   extendedGuidance: false,
-  language: 'es',
+  language: 'en',
 };
 
 export function isSummaryLength(value: unknown): value is SummaryLength {
