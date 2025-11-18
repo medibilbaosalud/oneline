@@ -10,7 +10,11 @@ export const metadata: Metadata = {
 export default function EncryptionExplainerPage() {
   return (
     <main className="relative mx-auto max-w-5xl px-6 py-16 text-zinc-100 md:py-20">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.16),_transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-20 bg-[#050507]" aria-hidden />
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(129,140,248,0.26),transparent_42%),radial-gradient(circle_at_82%_12%,rgba(236,72,153,0.18),transparent_36%),radial-gradient(circle_at_50%_70%,rgba(45,212,191,0.18),transparent_48%)]"
+        aria-hidden
+      />
       <header className="space-y-4 text-pretty text-center md:text-left">
         <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
           End-to-end by design
@@ -38,7 +42,7 @@ export default function EncryptionExplainerPage() {
       </header>
 
       <section className="mt-12 grid gap-6 md:grid-cols-[1.05fr_0.95fr]">
-        <div className="space-y-4 rounded-3xl border border-white/10 bg-neutral-900/70 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.45)]">
+        <div className="space-y-4 rounded-3xl border border-white/10 bg-neutral-950/80 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.55)] backdrop-blur">
           <h2 className="text-2xl font-semibold text-white">The path of your data</h2>
           <ul className="space-y-3 text-sm leading-relaxed text-zinc-300 md:text-base">
             <li className="flex gap-3">
@@ -66,7 +70,7 @@ export default function EncryptionExplainerPage() {
               </span>
             </li>
           </ul>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-200">
+          <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-4 text-sm text-zinc-200 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
             <p className="font-semibold text-white">What servers see</p>
             <pre className="mt-3 overflow-auto rounded-xl bg-black/60 p-4 text-[11px] text-emerald-200">{`{
   "content_cipher": "b64...",
@@ -76,7 +80,7 @@ export default function EncryptionExplainerPage() {
             <p className="mt-3 text-xs text-zinc-400">No plaintext is stored or logged. Your passphrase is never transmitted.</p>
           </div>
         </div>
-        <div className="space-y-4 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur">
+        <div className="space-y-4 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 shadow-[0_22px_70px_rgba(0,0,0,0.45)] backdrop-blur-lg">
           <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
             <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">Decryption flow</p>
             <h3 className="mt-2 text-lg font-semibold text-white">When you return to read</h3>
@@ -103,7 +107,7 @@ export default function EncryptionExplainerPage() {
         </div>
       </section>
 
-      <section className="mt-12 grid gap-6 rounded-3xl border border-white/10 bg-neutral-900/70 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.45)] md:grid-cols-[1.05fr_0.95fr]">
+      <section className="mt-12 grid gap-6 rounded-3xl border border-white/10 bg-neutral-950/80 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.55)] backdrop-blur md:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-3 text-pretty text-sm leading-relaxed text-zinc-300 md:text-base">
           <h2 className="text-2xl font-semibold text-white">Why this matters</h2>
           <p>
