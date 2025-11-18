@@ -1,27 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-
-  if (!code) {
-    const missingUrl = new URL("/?signup=missing", url.origin);
-    return NextResponse.redirect(missingUrl, { status: 302 });
-  }
-
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const cookieStore = await cookies();
   const supabase = createRouteHandlerClient({ cookies });
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error) {
-    const errorUrl = new URL("/?signup=error", url.origin);
-    return NextResponse.redirect(errorUrl, { status: 302 });
+  const code = url.searchParams.get('code');
+  if (!code) {
+    console.error('exchangeCodeForSession ERROR: missing code param');
+    return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
   }
 
-  const successUrl = new URL("/?signup=ok", url.origin);
-  return NextResponse.redirect(successUrl, { status: 302 });
+  const codeVerifier = cookieStore.get('sb-code-verifier')?.value;
+  if (!codeVerifier) {
+    console.warn('exchangeCodeForSession WARN: missing sb-code-verifier cookie');
+  }
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    console.error('exchangeCodeForSession ERROR:', error);
+    return NextResponse.redirect(new URL('/auth?error=oauth', url.origin));
+  }
+
+  const next = url.searchParams.get('next');
+  const safeNext = next && next.startsWith('/') ? next : '/';
+  return NextResponse.redirect(new URL(safeNext, url.origin));
 }

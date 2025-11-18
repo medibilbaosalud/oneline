@@ -2,10 +2,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { ENTRY_LIMIT_EXTENDED } from "@/lib/summaryPreferences";
 
 const Upsert = z.object({
   id: z.string().uuid().optional(),
-  content: z.string().min(1).max(333),
+  content: z.string().min(1).max(ENTRY_LIMIT_EXTENDED),
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // YYYY-MM-DD
 });
 
