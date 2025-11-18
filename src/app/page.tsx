@@ -70,7 +70,7 @@ export default function Landing({ searchParams }: LandingProps) {
             </Link>
             <Link
               href="/visitor"
-              className="rounded-xl border border-white/10 bg-transparent px-6 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-white/5"
+              className="rounded-xl bg-gradient-to-r from-indigo-500/70 via-purple-500/70 to-emerald-500/70 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-400 hover:via-purple-400 hover:to-emerald-400"
             >
               Try visitor mode
             </Link>
@@ -140,6 +140,15 @@ export default function Landing({ searchParams }: LandingProps) {
                 <span><strong>Lose the passphrase, lose the data:</strong> That&rsquo;s the trade-off of true privacy. Use a password manager if you need backup.</span>
               </li>
             </ul>
+            <div className="pt-2">
+              <Link
+                href="/encryption"
+                className="inline-flex items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(79,70,229,0.25)] transition hover:border-indigo-300/50 hover:bg-indigo-500/20"
+              >
+                Learn more about OneLine encryption
+                <span aria-hidden className="text-base">→</span>
+              </Link>
+            </div>
           </div>
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm text-zinc-200 backdrop-blur">
             <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_60%)] blur-3xl" />
