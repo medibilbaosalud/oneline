@@ -1,12 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { Suspense, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmailHint } from '@/lib/emailHint';
-import AuthButton from '@/components/AuthButton';
+import GoogleSignInButton from '@/app/components/GoogleSignInButton';
 
-export default function AuthPage() {
+function AuthPageInner() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +15,19 @@ export default function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const nextParam = searchParams?.get('next');
+  const nextPath = useMemo(() => {
+    if (!nextParam) return '/today';
+    try {
+      const decoded = decodeURIComponent(nextParam);
+      if (!decoded.startsWith('/')) return '/today';
+      return decoded;
+    } catch {
+      return '/today';
+    }
+  }, [nextParam]);
 
   const emailHint = useMemo(
     () => (mode === 'signup' ? getEmailHint(email) : null),
@@ -37,14 +49,16 @@ export default function AuthPage() {
           throw new Error('Passwords do not match. Please re-enter them.');
         }
       }
+      const { supabaseBrowser } = await import('@/lib/supabaseBrowser');
       const sb = supabaseBrowser();
+      const origin = window.location.origin;
 
       if (mode === 'signin') {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
         router.refresh();
-        router.push('/today');
+        router.push(nextPath);
         return;
       }
 
@@ -52,15 +66,14 @@ export default function AuthPage() {
         email,
         password,
         options: {
-          emailRedirectTo:
-            'https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback',
+          emailRedirectTo: `${origin}/auth/callback`,
         },
       });
       if (error) throw error;
 
       if (data.session) {
         router.refresh();
-        router.push('/today');
+        router.push(nextPath);
         return;
       }
 
@@ -192,17 +205,24 @@ export default function AuthPage() {
               </button>
             </form>
 
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-zinc-500">
-                <span className="h-px flex-1 bg-white/10" aria-hidden />
-                <span>or</span>
-                <span className="h-px flex-1 bg-white/10" aria-hidden />
+            {mode === 'signin' && (
+              <div className="mt-4 space-y-3">
+                <div className="relative flex items-center">
+                  <span className="w-full border-t border-white/10" />
+                  <span className="px-3 text-xs uppercase tracking-wide text-zinc-500">
+                    or
+                  </span>
+                  <span className="w-full border-t border-white/10" />
+                </div>
+                <GoogleSignInButton nextPath={nextPath} />
               </div>
-              <AuthButton variant="card" />
-              <p className="text-center text-xs text-zinc-500">
-                Use your GitHub account to create or access your vault instantly.
-              </p>
-            </div>
+            )}
+
+            <p className="mt-6 text-center text-xs text-zinc-500">
+              {mode === 'signin'
+                ? 'Continue with your email, password, or Google to access your encrypted vault.'
+                : 'Continue with your email and password to access your encrypted vault.'}
+            </p>
 
             <div className="mt-4 text-center text-sm text-zinc-400">
               {mode === 'signin' ? (
@@ -260,5 +280,50 @@ export default function AuthPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function AuthPageFallback() {
+  return (
+    <main className="min-h-[calc(100vh-56px)] bg-neutral-950 text-zinc-100">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 px-6 py-12 lg:grid-cols-2">
+        <section className="order-2 lg:order-1">
+          <h1 className="bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
+            One honest line a day.
+            <span className="block bg-gradient-to-r from-emerald-300 to-indigo-400 bg-clip-text text-transparent">
+              A tiny habit that compounds.
+            </span>
+          </h1>
+          <p className="mt-6 max-w-xl text-zinc-400">
+            Capture one line in seconds. Private by design. Generate month/quarter/year stories when you want.
+          </p>
+        </section>
+
+        <section className="order-1 lg:order-2">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur">
+            <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.15),transparent_60%)] blur-2xl" />
+            <div className="space-y-4">
+              <div className="h-6 w-24 rounded-full bg-white/10" />
+              <div className="h-4 w-32 rounded-full bg-white/10" />
+              <div className="space-y-3">
+                <div className="h-10 rounded-xl bg-white/10" />
+                <div className="h-10 rounded-xl bg-white/10" />
+                <div className="h-10 rounded-xl bg-white/10" />
+              </div>
+              <div className="h-10 rounded-xl bg-indigo-600/60" />
+              <div className="h-4 w-48 rounded-full bg-white/10" />
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <AuthPageInner />
+    </Suspense>
   );
 }

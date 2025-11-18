@@ -2,20 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  GUIDANCE_NOTES_LIMIT_BASE,
+  GUIDANCE_NOTES_LIMIT_EXTENDED,
+  entryLimitFor,
+  guidanceLimitFor,
+} from "@/lib/summaryPreferences";
+import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
 type StoryTone = "auto" | "warm" | "neutral" | "poetic" | "direct";
 type StoryPov = "auto" | "first" | "third";
-
-type SummaryPreferences = {
-  length: StoryLength;
-  tone: StoryTone;
-  pov: StoryPov;
-  includeHighlights: boolean;
-  notes: string | null;
-};
 
 type SummaryReminder = {
   due: boolean;
@@ -24,6 +24,38 @@ type SummaryReminder = {
   dueSince: string | null;
   lastSummaryAt: string | null;
 };
+
+const LANGUAGE_OPTIONS: Array<{
+  value: SummaryLanguage;
+  label: string;
+  native: string;
+  description: string;
+}> = [
+  {
+    value: "en",
+    label: "English",
+    native: "English",
+    description: "The default UI language. Keep everything readable and consistent.",
+  },
+  {
+    value: "es",
+    label: "Spanish",
+    native: "Español",
+    description: "Best if you write most entries in Spanish and want summaries to match.",
+  },
+  {
+    value: "de",
+    label: "German",
+    native: "Deutsch",
+    description: "Use when your writing voice is primarily German.",
+  },
+  {
+    value: "fr",
+    label: "French",
+    native: "Français",
+    description: "Keep generated content aligned with French phrasing.",
+  },
+];
 
 type SettingsResponse = {
   ok: boolean;
@@ -36,7 +68,10 @@ type SettingsResponse = {
   };
 };
 
-const NOTES_LIMIT = 500;
+function clampGuidanceNotes(value: string | null, limit: number) {
+  if (!value) return "";
+  return value.length > limit ? value.slice(0, limit) : value;
+}
 
 function messageFromError(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
@@ -83,7 +118,15 @@ export default function SettingsClient() {
   const [storyPov, setStoryPov] = useState<StoryPov>("auto");
   const [storyIncludeHighlights, setStoryIncludeHighlights] = useState(true);
   const [storyNotes, setStoryNotes] = useState("");
+  const [extendedGuidance, setExtendedGuidance] = useState(false);
+  const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
+
+  const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
+
+  const extendedToggleClassName = extendedGuidance
+    ? "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-indigo-400/60 bg-indigo-500/20 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60"
+    : "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-white/15 bg-white/5 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60";
 
   useEffect(() => {
     let cancelled = false;
@@ -122,7 +165,17 @@ export default function SettingsClient() {
               setStoryTone(prefs.tone);
               setStoryPov(prefs.pov);
               setStoryIncludeHighlights(prefs.includeHighlights);
-              setStoryNotes(prefs.notes ?? "");
+              const nextExtended = !!prefs.extendedGuidance;
+              setExtendedGuidance(nextExtended);
+              setStoryNotes(
+                clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtended)),
+              );
+              setStoryLanguage(prefs.language);
+              primeEntryLimitsCache({
+                entryLimit: entryLimitFor(nextExtended),
+                guidanceLimit: guidanceLimitFor(nextExtended),
+                extendedGuidance: nextExtended,
+              });
             }
             setReminder(json.settings.reminder ?? null);
           }
@@ -144,10 +197,31 @@ export default function SettingsClient() {
     };
   }, [supabase]);
 
-  async function handleSaveSettings() {
+  async function handleSaveSettings({
+    nextFrequency,
+    preferenceOverrides,
+    suppressFeedback = false,
+  }: {
+    nextFrequency?: Frequency;
+    preferenceOverrides?: Partial<SummaryPreferences>;
+    suppressFeedback?: boolean;
+  } = {}): Promise<boolean> {
     setSaving(true);
     setFeedback(null);
     setError(null);
+
+    const overrides = preferenceOverrides ?? {};
+    const targetFrequency = nextFrequency ?? frequency;
+    const nextExtended = overrides.extendedGuidance ?? extendedGuidance;
+    const limit = guidanceLimitFor(nextExtended);
+    const rawNotesSource =
+      overrides.notes !== undefined
+        ? overrides.notes ?? ""
+        : storyNotes;
+    const trimmedNotes = typeof rawNotesSource === "string" ? rawNotesSource.trim() : "";
+    const limitedNotes = trimmedNotes.length > limit ? trimmedNotes.slice(0, limit) : trimmedNotes;
+    const nextLanguage = overrides.language ?? storyLanguage;
+
     try {
       const sessionRes = await supabase.auth.getSession();
       const bearer = sessionRes.data.session?.access_token ?? accessToken;
@@ -165,13 +239,15 @@ export default function SettingsClient() {
         headers,
         credentials: "include",
         body: JSON.stringify({
-          frequency,
+          frequency: targetFrequency,
           storyPreferences: {
-            length: storyLength,
-            tone: storyTone,
-            pov: storyPov,
-            includeHighlights: storyIncludeHighlights,
-            notes: storyNotes.trim() ? storyNotes.trim() : undefined,
+            length: overrides.length ?? storyLength,
+            tone: overrides.tone ?? storyTone,
+            pov: overrides.pov ?? storyPov,
+            includeHighlights: overrides.includeHighlights ?? storyIncludeHighlights,
+            extendedGuidance: nextExtended,
+            notes: limitedNotes.length ? limitedNotes : undefined,
+            language: nextLanguage,
           },
         }),
       });
@@ -187,15 +263,81 @@ export default function SettingsClient() {
       setStoryTone(prefs.tone);
       setStoryPov(prefs.pov);
       setStoryIncludeHighlights(prefs.includeHighlights);
-      setStoryNotes(prefs.notes ?? "");
+      const nextExtendedFromResponse = !!prefs.extendedGuidance;
+      setExtendedGuidance(nextExtendedFromResponse);
+      setStoryNotes(
+        clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtendedFromResponse)),
+      );
+      setStoryLanguage(prefs.language);
       setReminder(json.settings.reminder ?? null);
-      setFeedback("Saved.");
+      if (!suppressFeedback) {
+        setFeedback("Saved.");
+      }
+      primeEntryLimitsCache({
+        entryLimit: entryLimitFor(nextExtendedFromResponse),
+        guidanceLimit: guidanceLimitFor(nextExtendedFromResponse),
+        extendedGuidance: nextExtendedFromResponse,
+      });
+      return true;
     } catch (err: unknown) {
       setError(messageFromError(err, "Could not update your preferences."));
+      return false;
     } finally {
       setSaving(false);
     }
   }
+
+  const handleToggleExtendedGuidance = async () => {
+    if (settingsLoading || saving) return;
+    const previousExtended = extendedGuidance;
+    const previousNotes = storyNotes;
+    const next = !extendedGuidance;
+    const limit = guidanceLimitFor(next);
+    const trimmedNotes = clampGuidanceNotes(previousNotes, limit);
+
+    setExtendedGuidance(next);
+    setStoryNotes(trimmedNotes);
+
+    const success = await handleSaveSettings({
+      preferenceOverrides: {
+        extendedGuidance: next,
+        notes: trimmedNotes,
+      },
+      suppressFeedback: true,
+    });
+
+    if (!success) {
+      setExtendedGuidance(previousExtended);
+      setStoryNotes(previousNotes);
+      primeEntryLimitsCache({
+        entryLimit: entryLimitFor(previousExtended),
+        guidanceLimit: guidanceLimitFor(previousExtended),
+        extendedGuidance: previousExtended,
+      });
+      return;
+    }
+  };
+
+  const handleSelectLanguage = async (nextLanguage: SummaryLanguage) => {
+    if (nextLanguage === storyLanguage) return;
+    const previous = storyLanguage;
+    setStoryLanguage(nextLanguage);
+
+    if (settingsLoading) {
+      return;
+    }
+
+    const success = await handleSaveSettings({
+      preferenceOverrides: { language: nextLanguage },
+      suppressFeedback: true,
+    });
+
+    if (success) {
+      setFeedback(`Language updated to ${LANGUAGE_OPTIONS.find((option) => option.value === nextLanguage)?.label ?? "your choice"}.`);
+    } else {
+      setStoryLanguage(previous);
+    }
+  };
 
   async function handleExport() {
     setFeedback(null);
@@ -287,6 +429,55 @@ export default function SettingsClient() {
             )}
           </section>
 
+          <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.02] to-transparent p-6 shadow-lg shadow-black/20">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="max-w-xl space-y-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
+                  Writing language
+                </span>
+                <div className="space-y-2">
+                  <h2 className="text-lg font-semibold text-neutral-100">Keep the UI in English, write in any language</h2>
+                  <p className="text-sm text-neutral-400">
+                    OneLine’s interface stays in English for clarity, but your entries and summaries can follow the language that feels most natural to you.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-stretch gap-2 md:min-w-[16rem]">
+                {LANGUAGE_OPTIONS.map((option) => {
+                  const active = option.value === storyLanguage;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      disabled={settingsLoading || saving}
+                      onClick={() => {
+                        void handleSelectLanguage(option.value);
+                      }}
+                      className={`group flex w-full flex-col items-start gap-1 rounded-2xl border px-4 py-3 text-left transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 disabled:cursor-not-allowed ${
+                        active
+                          ? "border-indigo-400/70 bg-indigo-500/15 text-neutral-50 shadow-[0_12px_24px_rgba(79,70,229,0.18)]"
+                          : "border-white/10 bg-white/5 text-neutral-200 hover:border-indigo-300/60 hover:bg-indigo-500/10"
+                      }`}
+                    >
+                      <span className="text-sm font-semibold">
+                        {option.label}
+                        <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-indigo-200/80">
+                          {option.native}
+                        </span>
+                      </span>
+                      <span className="text-xs text-neutral-400 group-hover:text-neutral-300">
+                        {option.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-neutral-500">
+              Pick the language that matches your writing voice; the interface remains English for consistency across devices.
+            </p>
+          </section>
+
           <section className="rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg shadow-black/20">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -307,7 +498,9 @@ export default function SettingsClient() {
                   <option value="yearly">Yearly report</option>
                 </select>
                 <button
-                  onClick={handleSaveSettings}
+                  onClick={() => {
+                    void handleSaveSettings();
+                  }}
                   disabled={settingsLoading || saving}
                   className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -404,18 +597,58 @@ export default function SettingsClient() {
               <textarea
                 id="story-notes"
                 value={storyNotes}
-                maxLength={NOTES_LIMIT}
+                maxLength={guidanceLimit}
                 disabled={settingsLoading || saving}
                 onChange={(event) => setStoryNotes(event.target.value)}
-                placeholder="Anything you want Gemini to emphasise when it writes your recap."
+                placeholder="Anything you want Gemini to emphasize when it writes your recap."
                 className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-3 text-sm text-neutral-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <div className="mt-1 flex flex-col gap-1 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
                 <span>We’ll pre-fill the generator with this note — you can still edit it before sending.</span>
                 <span>
-                  {storyNotes.length}/{NOTES_LIMIT}
+                  {storyNotes.length}/{guidanceLimit}
                 </span>
               </div>
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-transparent p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.28em] text-indigo-200/80">
+                    Extended
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-semibold text-neutral-50">Extended guidance mode</h3>
+                    <p className="mt-2 max-w-md text-sm text-neutral-400">
+                      Double your personal brief limit to 666 characters so you can share richer context with every summary request.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-pressed={extendedGuidance}
+                    aria-label="Toggle extended guidance mode"
+                    disabled={settingsLoading || saving}
+                    onClick={handleToggleExtendedGuidance}
+                    className={extendedToggleClassName}
+                  >
+                    <span className="sr-only">Toggle extended guidance mode</span>
+                    <span
+                      aria-hidden
+                      className={`pointer-events-none h-8 w-8 rounded-full bg-white shadow-[0_8px_16px_rgba(15,23,42,0.25)] transition-transform duration-200 ease-out ${
+                        extendedGuidance ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm font-medium text-neutral-200">
+                    {extendedGuidance ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-4 text-xs text-neutral-500">
+                Turning this off will gently trim your note back to the standard {GUIDANCE_NOTES_LIMIT_BASE}-character limit.
+              </p>
             </div>
 
             {reminder && (

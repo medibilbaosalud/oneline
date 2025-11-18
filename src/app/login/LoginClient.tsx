@@ -1,20 +1,29 @@
 // src/app/login/LoginClient.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { getEmailHint } from "@/lib/emailHint";
-import AuthButton from "@/components/AuthButton";
+import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 
 type Mode = "signin" | "signup";
 
 export default function LoginClient() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = decodeURIComponent(params.get("next") || "/today");
+  const rawNext = params.get("next");
+  const next = useMemo(() => {
+    if (!rawNext) return "/today";
+    try {
+      const decoded = decodeURIComponent(rawNext);
+      return decoded.startsWith("/") ? decoded : "/today";
+    } catch {
+      return "/today";
+    }
+  }, [rawNext]);
 
-  const supabase = createClientComponentClient();
+  const supabase = useMemo(() => createClientComponentClient(), []);
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -39,6 +48,8 @@ export default function LoginClient() {
     setPending(true);
 
     try {
+      const origin = window.location.origin;
+
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -49,8 +60,7 @@ export default function LoginClient() {
           email,
           password,
           options: {
-            emailRedirectTo:
-              "https://oneline-cvl22fc8y-aitors-projects-69010505.vercel.app/auth/callback",
+            emailRedirectTo: `${origin}/auth/callback`,
           },
         });
         if (error) throw error;
@@ -137,27 +147,27 @@ export default function LoginClient() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:opacity-40"
+            className="w-full rounded-lg bg-indigo-500 px-4 py-2 font-medium text-white hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {pending ? (mode === "signin" ? "Signing in…" : "Creating account…") : (mode === "signin" ? "Sign in" : "Create account")}
           </button>
+
+          {mode === "signin" && (
+            <GoogleSignInButton
+              nextPath={next}
+              className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-2 font-medium text-neutral-100 transition hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          )}
 
           <p className="mt-2 text-center text-xs text-neutral-500">
             You’ll be redirected back to <span className="font-medium">{next}</span> after auth.
           </p>
         </form>
 
-        <div className="mt-6 space-y-3">
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
-            <span className="h-px flex-1 bg-white/10" aria-hidden />
-            <span>or</span>
-            <span className="h-px flex-1 bg-white/10" aria-hidden />
-          </div>
-          <AuthButton variant="card" />
-          <p className="text-center text-xs text-neutral-500">
-            Continue with GitHub for fast access—no email link required.
-          </p>
-        </div>
+        <p className="mt-6 text-center text-xs text-neutral-500">
+          Sign in with email and password or use your Google account above to
+          access OneLine.
+        </p>
       </div>
     </div>
   );
