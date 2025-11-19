@@ -117,6 +117,37 @@ export default function EncryptionExplainerPage() {
               decrypted text to Gemini over TLS, along with the parameters needed for the narrative. The request originates from your
               device and Gemini sends the summary straight back to it—plaintext never touches OneLine servers.
             </p>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-zinc-200">
+              <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-indigo-200/80">
+                <span>Plaintext journey</span>
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">
+                  Device → Gemini → Device
+                </span>
+              </div>
+              <ol className="mt-3 space-y-3">
+                <li className="flex gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" aria-hidden />
+                  <span>
+                    <strong>Decrypt only on your device:</strong> Your vault unlocks locally; plaintext exists only in browser memory while
+                    composing the prompt.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-cyan-400" aria-hidden />
+                  <span>
+                    <strong>Send directly to Gemini:</strong> The decrypted snippet goes from your browser straight to Gemini over TLS—no
+                    OneLine proxy, no intermediate storage.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-fuchsia-400" aria-hidden />
+                  <span>
+                    <strong>Receive and re-encrypt:</strong> Gemini replies to your device; if you save the story, it re-encrypts immediately
+                    before syncing back to Supabase. No other system ever holds the decrypted output.
+                  </span>
+                </li>
+              </ol>
+            </div>
             <div className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-4">
               <div className="flex gap-3 text-sm text-zinc-200">
                 <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />
