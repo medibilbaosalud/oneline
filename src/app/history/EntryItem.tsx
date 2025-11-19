@@ -4,6 +4,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useEntryLimits } from "@/hooks/useEntryLimits";
+import { ENTRY_LIMIT_BASE } from "@/lib/summaryPreferences";
+
 export default function EntryItem({
   id,
   content,
@@ -15,7 +18,8 @@ export default function EntryItem({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(content);
+  const { entryLimit } = useEntryLimits({ entryLimit: ENTRY_LIMIT_BASE });
+  const [text, setText] = useState(content.slice(0, entryLimit));
   const [loading, setLoading] = useState(false);
 
   const dt = new Date(created_at);
@@ -36,7 +40,7 @@ export default function EntryItem({
       const res = await fetch(`/api/journal/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ content: text.slice(0, entryLimit) }),
       });
       if (!res.ok) throw new Error(await res.text());
       setEditing(false);
@@ -74,10 +78,10 @@ export default function EntryItem({
         <>
           <textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => setText(e.target.value.slice(0, entryLimit))}
             className="w-full rounded-md bg-zinc-900 border border-zinc-700 p-2"
             rows={4}
-            maxLength={333}
+            maxLength={entryLimit}
           />
           <div className="mt-3 flex gap-2">
             <button
@@ -90,7 +94,7 @@ export default function EntryItem({
             <button
               onClick={() => {
                 setEditing(false);
-                setText(content);
+                setText(content.slice(0, entryLimit));
               }}
               className="px-3 py-1 rounded bg-zinc-700 text-sm"
             >
