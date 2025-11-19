@@ -101,6 +101,13 @@ export function buildYearStoryPrompt(
 
   const languageLine = `Write the entire story in ${languageName}. If the entries are clearly written in another language, mirror that input language instead of translating it. Never translate the user's words into a different language.`;
 
+  const orderingRules = `
+STRUCTURE & ORDER:
+- Tell the story chronologically from earliest to latest without jumping back and forth in time.
+- Keep related events together so academics, relationships, and projects read cohesively instead of as scattered notes.
+- Preserve any non-English terms exactly as written (e.g., "idazlan"); keep them in quotes and do not translate them.
+- When summarizing a day or exam, keep the original sentiment and grading context in the same order it appeared.`.trim();
+
   const fidelityRules = `
 FIDELITY RULES:
 - Do not invent events, people or places that are not explicitly present in the entries.
@@ -122,6 +129,7 @@ Goal: craft a cohesive YEAR IN REVIEW for ${from} – ${to} using ONLY the suppl
 ${languageLine}
 ${toneLine}
 ${povLine}
+${orderingRules}
 Target length: ${minWords}–${maxWords} words. Start directly with the first paragraph.
 
 ${fidelityRules}
