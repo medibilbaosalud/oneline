@@ -2,6 +2,7 @@
 // SECURITY: Accepts decrypted text only when the user has explicitly consented.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { DEFAULT_SUMMARY_PREFERENCES, isSummaryLanguage } from '@/lib/summaryPreferences';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { incrementMonthlySummaryUsage } from '@/lib/summaryUsage';
 import {
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest) {
     pinnedWeight: 2,
     strict: true,
     userNotes: typeof body?.options?.notes === 'string' ? body.options.notes.slice(0, 1000) : undefined,
+    language: isSummaryLanguage(body?.options?.language)
+      ? body.options.language
+      : DEFAULT_SUMMARY_PREFERENCES.language,
   };
 
   try {

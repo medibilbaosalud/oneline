@@ -15,6 +15,7 @@ const defaultOptions: YearStoryOptions = {
   includeHighlights: true,
   pinnedWeight: 2,
   strict: true,
+  language: DEFAULT_SUMMARY_PREFERENCES.language,
 };
 
 function isFromVercelCron(req: Request) {
@@ -202,6 +203,7 @@ export async function GET(req: Request) {
         pov: basePreferences.pov,
         includeHighlights: basePreferences.includeHighlights,
         userNotes: basePreferences.notes ?? undefined,
+        language: basePreferences.language,
       };
 
       const { story } = await generateYearStory(entries, from, to, options);

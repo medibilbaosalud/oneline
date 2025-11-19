@@ -1,5 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+import type { SummaryLanguage } from './summaryPreferences';
+
 export type YearStoryOptions = {
   length: 'short' | 'medium' | 'long';
   tone: 'auto' | 'warm' | 'neutral' | 'poetic' | 'direct';
@@ -8,6 +10,7 @@ export type YearStoryOptions = {
   pinnedWeight: 1 | 2 | 3;
   strict: boolean;
   userNotes?: string;
+  language: SummaryLanguage;
 };
 
 export type YearStoryEntry = {
@@ -83,6 +86,21 @@ export function buildYearStoryPrompt(
       ? 'Default to FIRST person if the entries are written that way; otherwise use a close THIRD person.'
       : `Point of view: ${povDescriptor(options.pov)}.`;
 
+  const languageName = (() => {
+    switch (options.language) {
+      case 'es':
+        return 'Spanish';
+      case 'de':
+        return 'German';
+      case 'fr':
+        return 'French';
+      default:
+        return 'English';
+    }
+  })();
+
+  const languageLine = `Write the entire story in ${languageName}. If the entries are clearly written in another language, mirror that input language instead of translating it. Never translate the user's words into a different language.`;
+
   const fidelityRules = `
 FIDELITY RULES:
 - Do not invent events, people or places that are not explicitly present in the entries.
@@ -97,10 +115,11 @@ ${options.strict ? '- Treat every detail literally; no embellishments beyond cla
     : '';
 
   return `
-Role: You are a careful biographer. Write in English.
+Role: You are a careful biographer.
 
 Goal: craft a cohesive YEAR IN REVIEW for ${from} – ${to} using ONLY the supplied entries.
 
+${languageLine}
 ${toneLine}
 ${povLine}
 Target length: ${minWords}–${maxWords} words. Start directly with the first paragraph.
