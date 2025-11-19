@@ -2,11 +2,13 @@ const SUMMARY_LENGTHS = ['short', 'medium', 'long'] as const;
 const SUMMARY_TONES = ['auto', 'warm', 'neutral', 'poetic', 'direct'] as const;
 const SUMMARY_POVS = ['auto', 'first', 'third'] as const;
 const FREQUENCIES = ['weekly', 'monthly', 'yearly'] as const;
+const SUMMARY_LANGUAGES = ['en', 'es', 'de', 'fr'] as const;
 
 export type SummaryLength = typeof SUMMARY_LENGTHS[number];
 export type SummaryTone = typeof SUMMARY_TONES[number];
 export type SummaryPov = typeof SUMMARY_POVS[number];
 export type SummaryFrequency = typeof FREQUENCIES[number];
+export type SummaryLanguage = typeof SUMMARY_LANGUAGES[number];
 
 export type SummaryPreferences = {
   length: SummaryLength;
@@ -14,6 +16,8 @@ export type SummaryPreferences = {
   pov: SummaryPov;
   includeHighlights: boolean;
   notes: string | null;
+  extendedGuidance: boolean;
+  language: SummaryLanguage;
 };
 
 export type SummaryReminder = {
@@ -24,12 +28,28 @@ export type SummaryReminder = {
   lastSummaryAt: string | null;
 };
 
+export const ENTRY_LIMIT_BASE = 333;
+export const ENTRY_LIMIT_EXTENDED = 666;
+
+export const GUIDANCE_NOTES_LIMIT_BASE = ENTRY_LIMIT_BASE;
+export const GUIDANCE_NOTES_LIMIT_EXTENDED = ENTRY_LIMIT_EXTENDED;
+
+export function guidanceLimitFor(extended: boolean) {
+  return extended ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
+}
+
+export function entryLimitFor(extended: boolean) {
+  return extended ? ENTRY_LIMIT_EXTENDED : ENTRY_LIMIT_BASE;
+}
+
 export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   length: 'medium',
   tone: 'auto',
   pov: 'auto',
   includeHighlights: true,
   notes: null,
+  extendedGuidance: false,
+  language: 'en',
 };
 
 export function isSummaryLength(value: unknown): value is SummaryLength {
@@ -48,11 +68,15 @@ export function isSummaryFrequency(value: unknown): value is SummaryFrequency {
   return typeof value === 'string' && FREQUENCIES.includes(value as SummaryFrequency);
 }
 
-function sanitizeNotes(value: unknown): string | null {
+export function isSummaryLanguage(value: unknown): value is SummaryLanguage {
+  return typeof value === 'string' && SUMMARY_LANGUAGES.includes(value as SummaryLanguage);
+}
+
+function sanitizeNotes(value: unknown, limit: number): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  return trimmed.slice(0, 1000);
+  return trimmed.slice(0, limit);
 }
 
 export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
@@ -65,7 +89,29 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
   const toneSource = source.tone ?? source.summary_tone;
   const povSource = source.pov ?? source.summary_pov;
   const includeSource = source.includeHighlights ?? source.include_highlights;
+  const extendedSource =
+    source.extendedGuidance ??
+    source.extended_guidance ??
+    source.extendedNotes ??
+    source.extended_notes ??
+    source.extendedMode ??
+    source.extended_mode;
+
+  const nextExtendedGuidance =
+    typeof extendedSource === 'boolean' ? extendedSource : DEFAULT_SUMMARY_PREFERENCES.extendedGuidance;
+
   const notesSource = source.notes ?? source.summary_notes;
+  const noteLimit = guidanceLimitFor(nextExtendedGuidance);
+  const languageSource =
+    source.language ??
+    source.summary_language ??
+    source.interfaceLanguage ??
+    source.interface_language ??
+    source.locale;
+
+  const language = isSummaryLanguage(languageSource)
+    ? languageSource
+    : DEFAULT_SUMMARY_PREFERENCES.language;
 
   return {
     length: isSummaryLength(lengthSource) ? lengthSource : DEFAULT_SUMMARY_PREFERENCES.length,
@@ -73,7 +119,9 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
     pov: isSummaryPov(povSource) ? povSource : DEFAULT_SUMMARY_PREFERENCES.pov,
     includeHighlights:
       typeof includeSource === 'boolean' ? includeSource : DEFAULT_SUMMARY_PREFERENCES.includeHighlights,
-    notes: sanitizeNotes(notesSource),
+    notes: sanitizeNotes(notesSource, noteLimit),
+    extendedGuidance: nextExtendedGuidance,
+    language,
   };
 }
 
