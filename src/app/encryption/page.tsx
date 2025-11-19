@@ -9,8 +9,14 @@ export const metadata: Metadata = {
 
 export default function EncryptionPage() {
   return (
-    <main className="min-h-screen bg-neutral-950 text-zinc-100">
-      <div className="relative overflow-hidden border-b border-white/10">
+    <main className="relative isolate min-h-screen bg-neutral-950 text-zinc-100">
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+        aria-hidden
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.14),transparent_36%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.1),transparent_32%),radial-gradient(circle_at_50%_80%,rgba(236,72,153,0.08),transparent_35%)]" />
+      </div>
+      <div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-white/5/20 via-black/30 to-black/60">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.18),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,0.12),transparent_30%)]" />
         <div className="relative mx-auto max-w-5xl px-6 py-16 md:py-24">
           <p className="text-xs uppercase tracking-[0.3em] text-indigo-200/80">End-to-end by design</p>
@@ -85,6 +91,43 @@ export default function EncryptionPage() {
             </p>
           </div>
         </article>
+      </section>
+
+      <section className="border-t border-white/10 bg-black/60">
+        <div className="mx-auto flex max-w-5xl flex-col gap-8 px-6 py-16 lg:flex-row">
+          <div className="flex-1 space-y-4">
+            <p className="text-xs uppercase tracking-[0.28em] text-indigo-200/80">Why it looks darker</p>
+            <h2 className="text-3xl font-semibold text-white">A canvas that matches the rest of OneLine.</h2>
+            <p className="text-base leading-relaxed text-zinc-300">
+              The encryption explainer now lives on the same charcoal backdrop as the rest of the product so there is no visual
+              jump when you enter from Today. The gradients, glows, and typography mirror the sleek aesthetic people expect
+              across OneLine.
+            </p>
+          </div>
+          <div className="flex flex-1 flex-col gap-4 rounded-3xl border border-white/10 bg-black/60 p-6 text-sm text-zinc-300">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">Immediate clarity</p>
+              <p>
+                Every panel maintains a black background so white text, CTAs, and diagrams keep enough contrast to stay legible
+                even in bright rooms.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">Consistent focus</p>
+              <p>
+                The glow behind the hero copy extends across the viewport which removes the white band users previously saw at
+                the top of the page.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-emerald-200/80">Supabase ready</p>
+              <p>
+                All sections remain accessible and responsive, so the route is production-ready without extra overrides in
+                Vercel.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
   );

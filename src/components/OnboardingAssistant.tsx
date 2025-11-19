@@ -52,28 +52,35 @@ const STEP_SETS: Record<AssistantVariant, AssistantStep[]> = {
     {
       title: "Today · Capture the moment",
       description:
-        "Write up to 333 encrypted characters and build a science-backed reflection ritual. Streaks, quotes, and gentle nudges keep the habit effortless while everything stays end-to-end encrypted.",
+        "Write up to 333 encrypted characters every night. The ritual is science-backed: capture a prompt, close with one insight, and the app handles streaks, quotes, and encryption so the habit stays effortless.",
       actionLabel: "Jump to Today",
       actionHref: "/today",
     },
     {
       title: "History · Revisit securely",
       description:
-        "Unlock past entries with the same passphrase and browse an encrypted archive that reveals patterns — what energises you, who contributes to your happiness, and what drains you.",
+        "Unlock past entries with the same passphrase and browse an encrypted archive that surfaces patterns: what energized you, which people added or drained energy, and which environments repeat.",
       actionLabel: "Browse History",
       actionHref: "/history",
     },
     {
       title: "Summaries · Generate stories",
       description:
-        "Opt in to weekly, monthly, or yearly recaps that read like you wrote them. Local decryption turns your lines into narratives that show how your year is going and whether your mindset is progressing.",
+        "Opt in to weekly, monthly, or yearly recaps that read like literary essays you would write yourself. Local decryption turns your lines into narratives that explain how your year is trending and whether your mindset is progressing.",
       actionLabel: "Go to Summaries",
       actionHref: "/summaries",
     },
     {
+      title: "Insights · Make it science-backed",
+      description:
+        "The welcome tour exists to show the loop: capture → understand → evolve. Today feeds History, History feeds AI summaries, and summaries give you the evidence of what makes you happy, who propels you forward, and where you still need to grow.",
+      actionLabel: "Learn about encryption",
+      actionHref: "/encryption",
+    },
+    {
       title: "Settings · Manage privacy",
       description:
-        "Update reminder cadence, export or delete your vault, and tune encryption preferences. Keep the experience aligned with how you want to grow while retaining full control of your data.",
+        "Update reminder cadence, export or delete your vault, and tune encryption preferences. Keep the experience aligned with how you want to grow, then reset whenever you need a deeper mental reboot.",
       actionLabel: "Open Settings",
       actionHref: "/settings",
     },
