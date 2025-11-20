@@ -99,7 +99,7 @@ export function buildYearStoryPrompt(
     }
   })();
 
-  const languageLine = `Write the entire story in ${languageName}. If the entries are clearly written in another language, mirror that input language instead of translating it. Never translate the user's words into a different language.`;
+  const languageLine = `Write the entire story in ${languageName}, matching the author's language. If the entries use a different language or mix languages, mirror that exact wording and keep multilingual phrases exactly as written. Never translate or normalize the user's words into another language.`;
 
   const orderingRules = `
 STRUCTURE & ORDER:
