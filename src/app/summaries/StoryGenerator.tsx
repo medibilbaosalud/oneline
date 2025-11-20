@@ -6,6 +6,8 @@ import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
 import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
 
+const WEEKLY_GUARD_MESSAGE = "Write at least four days to unlock your first weekly story.";
+
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
 type Pov = "auto" | "first" | "third";
@@ -117,6 +119,7 @@ export default function StoryGenerator({
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalPassphrase, setModalPassphrase] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
+  const [allowShortRangeOverride, setAllowShortRangeOverride] = useState(false);
 
   const lengthGuidance: Record<Length, string> = {
     short: "~200–300 words",
@@ -153,6 +156,10 @@ export default function StoryGenerator({
     // 180
     return { from: ymd(addDays(now, -180)), to: ymd(now) };
   }, [preset, customFrom, customTo]);
+
+  useEffect(() => {
+    setAllowShortRangeOverride(false);
+  }, [from, to]);
 
   const propsSignature = useRef<string | null>(null);
 
@@ -291,8 +298,8 @@ export default function StoryGenerator({
       const fromDate = new Date(`${from}T00:00:00Z`);
       const toDate = new Date(`${to}T00:00:00Z`);
       const diffDays = Math.max(1, Math.round((toDate.valueOf() - fromDate.valueOf()) / (1000 * 60 * 60 * 24)) + 1);
-      if (diffDays <= 8 && decrypted.length < 4) {
-        throw new Error("Write at least four days to unlock your first weekly story.");
+      if (diffDays <= 8 && decrypted.length < 4 && !allowShortRangeOverride) {
+        throw new Error(WEEKLY_GUARD_MESSAGE);
       }
 
       const payload = {
@@ -531,6 +538,19 @@ export default function StoryGenerator({
             {loading ? "Generating…" : "Generate your story"}
           </button>
           {error && <span className="text-sm text-rose-400">{error}</span>}
+          {error === WEEKLY_GUARD_MESSAGE && (
+            <button
+              type="button"
+              className="rounded-lg border border-white/15 px-3 py-1 text-sm font-medium text-indigo-100 transition hover:border-white/30 hover:bg-white/5"
+              onClick={() => {
+                setAllowShortRangeOverride(true);
+                setError(null);
+                openConsent();
+              }}
+            >
+              Generate anyway
+            </button>
+          )}
         </div>
       </div>
 
