@@ -84,6 +84,45 @@ async function loadScriptWithFallback(sources: string[]) {
   throw lastError ?? new Error("Unable to load scripts");
 }
 
+function patchHtml2CanvasColorParser(html2canvas: any) {
+  const Color = html2canvas?.Color;
+  if (!Color || typeof Color.fromString !== "function") return;
+
+  // Avoid double patching
+  if ((Color as any).__patchedForLab === true) return;
+
+  const base = Color.fromString.bind(Color);
+
+  Color.fromString = (input: string) => {
+    const value = input?.trim().toLowerCase();
+
+    if (!value) return base(input);
+
+    // html2canvas doesn't understand modern color functions like lab()/oklab()/lch()/color().
+    const isUnsupported =
+      value.startsWith("lab(") || value.startsWith("oklab(") || value.startsWith("lch(") || value.startsWith("color(");
+
+    if (!isUnsupported) {
+      return base(input);
+    }
+
+    // Try letting the browser resolve the value and fall back to a neutral gray if it still fails.
+    try {
+      const tmp = document.createElement("span");
+      tmp.style.color = input;
+      if (tmp.style.color) {
+        return base(tmp.style.color);
+      }
+    } catch (err) {
+      console.warn("Color normalization failed", err);
+    }
+
+    return base("#111827");
+  };
+
+  (Color as any).__patchedForLab = true;
+}
+
 type StyledSegment = { text: string; bold: boolean };
 
 function toStyledSegments(html: string): StyledSegment[] {
@@ -292,6 +331,8 @@ export default function StoryGenerator({
       if (!jsPDF || !html2canvas) {
         throw new Error("PDF tools unavailable");
       }
+
+      patchHtml2CanvasColorParser((window as any).html2canvas);
 
       exportRoot = document.createElement("div");
       exportRoot.style.position = "fixed";
