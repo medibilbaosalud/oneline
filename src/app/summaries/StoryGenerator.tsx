@@ -17,6 +17,27 @@ type StoryGeneratorProps = {
   initialRange?: { from: string; to: string } | null;
 };
 
+function escapeHtml(raw: string) {
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatStoryBlocks(story: string) {
+  return story
+    .trim()
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const escaped = escapeHtml(block);
+      return escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br />");
+    });
+}
+
 function ymd(d: Date) {
   const iso = new Date(d).toISOString();
   return iso.slice(0, 10);
@@ -86,6 +107,7 @@ export default function StoryGenerator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
+  const formattedStory = useMemo(() => (story ? formatStoryBlocks(story) : []), [story]);
   const [loadingPhrase, setLoadingPhrase] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [quotaError, setQuotaError] = useState<string | null>(null);
@@ -531,8 +553,23 @@ export default function StoryGenerator({
         )}
 
         {!loading && story && (
-          <article className="relative prose prose-invert max-w-none">
-            <pre className="whitespace-pre-wrap break-words text-zinc-100">{story}</pre>
+          <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-indigo-900/20 to-purple-900/10 p-5 shadow-xl shadow-indigo-950/40">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.12),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.12),transparent_26%)]" />
+            <div className="relative mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">
+              <span className="h-[2px] w-6 rounded-full bg-indigo-400" />
+              <span>Your story</span>
+            </div>
+
+            <div className="relative space-y-3 font-serif text-[17px] leading-relaxed text-zinc-50">
+              {formattedStory.map((block, idx) => (
+                <p
+                  key={idx}
+                  className="rounded-xl bg-white/5 px-4 py-3 text-[16px] leading-[1.6] shadow-inner shadow-black/10 ring-1 ring-white/5"
+                >
+                  <span dangerouslySetInnerHTML={{ __html: block }} />
+                </p>
+              ))}
+            </div>
           </article>
         )}
 
