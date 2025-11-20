@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
-import type { SummaryPreferences } from "@/lib/summaryPreferences";
+import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
 
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
@@ -72,6 +72,7 @@ export default function StoryGenerator({
     initialOptions?.includeHighlights ?? true,
   );
   const [notes, setNotes] = useState(initialOptions?.notes ?? "");
+  const [language, setLanguage] = useState<SummaryLanguage>(initialOptions?.language ?? "en");
 
   // Result
   const [loading, setLoading] = useState(false);
@@ -126,12 +127,14 @@ export default function StoryGenerator({
       setPov(initialOptions.pov);
       setIncludeHighlights(initialOptions.includeHighlights);
       setNotes(initialOptions.notes ?? "");
+      setLanguage(initialOptions.language ?? "en");
     } else {
       setLength("medium");
       setTone("auto");
       setPov("auto");
       setIncludeHighlights(true);
       setNotes("");
+      setLanguage("en");
     }
 
     if (initialRange) {
@@ -230,6 +233,7 @@ export default function StoryGenerator({
           pov,
           includeHighlights,
           notes: notes.trim() || undefined,
+          language,
         },
         entries: decrypted,
       };

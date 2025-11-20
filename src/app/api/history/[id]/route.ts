@@ -101,7 +101,7 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
         content_cipher: body.content_cipher,
         iv: body.iv,
         version: 1,
-        content: null,
+        content: '',
       })
       .eq('id', id)
       .eq('user_id', user.id)

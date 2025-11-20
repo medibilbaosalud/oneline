@@ -59,16 +59,20 @@ function SectionTabs({ active, onChange }: { active: SectionId; onChange: (id: S
 
 function TodayPreview() {
   const quote = useMemo(() => quoteOfToday(), []);
+  const [draft, setDraft] = useState(
+    'Type anything here to feel the editor. Visitor mode keeps everything on this page only—nothing is stored or sent.',
+  );
+  const [feedback, setFeedback] = useState<string | null>(null);
   return (
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
       <div className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/55 p-5 shadow-sm">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Today</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">Demo entry (read-only)</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white">Demo entry (local only)</h2>
           </div>
-          <span className="inline-flex w-max rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
-            Locked
+          <span className="inline-flex w-max rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium text-emerald-100">
+            Not stored
           </span>
         </header>
 
@@ -77,30 +81,44 @@ function TodayPreview() {
         </p>
 
         <textarea
-          value={'This is where your 333 characters go. Entries stay encrypted end to end until you unlock them with your passphrase.'}
-          readOnly
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value.slice(0, MAX));
+            setFeedback(null);
+          }}
           maxLength={MAX}
-          className="mt-6 min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-base leading-relaxed text-zinc-100 opacity-80 outline-none"
+          className="mt-6 min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/25 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none"
+          placeholder="Write a quick 333-character line. This demo never leaves your browser."
         />
 
         <div className="mt-6 flex flex-col gap-3 text-sm text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-medium text-neutral-400">118/{MAX}</span>
+          <span className="font-medium text-neutral-400">{draft.length}/{MAX}</span>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" disabled className="cursor-not-allowed rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-400">
-              Clear
+            <button
+              type="button"
+              className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200 transition hover:border-white/20 hover:bg-neutral-800"
+              onClick={() => {
+                setDraft('');
+                setFeedback('Cleared. Nothing was sent or saved.');
+              }}
+            >
+              Clear draft
             </button>
             <button
               type="button"
-              disabled
-              className="cursor-not-allowed rounded-lg bg-indigo-500/60 px-4 py-2 text-sm font-medium text-white/80"
+              className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400"
+              onClick={() => {
+                setFeedback('Demo save simulated. Visitor mode does not store any data.');
+              }}
             >
-              Save entry
+              Demo save (not stored)
             </button>
           </div>
         </div>
 
         <p className="mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-200">
-          To save for real, create an account, unlock your vault, and your browser will encrypt each line before anything touches our servers.
+          Everything you type here stays on this page. To save for real, create an account, unlock your vault, and your browser will encrypt each line before anything touches our servers.
+          {feedback ? <span className="mt-1 block text-xs text-emerald-100/90">{feedback}</span> : null}
         </p>
       </div>
 

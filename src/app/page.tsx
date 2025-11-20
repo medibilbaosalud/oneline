@@ -70,7 +70,7 @@ export default function Landing({ searchParams }: LandingProps) {
             </Link>
             <Link
               href="/visitor"
-              className="rounded-xl border border-white/10 bg-transparent px-6 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-white/5"
+              className="rounded-xl bg-gradient-to-r from-indigo-500/70 via-purple-500/70 to-emerald-500/70 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-400 hover:via-purple-400 hover:to-emerald-400"
             >
               Try visitor mode
             </Link>
@@ -80,6 +80,36 @@ export default function Landing({ searchParams }: LandingProps) {
             <Stat k="7s" v="Average time to write a line" />
             <Stat k="92%" v="Return the next week and stick with it" />
             <Stat k="0 ads" v="Your words stay private. Always." />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative mx-auto mt-16 w-full max-w-5xl px-6 md:mt-20">
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-2xl space-y-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
+                Write in any language
+              </span>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">UI stays English. Your lines can be bilingual.</h2>
+              <p className="text-sm text-zinc-300 md:text-base">
+                OneLine’s interface remains in English for clarity, but you can journal in Spanish, German, French, or any other language. Summaries honor the writing language you choose in Settings; no auto-translation is forced on your words.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 text-sm text-zinc-200 md:text-base">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_16px_60px_rgba(0,0,0,0.35)]">
+                <p className="text-sm font-semibold text-white">English interface, private everywhere</p>
+                <p className="mt-2 text-xs text-zinc-400">
+                  Copy, buttons, and emails stay in English while your encrypted entries keep their original language and tone.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_16px_60px_rgba(0,0,0,0.35)]">
+                <p className="text-sm font-semibold text-white">Supabase-backed storage</p>
+                <p className="mt-2 text-xs text-zinc-400">
+                  Entries are stored as ciphertext in Supabase’s managed Postgres. You can export or delete them anytime to honor EU data rights.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -110,6 +140,15 @@ export default function Landing({ searchParams }: LandingProps) {
                 <span><strong>Lose the passphrase, lose the data:</strong> That&rsquo;s the trade-off of true privacy. Use a password manager if you need backup.</span>
               </li>
             </ul>
+            <div className="pt-2">
+              <Link
+                href="/encryption"
+                className="inline-flex items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(79,70,229,0.25)] transition hover:border-indigo-300/50 hover:bg-indigo-500/20"
+              >
+                Learn more about OneLine encryption
+                <span aria-hidden className="text-base">→</span>
+              </Link>
+            </div>
           </div>
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm text-zinc-200 backdrop-blur">
             <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_60%)] blur-3xl" />
@@ -135,6 +174,51 @@ export default function Landing({ searchParams }: LandingProps) {
 }`}
                 </pre>
                 <p className="mt-2 text-xs text-zinc-400">Plain text never reaches our servers or logs.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative mx-auto mt-14 w-full max-w-6xl px-6 md:mt-20">
+        <div className="grid gap-10 rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-[0_18px_80px_rgba(0,0,0,0.45)] md:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+            <h2 className="text-left text-2xl font-semibold text-white">Data handling, storage, and compliance</h2>
+            <p>
+              Privacy isn’t a tagline here. OneLine encrypts everything client-side, stores only ciphertext in Supabase’s managed Postgres, and gives you export/delete controls to align with EU and Spanish data rights.
+            </p>
+            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span><strong>Supabase as the vault:</strong> Encrypted rows live in Supabase; no one can read them without your passphrase.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                <span><strong>GDPR-friendly controls:</strong> Export or delete your data anytime so you can exercise access and erasure rights.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                <span><strong>Proof in History:</strong> A “view encrypted list” option shows entries without decrypting, reinforcing that servers only see ciphertext.</span>
+              </li>
+            </ul>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-5 text-sm text-zinc-200 backdrop-blur">
+            <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-indigo-200/80">
+              <span>Compliance checklist</span>
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">EU-ready</span>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm font-semibold text-white">Encryption-first</p>
+                <p className="mt-2 text-xs text-zinc-400">AES-GCM ciphertext + IV only; no plaintext copies touch disk or logs.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm font-semibold text-white">Data residency</p>
+                <p className="mt-2 text-xs text-zinc-400">Stored in your Supabase project region. Update residency settings to meet your organisation’s policies.</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                <p className="text-sm font-semibold text-white">User rights</p>
+                <p className="mt-2 text-xs text-zinc-400">In-app export and delete operations help satisfy GDPR/Spanish data subject requests.</p>
               </div>
             </div>
           </div>

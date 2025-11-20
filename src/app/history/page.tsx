@@ -6,6 +6,11 @@ import { redirect } from 'next/navigation';
 import VaultGate from '@/components/VaultGate';
 import HistoryClient from './HistoryClient';
 import { supabaseServer } from '@/lib/supabaseServer';
+import {
+  ENTRY_LIMIT_BASE,
+  coerceSummaryPreferences,
+  entryLimitFor,
+} from '@/lib/summaryPreferences';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,6 +46,21 @@ export default async function HistoryPage() {
 
   const entries: EntryPayload[] = data ?? [];
 
+  let entryLimit = ENTRY_LIMIT_BASE;
+  try {
+    const { data: settingsRow, error } = await sb
+      .from('user_vaults')
+      .select('summary_preferences')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!error && settingsRow?.summary_preferences) {
+      const prefs = coerceSummaryPreferences(settingsRow.summary_preferences);
+      entryLimit = entryLimitFor(!!prefs.extendedGuidance);
+    }
+  } catch (error) {
+    console.error('[history] entry_limit_fallback', error);
+  }
+
   return (
     <main className="min-h-screen bg-[#0A0A0B] text-zinc-100">
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
@@ -48,7 +68,7 @@ export default async function HistoryPage() {
 
         <VaultGate>
           {entries.length > 0 ? (
-            <HistoryClient initialEntries={entries} />
+            <HistoryClient initialEntries={entries} initialEntryLimit={entryLimit} />
           ) : (
             <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-zinc-400">
               No entries yet.

@@ -50,32 +50,42 @@ const STEP_SETS: Record<AssistantVariant, AssistantStep[]> = {
   ],
   tour: [
     {
-      title: "Today · Capture the moment",
+      title: "Why OneLine exists",
       description:
-        "Write up to 333 encrypted characters. We show streaks, quotes, and reminders to keep the habit easy.",
+        "A single, encrypted line a day builds a science-backed reflection habit. Track what lifts or drains you, spot which people fuel you, and stay honest about how your mindset is shifting over time.",
+      helper: "Short entries reduce friction while still revealing patterns in mood, energy, relationships, and progress.",
+    },
+    {
+      title: "Today · Capture the signal",
+      description:
+        "Write a focused line that stays encrypted on-device. Streaks, quotes, and gentle nudges keep you consistent without turning journaling into a chore.",
       actionLabel: "Jump to Today",
       actionHref: "/today",
+      helper: "Your vault decrypts locally with your passphrase; servers only see ciphertext.",
     },
     {
-      title: "History · Revisit securely",
+      title: "History · Revisit and compare",
       description:
-        "Unlock past entries with the same passphrase. You can edit, delete, or simply read your encrypted archive.",
+        "Unlock past entries to see how themes evolve. Toggle the encrypted view to confirm what servers store, or read decrypted text when your vault is open.",
       actionLabel: "Browse History",
       actionHref: "/history",
+      helper: "Use dates and context to notice what makes you happy, what doesn’t, and who adds or drains energy.",
     },
     {
-      title: "Summaries · Generate stories",
+      title: "Summaries · See the bigger story",
       description:
-        "Opt in to create weekly, monthly, or yearly recaps. Everything decrypts locally and you control every export.",
+        "Opt into weekly, monthly, or yearly recaps to surface patterns. We decrypt locally, then help you notice growth, setbacks, and the experiences that matter most.",
       actionLabel: "Go to Summaries",
       actionHref: "/summaries",
+      helper: "Exports stay under your control so you can share or keep them private.",
     },
     {
-      title: "Settings · Manage privacy",
+      title: "Settings · Privacy and control",
       description:
-        "Update reminder cadence, download your vault, or delete the account entirely. Encryption choices live here too.",
+        "Fine-tune reminders, export or delete your vault, and update guidance options. Encryption defaults keep plaintext off our servers, and you decide when the vault unlocks.",
       actionLabel: "Open Settings",
       actionHref: "/settings",
+      helper: "Lock the vault anytime to keep your words private, even from curious onlookers around you.",
     },
   ],
 };
@@ -87,7 +97,7 @@ const VARIANT_COPY: Record<AssistantVariant, VariantCopy> = {
   },
   tour: {
     badge: "Welcome tour",
-    title: "Here’s how OneLine is organised",
+    title: "Understand how OneLine moves you forward",
   },
 };
 

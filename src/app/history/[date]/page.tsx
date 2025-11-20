@@ -3,6 +3,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 
+import {
+  ENTRY_LIMIT_BASE,
+  coerceSummaryPreferences,
+  entryLimitFor,
+} from "@/lib/summaryPreferences";
+
 export const dynamic = "force-dynamic";
 
 type Props = { params: { day: string } };
@@ -32,7 +38,22 @@ export default async function EditDayPage({ params }: Props) {
     );
   }
 
-  const content = entry?.content ?? "";
+  let entryLimit = ENTRY_LIMIT_BASE;
+  try {
+    const { data: settingsRow, error: prefsError } = await supabase
+      .from("user_vaults")
+      .select("summary_preferences")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!prefsError && settingsRow?.summary_preferences) {
+      const prefs = coerceSummaryPreferences(settingsRow.summary_preferences);
+      entryLimit = entryLimitFor(!!prefs.extendedGuidance);
+    }
+  } catch (settingsError) {
+    console.error("[history-day] entry_limit_fallback", settingsError);
+  }
+
+  const content = (entry?.content ?? "").slice(0, entryLimit);
 
   return (
     <main className="mx-auto max-w-3xl p-6">
@@ -46,7 +67,7 @@ export default async function EditDayPage({ params }: Props) {
         <textarea
           name="content"
           defaultValue={content}
-          maxLength={333}
+          maxLength={entryLimit}
           className="h-56 w-full resize-none rounded-lg bg-neutral-900/70 p-4 outline-none ring-1 ring-white/10"
         />
         <div className="flex gap-3">
