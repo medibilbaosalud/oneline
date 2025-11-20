@@ -28,446 +28,128 @@ export default function Landing({ searchParams }: LandingProps) {
         </div>
       ) : null}
 
-      {/* AURORA / NEBULA BACKDROP */}
       <Aurora />
 
-      {/* HERO */}
       <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
-        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <Badge>Private • 333 characters • Growth mindset</Badge>
+        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <Badge>Private • 333 characters • Daily momentum</Badge>
 
           <h1 className="mt-4 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
             One honest line a day.
-            <span className="block bg-gradient-to-r from-emerald-300 to-indigo-400 bg-clip-text text-transparent">
-              A tiny habit that compounds.
-            </span>
           </h1>
-
-          <div className="mt-6 grid w-full max-w-3xl gap-3 text-left text-sm text-zinc-300 sm:grid-cols-3 sm:text-base">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="font-medium text-white">Write in under a minute</p>
-              <p className="mt-2 text-zinc-400">Capture up to 333 characters while the day is still vivid.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="font-medium text-white">Encrypted with your passphrase</p>
-              <p className="mt-2 text-zinc-400">
-                Unlock the vault with a code only you know. Without it, even we just see ciphertext.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="font-medium text-white">See the story build</p>
-              <p className="mt-2 text-zinc-400">Automatic recaps turn your lines into a narrative that sounds like you.</p>
-            </div>
-          </div>
+          <p className="mt-4 max-w-2xl text-pretty text-lg text-zinc-300">
+            Capture a single, encrypted line in under a minute. Your browser locks it with your passphrase and OneLine turns those lines into clear monthly, quarterly, or yearly stories.
+          </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <ShinyCTA href="/today">Start now — go to Today</ShinyCTA>
+            <ShinyCTA href="/today">Start now</ShinyCTA>
             <Link
-              href="/summaries"
+              href="/encryption"
               className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
             >
-              Generate a story
+              See how encryption works
             </Link>
             <Link
               href="/visitor"
               className="rounded-xl bg-gradient-to-r from-indigo-500/70 via-purple-500/70 to-emerald-500/70 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-400 hover:via-purple-400 hover:to-emerald-400"
             >
-              Try visitor mode
+              Explore visitor mode
             </Link>
           </div>
 
-          <div className="mt-10 grid w-full max-w-3xl grid-cols-3 gap-3 text-left max-md:grid-cols-1">
+          <div className="mt-8 grid w-full max-w-3xl grid-cols-3 gap-3 text-left max-md:grid-cols-1">
             <Stat k="7s" v="Average time to write a line" />
-            <Stat k="92%" v="Return the next week and stick with it" />
+            <Stat k="92%" v="Return the next week and keep going" />
             <Stat k="0 ads" v="Your words stay private. Always." />
           </div>
         </div>
       </section>
 
-      <section className="relative mx-auto mt-16 w-full max-w-5xl px-6 md:mt-20">
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl space-y-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
-                Write in any language
-              </span>
-              <h2 className="text-2xl font-semibold text-white md:text-3xl">UI stays English. Your lines can be bilingual.</h2>
-              <p className="text-sm text-zinc-300 md:text-base">
-                OneLine’s interface remains in English for clarity, but you can journal in Spanish, German, French, or any other language. Summaries honor the writing language you choose in Settings; no auto-translation is forced on your words.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 text-sm text-zinc-200 md:text-base">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_16px_60px_rgba(0,0,0,0.35)]">
-                <p className="text-sm font-semibold text-white">English interface, private everywhere</p>
-                <p className="mt-2 text-xs text-zinc-400">
-                  Copy, buttons, and emails stay in English while your encrypted entries keep their original language and tone.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_16px_60px_rgba(0,0,0,0.35)]">
-                <p className="text-sm font-semibold text-white">Supabase-backed storage</p>
-                <p className="mt-2 text-xs text-zinc-400">
-                  Entries are stored as ciphertext in Supabase’s managed Postgres. You can export or delete them anytime to honor EU data rights.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ONBOARDING ASSISTANT */}
-      <LandingOnboardingSection />
-
-      {/* ENCRYPTION PROMISE */}
-      <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 md:mt-24">
-        <div className="grid gap-10 md:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-5 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-            <h2 className="text-left text-2xl font-semibold text-white">Locked with a passphrase only you know</h2>
-            <p>
-              OneLine is now fully end-to-end encrypted. You pick the passphrase; your browser derives the key and encrypts every
-              line with AES-GCM before anything leaves your device.
-            </p>
-            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span><strong>No passphrase, no access:</strong> We never see or store it. Without your code, the vault stays locked.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span><strong>Unlock before you write or read:</strong> Saving, streaks, and history all require the vault to be open locally.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                <span><strong>Lose the passphrase, lose the data:</strong> That&rsquo;s the trade-off of true privacy. Use a password manager if you need backup.</span>
-              </li>
-            </ul>
-            <div className="pt-2">
-              <Link
-                href="/encryption"
-                className="inline-flex items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(79,70,229,0.25)] transition hover:border-indigo-300/50 hover:bg-indigo-500/20"
-              >
-                Learn more about OneLine encryption
-                <span aria-hidden className="text-base">→</span>
-              </Link>
-            </div>
-          </div>
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm text-zinc-200 backdrop-blur">
-            <div className="absolute -inset-20 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_60%)] blur-3xl" />
-            <header className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-indigo-200/80">
-              <span>Encryption walkthrough</span>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">Client-side only</span>
-            </header>
-            <div className="mt-4 space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-left">
-                <h3 className="text-sm font-semibold text-white">1. Derive your key locally</h3>
-                <p className="mt-2 text-xs text-zinc-400">passphrase + salt → PBKDF2 (200k iterations) → AES-256 key</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-left">
-                <h3 className="text-sm font-semibold text-white">2. Encrypt every entry</h3>
-                <p className="mt-2 text-xs text-zinc-400">AES-GCM(key, 96-bit IV) → ciphertext stored in Supabase</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4 text-left">
-                <h3 className="text-sm font-semibold text-white">3. Server only sees this</h3>
-                <pre className="mt-2 overflow-hidden rounded-xl bg-black/60 p-3 text-[11px] text-emerald-200">
-{`{
-  "content_cipher": "b64...",
-  "iv": "b64..."
-}`}
-                </pre>
-                <p className="mt-2 text-xs text-zinc-400">Plain text never reaches our servers or logs.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative mx-auto mt-14 w-full max-w-6xl px-6 md:mt-20">
-        <div className="grid gap-10 rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-[0_18px_80px_rgba(0,0,0,0.45)] md:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-            <h2 className="text-left text-2xl font-semibold text-white">Data handling, storage, and compliance</h2>
-            <p>
-              Privacy isn’t a tagline here. OneLine encrypts everything client-side, stores only ciphertext in Supabase’s managed Postgres, and gives you export/delete controls to align with EU and Spanish data rights.
-            </p>
-            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span><strong>Supabase as the vault:</strong> Encrypted rows live in Supabase; no one can read them without your passphrase.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span><strong>GDPR-friendly controls:</strong> Export or delete your data anytime so you can exercise access and erasure rights.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                <span><strong>Proof in History:</strong> A “view encrypted list” option shows entries without decrypting, reinforcing that servers only see ciphertext.</span>
-              </li>
-            </ul>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-5 text-sm text-zinc-200 backdrop-blur">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-indigo-200/80">
-              <span>Compliance checklist</span>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">EU-ready</span>
-            </div>
-            <div className="mt-4 space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm font-semibold text-white">Encryption-first</p>
-                <p className="mt-2 text-xs text-zinc-400">AES-GCM ciphertext + IV only; no plaintext copies touch disk or logs.</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm font-semibold text-white">Data residency</p>
-                <p className="mt-2 text-xs text-zinc-400">Stored in your Supabase project region. Update residency settings to meet your organisation’s policies.</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                <p className="text-sm font-semibold text-white">User rights</p>
-                <p className="mt-2 text-xs text-zinc-400">In-app export and delete operations help satisfy GDPR/Spanish data subject requests.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* METHOD EXPLAINER */}
-      <section className="relative mx-auto mt-20 w-full max-w-6xl px-6 pb-16 md:mt-28 md:pb-20">
-        <div className="grid items-start gap-10 md:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-6 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-            <h2 className="text-left text-2xl font-semibold text-white">Exactly how OneLine works</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ExplainerCard
-                title="Capture the signal"
-                body="End each day in the Today screen with one true line. The 333-character cap keeps it sharp and easy to sustain."
-              />
-              <ExplainerCard
-                title="Stitch the story"
-                body="Entries are timestamped, encrypted client-side, and stored under EU-grade privacy. Summaries refresh monthly, quarterly, and every 1 January automatically."
-              />
-              <ExplainerCard
-                title="See yourself clearly"
-                body="OneLine becomes a living archive of your wins, lessons, and mindset shifts — ready for founder updates or personal check-ins."
-              />
-              <ExplainerCard
-                title="Own your words"
-                body="Export or delete anytime. You control your data; we simply help you build a habit that compounds."
-              />
-            </div>
-          </div>
-
-          <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-zinc-200 backdrop-blur md:mt-0">
-            <h3 className="text-lg font-semibold text-white">Inside the daily loop</h3>
-            <ul className="mt-4 space-y-3 text-left text-zinc-300">
-              <li className="flex gap-3">
-                <span className="mt-0.5 text-emerald-400">•</span>
-                <span>
-                  <strong>Reflect fast:</strong> Type 2–3 sentences, tag the mood if you want, hit
-                  save.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 text-emerald-400">•</span>
-                <span>
-                  <strong>Stay accountable:</strong> See streaks, gentle nudges, and your most used
-                  themes build over time.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-0.5 text-emerald-400">•</span>
-                <span>
-                  <strong>Unlock the story:</strong> Summaries refresh monthly, quarterly, and on
-                  1 January automatically — ready to share or keep private.
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* STREAK + COMPANIONS */}
-      <section className="mx-auto mt-20 w-full max-w-6xl px-6 pb-16 md:mt-28 md:pb-20">
-        <div className="grid items-center gap-12 md:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-4 text-left text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-            <h2 className="text-2xl font-semibold text-white">Keep your streak — unlock your companion</h2>
-            <p>Consistency matters more than word count. OneLine keeps the daily ritual friendly so you can show up again tomorrow.</p>
-            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span><strong>See the streak glow:</strong> Celebrate consecutive days without anxiety — miss once and you start fresh, no shaming.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span><strong>Meet your guide:</strong> A digital companion evolves as you log more days, mirroring your growth mindset.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                <span><strong>Unlock rewards:</strong> New companions and ambient themes appear at 7, 21, 60, and 120-day streaks.</span>
-              </li>
-            </ul>
-          </div>
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 text-sm text-zinc-200 shadow-2xl shadow-indigo-500/10 backdrop-blur">
-            <div className="absolute -inset-24 -z-10 rounded-full bg-[radial-gradient(circle_at_top,rgba(129,140,248,0.22),transparent_55%)]" />
-            <header className="flex items-center justify-between">
-              <span className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">Today’s momentum</span>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-white/80">Syncs across devices</span>
-            </header>
-            <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span>Current streak</span>
-                <span>Longest</span>
-              </div>
-              <div className="mt-2 flex items-end justify-between">
-                <div>
-                  <div className="text-4xl font-semibold text-white">12<span className="text-lg text-zinc-500"> days</span></div>
-                  <p className="mt-1 text-xs text-zinc-400">Next badge at 21 days</p>
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-emerald-300">41 days</div>
-              </div>
-              <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full w-[57%] rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-indigo-500" />
-              </div>
-            </div>
-            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Companion</p>
-                  <p className="mt-1 text-lg font-semibold text-white">Lumen the Fox</p>
-                </div>
-                <span className="text-3xl">🦊</span>
-              </div>
-              <p className="mt-3 text-xs text-zinc-400">Unlocked at 7 days. Keep logging to evolve your guide and reveal new environments.</p>
-              <div className="mt-4 grid grid-cols-3 gap-3 text-center text-[11px] text-zinc-400">
-                <CompanionBadge icon="🦊" label="Lumen" unlocked />
-                <CompanionBadge icon="🦉" label="Atlas" unlocked={false} />
-                <CompanionBadge icon="🐋" label="Nami" unlocked={false} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* BENEFITS */}
-      <section id="benefits" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+      <section id="benefits" className="relative mx-auto mt-14 w-full max-w-6xl px-6 md:mt-20">
         <div className="grid gap-5 md:grid-cols-3">
           <FeatureCard
-            title="Designed for daily momentum"
-            desc="Micro-entries under 333 characters keep you honest without draining your energy. Every pixel is tuned to get you in and out in under ten seconds."
-            emoji="🧭"
+            title="Write fast"
+            desc="333 characters max means two or three sentences — enough to remember, never enough to stall."
+            emoji="⏱️"
           />
           <FeatureCard
-            title="Private by architecture"
-            desc="Entries are encrypted with a key derived from your passphrase, so servers only keep ciphertext. Export, delete, or automate yearly recaps whenever you want — your data stays under your control."
+            title="Encrypted by default"
+            desc="Your passphrase derives the key locally. Without it, servers only store ciphertext."
             emoji="🔒"
           />
           <FeatureCard
-            title="Narratives that feel like you"
-            desc="Generate a month, quarter, or year in review — plus the automatic New Year recap — with tone, voice, and highlights tuned to your entries."
-            emoji="✨"
+            title="Stories that sound like you"
+            desc="Generate monthly, quarterly, or yearly recaps without rewriting. Tone and highlights stay faithful to your words."
+            emoji="📖"
           />
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
-        <div className="grid gap-5 md:grid-cols-3">
-          <StepCard n="01" title="Week one">
-            Feel the relief of closing each day with one honest, sub-333-character reflection. The streak builds momentum, not pressure.
-          </StepCard>
-          <StepCard n="02" title="Day 30">
-            Patterns surface. You spot repeatable wins, mindset shifts, and friction before they snowball.
-          </StepCard>
-          <StepCard n="03" title="Quarter’s end">
-            One click — or the automatic 1 January generation — gives you a founder update, performance recap, or personal story that sounds like you wrote it.
-          </StepCard>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how" className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-20">
-        <h2 className="mb-6 text-xl font-semibold text-zinc-200">How OneLine fits your day</h2>
-        <div className="grid gap-5 md:grid-cols-3">
-          <StepCard n="1" title="Write under 333 characters">
-            Open <b>Today</b> and capture the highlight, tension, or lesson in two short sentences. Five to ten seconds is all you need.
-          </StepCard>
-          <StepCard n="2" title="Keep the streak (and grow)">
-            Tomorrow, do it again. The constraint builds growth-mindset reflection: what worked, what changed, what to try next.
-          </StepCard>
-          <StepCard n="3" title="Generate a story">
-            When you want perspective, create a summary for the last month,
-            quarter or year — or let OneLine produce your year-in-review the moment January arrives. Clean, faithful, readable.
-          </StepCard>
-        </div>
-      </section>
-
-      {/* SCIENCE */}
-      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-24">
-        <div className="grid gap-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-8 backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <h2 className="text-2xl font-semibold text-white">Why the science backs micro-journaling</h2>
-            <p className="mt-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-              OneLine stands on decades of behavioural research. Keeping the ritual short means
-              you actually do it; weaving stories from your own words gives you insight without the
-              blank-page anxiety.
-            </p>
-          </div>
-          <ul className="space-y-4 text-sm leading-relaxed text-zinc-300">
-            <li className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <strong>Expressive writing boosts wellbeing.</strong> Dr. James Pennebaker’s studies
-              show that brief, honest reflection improves immune function and emotional processing.
-              OneLine’s daily constraint mirrors that proven cadence.
-            </li>
-            <li className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <strong>Gratitude + growth mindsets compound.</strong> Research from Emmons &
-              McCullough and Carol Dweck links consistent gratitude and growth-focused journaling
-              to higher resilience, motivation, and long-term goal attainment.
-            </li>
-            <li className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <strong>Reviewing wins fuels performance.</strong> Harvard Business School findings on
-              the “progress principle” show that documenting small wins increases engagement and
-              creativity. Your automatic stories spotlight those wins for you.
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      {/* TESTIMONIAL */}
-      <section className="mx-auto w-full max-w-6xl px-6 pb-16 md:pb-24">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-          <blockquote className="text-lg text-zinc-300">
-            “My founders’ updates used to take a Sunday afternoon. Now I write one line a day, click generate, and the story
-            sounds like me — detailed, not fluffy.”
-          </blockquote>
-          <div className="mt-3 text-sm text-zinc-400">— Elena, product lead & OneLine early adopter</div>
-        </div>
-      </section>
-
-      {/* PRIVACY */}
-      <section id="privacy" className="mx-auto w-full max-w-6xl px-6 pb-20">
-        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900/50 to-zinc-900/10 p-6">
-          <h3 className="text-lg font-semibold text-zinc-200">Built for discretion</h3>
-          <p className="mt-2 text-zinc-400">
-            We operate from Madrid under EU privacy law and give you full control over your words. The vault stays locked behind
-            the passphrase you choose — we can&rsquo;t reset it, and we never transmit it. Automations run with your permission,
-            exports are instant, and deletion is irreversible — exactly as it should be.
-          </p>
-          <div className="mt-6">
+      <section className="relative mx-auto mt-16 w-full max-w-6xl px-6 md:mt-20">
+        <div className="grid gap-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
+            <h2 className="text-left text-2xl font-semibold text-white">Privacy in plain English</h2>
+            <p>Everything happens client-side: key derivation, encryption, and unlock. We never see your passphrase or plaintext.</p>
+            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span>AES-GCM encryption before anything touches Supabase.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                <span>Unlock with the exact same passphrase; lose it and the data stays locked.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                <span>Export or delete anytime to exercise your data rights.</span>
+              </li>
+            </ul>
             <Link
-              href="/today"
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
+              href="/encryption"
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(79,70,229,0.25)] transition hover:border-indigo-300/50 hover:bg-indigo-500/20"
             >
-              Write today’s line <span aria-hidden>→</span>
+              Learn more about the vault <span aria-hidden>→</span>
             </Link>
           </div>
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-5 text-sm text-zinc-200">
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">What we store</p>
+              <p className="mt-2 text-sm text-zinc-300">Ciphertext + IV only. Plain text never hits our database.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">When AI runs</p>
+              <p className="mt-2 text-sm text-zinc-300">Only after you consent. Decrypt locally, send once, discard.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">No recovery</p>
+              <p className="mt-2 text-sm text-zinc-300">We can’t reset your passphrase. It’s the cost of true privacy.</p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* FOOTER */}
+      <LandingOnboardingSection />
+
+      <section id="how" className="mx-auto mt-16 w-full max-w-6xl px-6 pb-16 md:mt-24 md:pb-20">
+        <div className="grid gap-5 md:grid-cols-3">
+          <StepCard n="1" title="End the day with one line">Two or three sentences that fit inside 333 characters.</StepCard>
+          <StepCard n="2" title="Unlock with your passphrase">Write and read only when the vault is open locally.</StepCard>
+          <StepCard n="3" title="Generate a recap">Pick a period — last week, month, quarter, or year — and get a faithful story.</StepCard>
+        </div>
+      </section>
+
       <footer className="border-t border-white/5 bg-[#06070A]">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-zinc-500 md:flex-row">
           <span>© {new Date().getFullYear()} OneLine</span>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <a className="transition hover:text-zinc-300" href="#benefits">
               Benefits
             </a>
             <a className="transition hover:text-zinc-300" href="#how">
               How it works
             </a>
-            <a className="transition hover:text-zinc-300" href="#privacy">
-              Privacy
+            <a className="transition hover:text-zinc-300" href="/encryption">
+              Encryption
             </a>
             <Link
               href="/today"
@@ -541,21 +223,6 @@ function StepCard({
   );
 }
 
-function ExplainerCard({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur">
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
-    </div>
-  );
-}
-
 function ShinyCTA({
   href,
   children,
@@ -574,37 +241,11 @@ function ShinyCTA({
   );
 }
 
-function CompanionBadge({
-  icon,
-  label,
-  unlocked,
-}: {
-  icon: string;
-  label: string;
-  unlocked: boolean;
-}) {
-  return (
-    <div
-      className={`flex flex-col items-center gap-1 rounded-xl border border-white/10 px-3 py-2 ${
-        unlocked ? "bg-white/10 text-zinc-200" : "bg-black/20 text-zinc-500"
-      }`}
-    >
-      <span className="text-2xl">{unlocked ? icon : "🔒"}</span>
-      <span className="text-[11px] font-medium tracking-wide uppercase">{label}</span>
-      <span className="text-[10px] text-zinc-500">
-        {unlocked ? "Active" : "Locked"}
-      </span>
-    </div>
-  );
-}
-
 /* ---------- Aurora (CSS classes are in globals.css) ---------- */
 function Aurora() {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10">
-      {/* soft grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:56px_56px]" />
-      {/* moving blobs */}
       <div className="aurora -top-28 left-[8%] h-[42vmax] w-[42vmax] bg-[radial-gradient(circle,rgba(99,102,241,0.25),transparent_60%)]" />
       <div className="aurora top-[10%] right-[-12%] h-[40vmax] w-[40vmax] bg-[radial-gradient(circle,rgba(16,185,129,0.22),transparent_60%)]" />
       <div className="aurora -bottom-28 left-1/2 h-[38vmax] w-[38vmax] -translate-x-1/2 bg-[radial-gradient(circle,rgba(236,72,153,0.18),transparent_60%)]" />
