@@ -245,8 +245,8 @@ export default function StoryGenerator({
       };
 
       plainParagraphs.forEach((paragraph, idx) => {
-        const lines = pdf.splitTextToSize(paragraph, maxWidth);
-        lines.forEach((line) => {
+        const lines = pdf.splitTextToSize(paragraph, maxWidth) as string[];
+        lines.forEach((line: string) => {
           ensureSpace(16);
           pdf.text(line, marginX, cursorY, { baseline: "top" });
           cursorY += 16;
