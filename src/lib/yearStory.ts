@@ -45,6 +45,26 @@ function desiredWordRange(length: YearStoryOptions['length']) {
   return [700, 1000] as const;
 }
 
+function inferPeriodFromRange(from: string, to: string): 'weekly' | 'monthly' | 'yearly' {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  if (Number.isNaN(start) || Number.isNaN(end)) return 'yearly';
+  const diffDays = Math.max(0, Math.round((end - start) / (24 * 60 * 60 * 1000)));
+  if (diffDays <= 10) return 'weekly';
+  if (diffDays <= 62) return 'monthly';
+  return 'yearly';
+}
+
+function adaptRangeByPeriod(base: readonly [number, number], period: 'weekly' | 'monthly' | 'yearly') {
+  if (period === 'weekly') {
+    return [Math.max(150, Math.round(base[0] * 0.35)), Math.round(base[1] * 0.55)] as const;
+  }
+  if (period === 'monthly') {
+    return [Math.max(250, Math.round(base[0] * 0.6)), Math.round(base[1] * 0.8)] as const;
+  }
+  return base;
+}
+
 function adaptRangeByData(base: readonly [number, number], feedChars: number) {
   if (feedChars < 400) return [150, 300] as const;
   if (feedChars < 900) return [250, 450] as const;
@@ -74,7 +94,11 @@ export function buildYearStoryPrompt(
   options: YearStoryOptions,
   feedChars: number,
 ) {
-  const [minWords, maxWords] = adaptRangeByData(desiredWordRange(options.length), feedChars);
+  const period = inferPeriodFromRange(from, to);
+  const [minWords, maxWords] = adaptRangeByData(
+    adaptRangeByPeriod(desiredWordRange(options.length), period),
+    feedChars,
+  );
 
   const toneLine =
     options.tone === 'auto'
@@ -126,6 +150,7 @@ Role: You are a careful biographer.
 
 Goal: craft a cohesive YEAR IN REVIEW for ${from} – ${to} using ONLY the supplied entries.
 
+Period: ${period.toUpperCase()}. Match the depth to the range—weekly should read like a tight briefing, monthly a bit fuller, yearly the richest.
 ${languageLine}
 ${toneLine}
 ${povLine}
