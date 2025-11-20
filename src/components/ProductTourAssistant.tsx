@@ -38,9 +38,16 @@ export function ProductTourAssistant() {
         if (typeof window !== "undefined") {
           const hasSeen = Boolean(window.localStorage.getItem(key));
           const intent = window.localStorage.getItem(INTENT_KEY);
-          shouldAutoOpen = Boolean(intent && !hasSeen);
+          const firstVisit = !hasSeen;
+
+          shouldAutoOpen = firstVisit || Boolean(intent && !hasSeen);
+
           if (intent) {
             window.localStorage.removeItem(INTENT_KEY);
+          }
+
+          if (shouldAutoOpen) {
+            window.localStorage.setItem(key, new Date().toISOString());
           }
         }
 

@@ -9,7 +9,7 @@ import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferenc
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
 type Pov = "auto" | "first" | "third";
-type Preset = "30" | "90" | "180" | "year" | "custom";
+type Preset = "30" | "90" | "180" | "year" | "lastWeek" | "custom";
 
 type StoryGeneratorProps = {
   initialOptions?: SummaryPreferences;
@@ -30,6 +30,16 @@ function addDays(d: Date, days: number) {
   const x = new Date(d);
   x.setDate(x.getDate() + days);
   return x;
+}
+
+function lastWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const end = new Date(now);
+  end.setDate(now.getDate() - (day === 0 ? 7 : day));
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  return { from: ymd(start), to: ymd(end) };
 }
 
 type Quota = {
@@ -87,10 +97,19 @@ export default function StoryGenerator({
   const [modalPassphrase, setModalPassphrase] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
 
+  const lengthGuidance: Record<Length, string> = {
+    short: "~200–300 words",
+    medium: "~600–800 words",
+    long: "~1200+ words",
+  };
+
   // Resolve the date range according to the preset
   const { from, to } = useMemo(() => {
     if (preset === "custom") {
       return { from: customFrom, to: customTo };
+    }
+    if (preset === "lastWeek") {
+      return lastWeekRange();
     }
     const now = new Date();
     if (preset === "year") {
@@ -223,6 +242,13 @@ export default function StoryGenerator({
         throw new Error("No decryptable entries in that range.");
       }
 
+      const fromDate = new Date(`${from}T00:00:00Z`);
+      const toDate = new Date(`${to}T00:00:00Z`);
+      const diffDays = Math.max(1, Math.round((toDate.valueOf() - fromDate.valueOf()) / (1000 * 60 * 60 * 24)) + 1);
+      if (diffDays <= 8 && decrypted.length < 3) {
+        throw new Error("Keep writing a few more days to unlock your first weekly story.");
+      }
+
       const payload = {
         consent: true,
         from,
@@ -348,6 +374,7 @@ export default function StoryGenerator({
               className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="30">Last 30 days</option>
+              <option value="lastWeek">Last week (Mon–Sun)</option>
               <option value="90">Last 3 months</option>
               <option value="180">Last 6 months</option>
               <option value="year">Year to date</option>
@@ -380,7 +407,7 @@ export default function StoryGenerator({
           )}
 
           {/* Length */}
-          <label className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
             <span className="text-sm text-zinc-400">Length</span>
             <select
               value={length}
@@ -391,6 +418,7 @@ export default function StoryGenerator({
               <option value="medium">Medium</option>
               <option value="long">Long</option>
             </select>
+            <span className="text-xs text-zinc-500">{lengthGuidance[length]}</span>
           </label>
 
           {/* Tone */}
@@ -424,14 +452,14 @@ export default function StoryGenerator({
           </label>
 
           {/* Highlights */}
-          <label className="flex items-center gap-3 pt-6">
+          <label className="flex items-start gap-3 pt-6">
             <input
               type="checkbox"
               checked={includeHighlights}
               onChange={(e) => setIncludeHighlights(e.target.checked)}
               className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
             />
-            <span className="text-sm text-zinc-300">Include highlights</span>
+            <span className="text-sm text-zinc-300">Add a highlights section<br /><span className="text-xs text-zinc-500">When on, your story ends with the biggest wins and low points.</span></span>
           </label>
         </div>
 
