@@ -42,7 +42,12 @@ export default function Landing({ searchParams }: LandingProps) {
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <ShinyCTA href="/today">Start now</ShinyCTA>
+            <ShinyCTA href="/today">
+              <span className="flex flex-col items-center leading-tight">
+                <span>Start now</span>
+                <span className="text-xs font-normal text-white/80">No credit card. Encrypted by default.</span>
+              </span>
+            </ShinyCTA>
             <Link
               href="/encryption"
               className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
@@ -82,6 +87,79 @@ export default function Landing({ searchParams }: LandingProps) {
             desc="Generate monthly, quarterly, or yearly recaps without rewriting. Tone and highlights stay faithful to your words."
             emoji="📖"
           />
+        </div>
+      </section>
+
+      <section className="relative mx-auto mt-16 w-full max-w-6xl px-6 md:mt-20">
+        <div className="space-y-8 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-indigo-500/10 backdrop-blur">
+          <div className="space-y-2 text-center md:text-left">
+            <h2 className="text-3xl font-semibold text-white md:text-4xl">Why OneLine matters now</h2>
+            <p className="text-base text-zinc-300 md:text-lg">
+              Your brain wasn’t built for endless feeds, scattered notes, and 20-minute journaling sessions. OneLine gives you a tiny daily pause that actually fits your life.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <FeatureCard
+              title="Life blurs together"
+              desc="Most days disappear in a scroll of notifications. Without a simple way to capture what mattered, weeks feel the same and it’s hard to see your own story."
+              emoji="🌫️"
+            />
+            <FeatureCard
+              title="Your brain is biased"
+              desc="We remember stressful or odd moments more than the quiet wins. That makes you feel stuck, even when you’re actually growing."
+              emoji="🧠"
+            />
+            <FeatureCard
+              title="You need something tiny"
+              desc="Big journaling apps feel like another task. OneLine asks for just 333 characters — two or three sentences — so you can keep the habit even on rough days."
+              emoji="✨"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-semibold text-white">What changes when you write one line a day</h3>
+                <p className="text-sm text-zinc-300 md:text-base">
+                  In 30–60 seconds a night, you quietly train attention, memory, and self-awareness. Over a few weeks, that compounds into real change:
+                </p>
+              </div>
+              <ul className="space-y-2 text-sm text-zinc-200 md:text-base">
+                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />You notice small wins instead of only problems.</li>
+                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-indigo-400" />You remember what actually happened, not just how you felt in the worst moment.</li>
+                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-fuchsia-400" />You see patterns in your mood, energy, and choices.</li>
+                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-cyan-400" />You have a written record when you need to make decisions about work, relationships, or health.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-6 shadow-[0_18px_60px_rgba(79,70,229,0.25)]">
+            <div className="space-y-2">
+              <h3 className="text-2xl font-semibold text-white">Built on a method your brain already likes</h3>
+              <p className="text-sm text-zinc-200 md:text-base">
+                OneLine is designed around <strong>Tiny Habits + expressive writing</strong>, two approaches with decades of research behind them:
+              </p>
+            </div>
+            <div className="mt-4 space-y-3 text-sm text-zinc-100 md:text-base">
+              <p><strong>Tiny Habits framework.</strong> Stanford behavior scientist BJ Fogg showed that tiny, 30-second actions attached to an existing routine are far more likely to stick than ambitious goals. OneLine turns reflection into one tiny habit before bed or after brushing your teeth.</p>
+              <p><strong>Expressive & positive journaling.</strong> Studies on expressive writing and brief online journaling have found improvements in mood, stress, resilience, and even physical health when people regularly write about their thoughts and feelings.</p>
+              <p><strong>Gratitude-style highlights.</strong> Simple practices where you record a few good moments each day can increase happiness and reduce depressive symptoms. OneLine’s 333-character limit captures those highlights without pressure.</p>
+              <p className="text-zinc-300">OneLine doesn’t promise therapy or miracles — it gives you a tiny, science-informed ritual you can keep, so the benefits compound over time.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 text-center md:flex-row md:justify-between md:text-left">
+            <div className="text-sm text-zinc-300 md:text-base">
+              Start your first line tonight — it’s free, takes under 30 seconds, and you can export everything anytime. No credit card. Encrypted by default.
+            </div>
+            <ShinyCTA href="/today">
+              <span className="flex flex-col items-center leading-tight">
+                <span>Start writing now</span>
+                <span className="text-xs font-normal text-white/80">No credit card. Encrypted by default.</span>
+              </span>
+            </ShinyCTA>
+          </div>
         </div>
       </section>
 
