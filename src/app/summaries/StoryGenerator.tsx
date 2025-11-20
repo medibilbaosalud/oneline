@@ -334,17 +334,19 @@ export default function StoryGenerator({
 
       patchHtml2CanvasColorParser((window as any).html2canvas);
 
+      const captureScale = Math.max(3, Math.ceil(window.devicePixelRatio || 1));
+
       exportRoot = document.createElement("div");
       exportRoot.id = "oneline-story-export-root";
       exportRoot.style.position = "fixed";
       exportRoot.style.top = "-120vh";
       exportRoot.style.left = "-120vw";
-      exportRoot.style.width = "1240px";
-      exportRoot.style.minHeight = "1754px";
+      exportRoot.style.width = "1480px";
+      exportRoot.style.minHeight = "2100px";
       exportRoot.style.display = "flex";
       exportRoot.style.justifyContent = "center";
       exportRoot.style.alignItems = "center";
-      exportRoot.style.padding = "96px 72px";
+      exportRoot.style.padding = "108px 84px";
       exportRoot.style.background =
         "radial-gradient(circle at 20% 20%, rgba(99,102,241,0.12), transparent 30%), " +
         "radial-gradient(circle at 80% 10%, rgba(236,72,153,0.14), transparent 32%), " +
@@ -356,9 +358,9 @@ export default function StoryGenerator({
       const page = document.createElement("div");
       page.style.position = "relative";
       page.style.width = "100%";
-      page.style.maxWidth = "960px";
-      page.style.minHeight = "1480px";
-      page.style.padding = "64px 60px";
+      page.style.maxWidth = "1120px";
+      page.style.minHeight = "1680px";
+      page.style.padding = "72px 70px";
       page.style.borderRadius = "32px";
       page.style.background = "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,246,255,0.97))";
       page.style.boxShadow =
@@ -534,7 +536,7 @@ export default function StoryGenerator({
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
       const canvas = await html2canvas(exportRoot, {
-        scale: 2,
+        scale: captureScale,
         backgroundColor: "#0b1021",
         onclone: (doc: Document) => {
           doc.querySelectorAll("link[rel='stylesheet'], style").forEach((node) => {
@@ -557,7 +559,7 @@ export default function StoryGenerator({
       });
       const imgData = canvas.toDataURL("image/png");
 
-      const pdf = new jsPDF("p", "pt", "a4");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [1480, 2100] });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = pdfWidth;
@@ -566,13 +568,13 @@ export default function StoryGenerator({
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "MEDIUM");
       heightLeft -= pdfHeight;
 
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "MEDIUM");
         heightLeft -= pdfHeight;
       }
 
