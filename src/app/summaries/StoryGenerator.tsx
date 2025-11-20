@@ -70,6 +70,7 @@ type Quota = {
   used: number;
   remaining: number;
   resetAt: string;
+  unlimited?: boolean;
   period: {
     start: string;
     end: string;
@@ -445,7 +446,13 @@ export default function StoryGenerator({
               <p className="text-sm text-rose-400">{quotaError}</p>
             ) : quota ? (
               <p className="text-sm text-zinc-100">
-                <span className="font-semibold">{quota.remaining}</span> of {quota.limit} stories left
+                {quota.unlimited ? (
+                  <span className="font-semibold">Unlimited stories enabled for this account</span>
+                ) : (
+                  <>
+                    <span className="font-semibold">{quota.remaining}</span> of {quota.limit} stories left
+                  </>
+                )}
               </p>
             ) : (
               <p className="text-sm text-zinc-300">Sign in to see your allowance.</p>
@@ -453,11 +460,21 @@ export default function StoryGenerator({
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
               <div
                 className="h-full rounded-full bg-indigo-500 transition-all"
-                style={{ width: quota ? `${Math.min(100, (quota.used / quota.limit) * 100)}%` : "0%" }}
+                style={{
+                  width: quota
+                    ? quota.unlimited
+                      ? "100%"
+                      : `${Math.min(100, (quota.used / quota.limit) * 100)}%`
+                    : "0%",
+                }}
               />
             </div>
             <p className="text-[11px] uppercase tracking-wide text-zinc-500">
-              {quota ? `Resets ${new Date(quota.resetAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : "Refresh to update"}
+              {quota
+                ? quota.unlimited
+                  ? "Unlimited allowance active"
+                  : `Resets ${new Date(quota.resetAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                : "Refresh to update"}
             </p>
           </div>
           <div className="space-y-1 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
