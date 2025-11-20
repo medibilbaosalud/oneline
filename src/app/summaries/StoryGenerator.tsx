@@ -164,16 +164,16 @@ export default function StoryGenerator({
   const propsSignature = useRef<string | null>(null);
 
   const exportStoryAsPdf = useCallback(() => {
-    if (!story) return;
-
-    const printWindow = typeof window !== "undefined" ? window.open("", "_blank", "noopener") : null;
-    if (!printWindow) {
-      setError("Enable pop-ups to export your story.");
+    if (!story) {
+      setError("Generate a story before exporting.");
       return;
     }
 
     const renderedBlocks = (formattedStory.length ? formattedStory : formatStoryBlocks(story))
-      .map((block) => `<p style="margin: 0 0 12px 0; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); color: #0b0b0f; font-size: 15px; line-height: 1.6; font-family: 'New York', 'Georgia', serif; font-weight: 500;">${block}</p>`)
+      .map(
+        (block) =>
+          `<p style="margin: 0 0 12px 0; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); color: #0b0b0f; font-size: 15px; line-height: 1.6; font-family: 'New York', 'Georgia', serif; font-weight: 500;">${block}</p>`
+      )
       .join("");
 
     const html = `<!doctype html>
@@ -198,10 +198,24 @@ export default function StoryGenerator({
         </body>
       </html>`;
 
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    const blob = new Blob([html], { type: "text/html" });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const exportWindow = typeof window !== "undefined" ? window.open(blobUrl, "_blank", "noopener") : null;
+    if (!exportWindow) {
+      setError("Enable pop-ups to export your story.");
+      URL.revokeObjectURL(blobUrl);
+      return;
+    }
+
+    const handleLoad = () => {
+      exportWindow.focus();
+      exportWindow.print();
+      exportWindow.removeEventListener("load", handleLoad);
+      URL.revokeObjectURL(blobUrl);
+    };
+
+    exportWindow.addEventListener("load", handleLoad);
   }, [formattedStory, story]);
 
   useEffect(() => {
