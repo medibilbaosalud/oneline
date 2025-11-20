@@ -462,7 +462,7 @@ export default function StoryGenerator({
       const canvas = await html2canvas(exportRoot, {
         scale: 2,
         backgroundColor: "#0b1021",
-        onclone: (doc) => {
+        onclone: (doc: Document) => {
           doc.querySelectorAll("link[rel='stylesheet'], style").forEach((node) => {
             // Remove global styles that may include modern color() definitions unsupported by html2canvas.
             node.parentNode?.removeChild(node);
