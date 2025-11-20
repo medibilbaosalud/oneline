@@ -25,38 +25,6 @@ type SummaryReminder = {
   lastSummaryAt: string | null;
 };
 
-const LANGUAGE_OPTIONS: Array<{
-  value: SummaryLanguage;
-  label: string;
-  native: string;
-  description: string;
-}> = [
-  {
-    value: "en",
-    label: "English",
-    native: "English",
-    description: "The default UI language. Keep everything readable and consistent.",
-  },
-  {
-    value: "es",
-    label: "Spanish",
-    native: "Español",
-    description: "Best if you write most entries in Spanish and want summaries to match.",
-  },
-  {
-    value: "de",
-    label: "German",
-    native: "Deutsch",
-    description: "Use when your writing voice is primarily German.",
-  },
-  {
-    value: "fr",
-    label: "French",
-    native: "Français",
-    description: "Keep generated content aligned with French phrasing.",
-  },
-];
-
 type SettingsResponse = {
   ok: boolean;
   error?: string;
@@ -318,27 +286,6 @@ export default function SettingsClient() {
     }
   };
 
-  const handleSelectLanguage = async (nextLanguage: SummaryLanguage) => {
-    if (nextLanguage === storyLanguage) return;
-    const previous = storyLanguage;
-    setStoryLanguage(nextLanguage);
-
-    if (settingsLoading) {
-      return;
-    }
-
-    const success = await handleSaveSettings({
-      preferenceOverrides: { language: nextLanguage },
-      suppressFeedback: true,
-    });
-
-    if (success) {
-      setFeedback(`Language updated to ${LANGUAGE_OPTIONS.find((option) => option.value === nextLanguage)?.label ?? "your choice"}.`);
-    } else {
-      setStoryLanguage(previous);
-    }
-  };
-
   async function handleExport() {
     setFeedback(null);
     setError(null);
@@ -427,55 +374,6 @@ export default function SettingsClient() {
                 </button>
               </div>
             )}
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.02] to-transparent p-6 shadow-lg shadow-black/20">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-xl space-y-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
-                  Writing language
-                </span>
-                <div className="space-y-2">
-                  <h2 className="text-lg font-semibold text-neutral-100">Keep the UI in English, write in any language</h2>
-                  <p className="text-sm text-neutral-400">
-                    OneLine’s interface stays in English for clarity, but your entries and summaries can follow the language that feels most natural to you.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-stretch gap-2 md:min-w-[16rem]">
-                {LANGUAGE_OPTIONS.map((option) => {
-                  const active = option.value === storyLanguage;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      disabled={settingsLoading || saving}
-                      onClick={() => {
-                        void handleSelectLanguage(option.value);
-                      }}
-                      className={`group flex w-full flex-col items-start gap-1 rounded-2xl border px-4 py-3 text-left transition-colors duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/70 disabled:cursor-not-allowed ${
-                        active
-                          ? "border-indigo-400/70 bg-indigo-500/15 text-neutral-50 shadow-[0_12px_24px_rgba(79,70,229,0.18)]"
-                          : "border-white/10 bg-white/5 text-neutral-200 hover:border-indigo-300/60 hover:bg-indigo-500/10"
-                      }`}
-                    >
-                      <span className="text-sm font-semibold">
-                        {option.label}
-                        <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.2em] text-indigo-200/80">
-                          {option.native}
-                        </span>
-                      </span>
-                      <span className="text-xs text-neutral-400 group-hover:text-neutral-300">
-                        {option.description}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <p className="mt-4 text-xs text-neutral-500">
-              Pick the language that matches your writing voice; the interface remains English for consistency across devices.
-            </p>
           </section>
 
           <section className="rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg shadow-black/20">
