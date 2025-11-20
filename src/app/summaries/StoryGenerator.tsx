@@ -55,20 +55,33 @@ function addDays(d: Date, days: number) {
   return x;
 }
 
-function loadScript(src: string) {
-  return new Promise<void>((resolve, reject) => {
+async function loadScriptWithFallback(sources: string[]) {
+  let lastError: Error | null = null;
+
+  for (const src of sources) {
+    // If already present, resolve immediately
     if (document.querySelector(`script[src="${src}"]`)) {
-      resolve();
       return;
     }
 
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.body.appendChild(script);
-  });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.crossOrigin = "anonymous";
+        script.referrerPolicy = "no-referrer";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.body.appendChild(script);
+      });
+      return;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError ?? new Error("Unable to load scripts");
 }
 
 type StyledSegment = { text: string; bold: boolean };
@@ -262,8 +275,14 @@ export default function StoryGenerator({
     let exportRoot: HTMLDivElement | null = null;
 
     try {
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
-      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+      await loadScriptWithFallback([
+        "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+      ]);
+      await loadScriptWithFallback([
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+      ]);
 
       const { jsPDF } = (window as any).jspdf || {};
       const html2canvas = (window as any).html2canvas as
@@ -275,24 +294,42 @@ export default function StoryGenerator({
       }
 
       exportRoot = document.createElement("div");
-      exportRoot.style.position = "absolute";
-      exportRoot.style.top = "-9999px";
-      exportRoot.style.left = "-9999px";
+      exportRoot.style.position = "fixed";
+      exportRoot.style.inset = "0";
       exportRoot.style.padding = "48px";
       exportRoot.style.background = "linear-gradient(135deg, #0b1021, #101826)";
       exportRoot.style.zIndex = "-1";
       exportRoot.style.pointerEvents = "none";
+      exportRoot.style.opacity = "0";
 
       const card = document.createElement("div");
       card.style.maxWidth = "880px";
       card.style.margin = "0 auto";
-      card.style.padding = "36px";
+      card.style.padding = "40px";
       card.style.borderRadius = "28px";
-      card.style.background = "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(243,244,255,0.94))";
+      card.style.background = "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,244,255,0.96))";
       card.style.boxShadow = "0 24px 80px rgba(0,0,0,0.22)";
       card.style.border = "1px solid rgba(99,102,241,0.2)";
       card.style.fontFamily = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif";
       card.style.color = "#0b0b15";
+
+      const topRow = document.createElement("div");
+      topRow.style.display = "flex";
+      topRow.style.justifyContent = "space-between";
+      topRow.style.alignItems = "center";
+      topRow.style.marginBottom = "14px";
+
+      const brand = document.createElement("div");
+      brand.style.display = "inline-flex";
+      brand.style.alignItems = "center";
+      brand.style.gap = "10px";
+      brand.style.letterSpacing = "0.14em";
+      brand.style.fontSize = "12px";
+      brand.style.fontWeight = "800";
+      brand.style.textTransform = "uppercase";
+      brand.style.color = "#111827";
+      brand.innerHTML =
+        '<span style="display:inline-block;width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#ec4899);box-shadow:0 10px 30px rgba(99,102,241,0.35);"></span><span>OneLine</span>';
 
       const eyebrow = document.createElement("div");
       eyebrow.style.display = "inline-flex";
@@ -368,12 +405,17 @@ export default function StoryGenerator({
         body.appendChild(paragraph);
       });
 
-      card.appendChild(eyebrow);
+      topRow.appendChild(brand);
+      topRow.appendChild(eyebrow);
+
+      card.appendChild(topRow);
       card.appendChild(title);
       card.appendChild(subtitle);
       card.appendChild(body);
       exportRoot.appendChild(card);
       document.body.appendChild(exportRoot);
+
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
       const canvas = await html2canvas(exportRoot, { scale: 2, backgroundColor: "#0b1021" });
       const imgData = canvas.toDataURL("image/png");
@@ -400,7 +442,7 @@ export default function StoryGenerator({
       pdf.save("oneline-story.pdf");
     } catch (err) {
       console.error(err);
-      setError("Export failed. Please retry or allow downloads/pop-ups.");
+      setError(err instanceof Error ? err.message : "Export failed. Please retry after allowing downloads.");
     } finally {
       if (exportRoot?.parentNode) {
         document.body.removeChild(exportRoot);
