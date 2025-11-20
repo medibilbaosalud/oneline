@@ -337,43 +337,81 @@ export default function StoryGenerator({
       exportRoot = document.createElement("div");
       exportRoot.id = "oneline-story-export-root";
       exportRoot.style.position = "fixed";
-      exportRoot.style.top = "-9999px";
-      exportRoot.style.left = "-9999px";
-      exportRoot.style.width = "100vw";
-      exportRoot.style.padding = "48px";
-      exportRoot.style.background = "linear-gradient(135deg, #0b1021, #101826)";
+      exportRoot.style.top = "-120vh";
+      exportRoot.style.left = "-120vw";
+      exportRoot.style.width = "1240px";
+      exportRoot.style.minHeight = "1754px";
+      exportRoot.style.display = "flex";
+      exportRoot.style.justifyContent = "center";
+      exportRoot.style.alignItems = "center";
+      exportRoot.style.padding = "96px 72px";
+      exportRoot.style.background =
+        "radial-gradient(circle at 20% 20%, rgba(99,102,241,0.12), transparent 30%), " +
+        "radial-gradient(circle at 80% 10%, rgba(236,72,153,0.14), transparent 32%), " +
+        "linear-gradient(145deg, #0b1021, #0d1228 45%, #0f172a)";
       exportRoot.style.zIndex = "-1";
       exportRoot.style.pointerEvents = "none";
       exportRoot.style.opacity = "1";
 
+      const page = document.createElement("div");
+      page.style.position = "relative";
+      page.style.width = "100%";
+      page.style.maxWidth = "960px";
+      page.style.minHeight = "1480px";
+      page.style.padding = "64px 60px";
+      page.style.borderRadius = "32px";
+      page.style.background = "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,246,255,0.97))";
+      page.style.boxShadow =
+        "0 32px 120px rgba(0,0,0,0.28), 0 8px 24px rgba(99,102,241,0.18), inset 0 1px 0 rgba(255,255,255,0.8)";
+      page.style.border = "1px solid rgba(99,102,241,0.18)";
+      page.style.fontFamily = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif";
+      page.style.color = "#0b0b15";
+
+      const ribbon = document.createElement("div");
+      ribbon.style.position = "absolute";
+      ribbon.style.top = "0";
+      ribbon.style.left = "0";
+      ribbon.style.right = "0";
+      ribbon.style.height = "12px";
+      ribbon.style.borderRadius = "32px 32px 0 0";
+      ribbon.style.background = "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)";
+
+      const header = document.createElement("div");
+      header.style.display = "flex";
+      header.style.justifyContent = "space-between";
+      header.style.alignItems = "center";
+      header.style.marginBottom = "22px";
+      header.style.position = "relative";
+
       const card = document.createElement("div");
-      card.style.maxWidth = "880px";
-      card.style.margin = "0 auto";
-      card.style.padding = "40px";
+      card.style.position = "relative";
+      card.style.width = "100%";
+      card.style.minHeight = "100%";
+      card.style.padding = "12px";
       card.style.borderRadius = "28px";
       card.style.background = "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,244,255,0.96))";
-      card.style.boxShadow = "0 24px 80px rgba(0,0,0,0.22)";
-      card.style.border = "1px solid rgba(99,102,241,0.2)";
+      card.style.boxShadow = "0 18px 60px rgba(0,0,0,0.16)";
+      card.style.border = "1px solid rgba(99,102,241,0.18)";
       card.style.fontFamily = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif";
       card.style.color = "#0b0b15";
 
       const topRow = document.createElement("div");
       topRow.style.display = "flex";
       topRow.style.justifyContent = "space-between";
-      topRow.style.alignItems = "center";
-      topRow.style.marginBottom = "14px";
+      topRow.style.alignItems = "flex-start";
+      topRow.style.marginBottom = "18px";
 
       const brand = document.createElement("div");
       brand.style.display = "inline-flex";
       brand.style.alignItems = "center";
-      brand.style.gap = "10px";
-      brand.style.letterSpacing = "0.14em";
-      brand.style.fontSize = "12px";
+      brand.style.gap = "12px";
+      brand.style.letterSpacing = "0.16em";
+      brand.style.fontSize = "13px";
       brand.style.fontWeight = "800";
       brand.style.textTransform = "uppercase";
-      brand.style.color = "#111827";
+      brand.style.color = "#0f172a";
       brand.innerHTML =
-        '<span style="display:inline-block;width:34px;height:34px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#ec4899);box-shadow:0 10px 30px rgba(99,102,241,0.35);"></span><span>OneLine</span>';
+        '<span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899);box-shadow:0 12px 32px rgba(99,102,241,0.35);"></span><span>OneLine</span>';
 
       const eyebrow = document.createElement("div");
       eyebrow.style.display = "inline-flex";
@@ -388,21 +426,43 @@ export default function StoryGenerator({
 
       const title = document.createElement("h1");
       title.textContent = "Personal recap";
-      title.style.margin = "14px 0 14px";
-      title.style.fontSize = "30px";
+      title.style.margin = "0 0 8px";
+      title.style.fontSize = "32px";
       title.style.fontWeight = "800";
       title.style.letterSpacing = "-0.01em";
 
       const subtitle = document.createElement("p");
-      subtitle.textContent = "A polished export of your narrative — ready to share or archive.";
-      subtitle.style.margin = "0 0 18px";
+      subtitle.textContent = "A keepsake-ready export of your narrative — modern, archival, and encrypted by design.";
+      subtitle.style.margin = "0";
       subtitle.style.color = "#4b5563";
       subtitle.style.fontSize = "15px";
       subtitle.style.fontWeight = "600";
 
+      const meta = document.createElement("div");
+      meta.style.display = "flex";
+      meta.style.flexDirection = "column";
+      meta.style.alignItems = "flex-end";
+      meta.style.gap = "8px";
+
+      const badge = document.createElement("div");
+      badge.textContent = "Encrypted journal recap";
+      badge.style.display = "inline-flex";
+      badge.style.alignItems = "center";
+      badge.style.gap = "8px";
+      badge.style.padding = "10px 14px";
+      badge.style.borderRadius = "999px";
+      badge.style.background = "linear-gradient(90deg, rgba(99,102,241,0.14), rgba(236,72,153,0.14))";
+      badge.style.color = "#312e81";
+      badge.style.fontSize = "12px";
+      badge.style.fontWeight = "700";
+      badge.style.letterSpacing = "0.02em";
+      badge.innerHTML = '<span style="width:8px;height:8px;border-radius:999px;background:#10b981;box-shadow:0 0 0 6px rgba(16,185,129,0.18);"></span><span>Private export</span>';
+
+      meta.appendChild(badge);
+
       const body = document.createElement("div");
       body.style.display = "grid";
-      body.style.gap = "12px";
+      body.style.gap = "14px";
 
       const blocks = formattedStory.length ? formattedStory : formatStoryBlocks(story);
 
@@ -418,17 +478,17 @@ export default function StoryGenerator({
 
       blocks.forEach((block) => {
         const paragraph = document.createElement("div");
-        paragraph.style.padding = "16px 18px";
+        paragraph.style.padding = "18px 20px";
         paragraph.style.borderRadius = "18px";
         paragraph.style.background = "linear-gradient(180deg, rgba(99,102,241,0.08), rgba(15,23,42,0.04))";
-        paragraph.style.border = "1px solid rgba(99,102,241,0.14)";
-        paragraph.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.5)";
+        paragraph.style.border = "1px solid rgba(99,102,241,0.12)";
+        paragraph.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.6), 0 12px 28px rgba(0,0,0,0.04)";
         paragraph.style.fontFamily = "'Cormorant Garamond', 'Times New Roman', serif";
         paragraph.style.fontSize = "18px";
-        paragraph.style.lineHeight = "1.62";
+        paragraph.style.lineHeight = "1.64";
         paragraph.style.color = "#0b0b15";
 
-        const lines = wrapSegments(toStyledSegments(block), 720, measure);
+        const lines = wrapSegments(toStyledSegments(block), 780, measure);
         lines.forEach((line) => {
           const lineEl = document.createElement("p");
           lineEl.style.margin = "0";
@@ -449,14 +509,26 @@ export default function StoryGenerator({
         body.appendChild(paragraph);
       });
 
-      topRow.appendChild(brand);
-      topRow.appendChild(eyebrow);
+      const leftStack = document.createElement("div");
+      leftStack.style.display = "flex";
+      leftStack.style.flexDirection = "column";
+      leftStack.style.gap = "8px";
+      leftStack.appendChild(brand);
+      leftStack.appendChild(eyebrow);
 
-      card.appendChild(topRow);
-      card.appendChild(title);
-      card.appendChild(subtitle);
+      topRow.appendChild(leftStack);
+      topRow.appendChild(meta);
+
+      header.appendChild(topRow);
+      header.appendChild(title);
+      header.appendChild(subtitle);
+
+      card.appendChild(ribbon);
+      card.appendChild(header);
       card.appendChild(body);
-      exportRoot.appendChild(card);
+
+      page.appendChild(card);
+      exportRoot.appendChild(page);
       document.body.appendChild(exportRoot);
 
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
