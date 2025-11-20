@@ -335,6 +335,7 @@ export default function StoryGenerator({
       patchHtml2CanvasColorParser((window as any).html2canvas);
 
       exportRoot = document.createElement("div");
+      exportRoot.id = "oneline-story-export-root";
       exportRoot.style.position = "fixed";
       exportRoot.style.inset = "0";
       exportRoot.style.padding = "48px";
@@ -458,7 +459,22 @@ export default function StoryGenerator({
 
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      const canvas = await html2canvas(exportRoot, { scale: 2, backgroundColor: "#0b1021" });
+      const canvas = await html2canvas(exportRoot, {
+        scale: 2,
+        backgroundColor: "#0b1021",
+        onclone: (doc) => {
+          doc.querySelectorAll("link[rel='stylesheet'], style").forEach((node) => {
+            // Remove global styles that may include modern color() definitions unsupported by html2canvas.
+            node.parentNode?.removeChild(node);
+          });
+
+          const clonedRoot = doc.getElementById("oneline-story-export-root");
+          if (clonedRoot) {
+            // Ensure the cloned export root keeps its inline styling without inherited CSS.
+            clonedRoot.setAttribute("style", exportRoot?.getAttribute("style") || "");
+          }
+        },
+      });
       const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF("p", "pt", "a4");
