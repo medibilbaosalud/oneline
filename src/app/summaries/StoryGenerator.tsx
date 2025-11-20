@@ -86,6 +86,7 @@ export default function StoryGenerator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
+  const [loadingPhrase, setLoadingPhrase] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [quotaError, setQuotaError] = useState<string | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
@@ -100,6 +101,14 @@ export default function StoryGenerator({
     medium: "~600–800 words",
     long: "~1200+ words",
   };
+
+  const loadingPhrases = [
+    "Weaving your week together…",
+    "Threading highlights without changing your words…",
+    "Letting your tone lead the story…",
+    "Balancing bright spots and low points…",
+    "Keeping languages exactly as you wrote them…",
+  ];
 
   // Resolve the date range according to the preset
   const { from, to } = useMemo(() => {
@@ -189,6 +198,23 @@ export default function StoryGenerator({
     refreshQuota();
   }, [refreshQuota]);
 
+  useEffect(() => {
+    if (!loading) {
+      setLoadingPhrase(null);
+      return;
+    }
+
+    let index = Math.floor(Math.random() * loadingPhrases.length);
+    setLoadingPhrase(loadingPhrases[index]);
+
+    const timer = setInterval(() => {
+      index = (index + 1) % loadingPhrases.length;
+      setLoadingPhrase(loadingPhrases[index]);
+    }, 2200);
+
+    return () => clearInterval(timer);
+  }, [loading, loadingPhrases]);
+
   function openConsent() {
     setModalError(null);
     setModalPassphrase("");
@@ -201,6 +227,7 @@ export default function StoryGenerator({
       setLoading(true);
       setError(null);
       setStory("");
+      setLoadingPhrase(loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)]);
 
       const params = new URLSearchParams({ from, to });
       const historyRes = await fetch(`/api/history?${params.toString()}`, { cache: "no-store" });
@@ -322,43 +349,42 @@ export default function StoryGenerator({
   }
 
   return (
-    <div className="w-full space-y-6 text-zinc-100">
+    <div className="w-full space-y-8 text-zinc-100">
       {/* Controles */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-sm">
-        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-white/5 bg-black/40 p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm font-medium text-zinc-200">Monthly summaries</p>
-            {quota && (
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Resets {new Date(quota.resetAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+      <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-black/60 to-indigo-900/20 p-5 shadow-2xl shadow-indigo-950/40">
+        <div className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 sm:grid-cols-3">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Quota</p>
+            {quotaLoading ? (
+              <p className="text-sm text-zinc-300">Checking allowance…</p>
+            ) : quotaError ? (
+              <p className="text-sm text-rose-400">{quotaError}</p>
+            ) : quota ? (
+              <p className="text-sm text-zinc-100">
+                <span className="font-semibold">{quota.remaining}</span> of {quota.limit} stories left
               </p>
+            ) : (
+              <p className="text-sm text-zinc-300">Sign in to see your allowance.</p>
             )}
-          </div>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              {quotaLoading ? (
-                <p className="text-sm text-zinc-400">Checking allowance…</p>
-              ) : quotaError ? (
-                <p className="text-sm text-rose-400">{quotaError}</p>
-              ) : quota ? (
-                <p className="text-sm text-zinc-300">
-                  {quota.remaining} of {quota.limit} stories left this month
-                </p>
-              ) : (
-                <p className="text-sm text-zinc-400">Sign in to see your allowance.</p>
-              )}
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-all"
+                style={{ width: quota ? `${Math.min(100, (quota.used / quota.limit) * 100)}%` : "0%" }}
+              />
             </div>
-            {quota && (
-              <div className="text-right text-xs text-zinc-500">
-                <span className="font-medium text-zinc-200">{quota.used}</span> generated so far
-              </div>
-            )}
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+              {quota ? `Resets ${new Date(quota.resetAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : "Refresh to update"}
+            </p>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-indigo-500 transition-all"
-              style={{ width: quota ? `${Math.min(100, (quota.used / quota.limit) * 100)}%` : "0%" }}
-            />
+          <div className="space-y-1 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Voice</p>
+            <p className="text-sm text-zinc-100">Keeps your languages, tone, and highlights intact.</p>
+            <p className="text-[11px] text-zinc-500">Gemini prompt preserves code-switching automatically.</p>
+          </div>
+          <div className="space-y-1 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Privacy</p>
+            <p className="text-sm text-zinc-100">Vault stays client-side until you consent to send.</p>
+            <p className="text-[11px] text-zinc-500">We never store your passphrase.</p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -449,11 +475,12 @@ export default function StoryGenerator({
           </label>
 
           {/* Highlights */}
-          <div className="flex flex-col gap-1 pt-6 text-sm text-zinc-300">
-            <span className="font-medium text-zinc-200">Highlights included automatically</span>
-            <span className="text-xs text-zinc-500">
-              Your story always ends with the week’s biggest wins and low points.
-            </span>
+          <div className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/5 px-3 py-3 text-sm text-zinc-200">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold">Highlights included automatically</span>
+            </div>
+            <span className="text-xs text-zinc-500">Your story ends with the biggest wins and low points by default.</span>
           </div>
         </div>
 
@@ -476,8 +503,9 @@ export default function StoryGenerator({
           <button
             onClick={openConsent}
             disabled={loading}
-            className="rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group relative overflow-hidden rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <span className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-500 via-sky-500 to-purple-500 opacity-0 blur transition duration-500 group-hover:opacity-60" />
             {loading ? "Generating…" : "Generate your story"}
           </button>
           {error && <span className="text-sm text-rose-400">{error}</span>}
@@ -485,14 +513,31 @@ export default function StoryGenerator({
       </div>
 
       {/* Resultado */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-sm">
-        {story ? (
-          <article className="prose prose-invert max-w-none">
-            {/* Simple rendering; pipe through a markdown parser if desired */}
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/50 p-5 shadow-2xl shadow-indigo-950/40" aria-busy={loading}>
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5" />
+        {loading && (
+          <div className="relative space-y-3">
+            <div className="flex items-center gap-2 text-sm text-indigo-100">
+              <div className="h-2.5 w-2.5 animate-ping rounded-full bg-indigo-400" />
+              <span className="font-medium">Crafting your story…</span>
+            </div>
+            <p className="text-sm text-zinc-400">{loadingPhrase || "Holding your voice steady while we assemble this recap."}</p>
+            <div className="space-y-2">
+              <div className="h-3 w-full animate-pulse rounded-full bg-white/10" />
+              <div className="h-3 w-11/12 animate-pulse rounded-full bg-white/10" />
+              <div className="h-3 w-10/12 animate-pulse rounded-full bg-white/10" />
+            </div>
+          </div>
+        )}
+
+        {!loading && story && (
+          <article className="relative prose prose-invert max-w-none">
             <pre className="whitespace-pre-wrap break-words text-zinc-100">{story}</pre>
           </article>
-        ) : (
-          <p className="text-zinc-400">Your story will appear here.</p>
+        )}
+
+        {!loading && !story && (
+          <p className="relative text-zinc-400">Your story will appear here.</p>
         )}
       </div>
 
@@ -537,7 +582,7 @@ export default function StoryGenerator({
                 onClick={() => {
                   setShowConsent(false);
                   setModalBusy(false);
-                  setModalPassphrase('');
+                  setModalPassphrase("");
                 }}
                 className="rounded-lg bg-neutral-800 px-4 py-2 text-sm text-zinc-200 hover:bg-neutral-700"
               >

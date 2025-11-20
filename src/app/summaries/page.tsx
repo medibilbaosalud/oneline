@@ -91,13 +91,47 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
   const initialPreset = initialRange ? "custom" : undefined;
 
   return (
-    <main className="min-h-screen bg-black">
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        <h1 className="text-3xl font-semibold text-zinc-100">Summaries</h1>
-        <p className="mt-1 text-zinc-400">Generate a story from your journal.</p>
+    <main className="relative min-h-screen overflow-hidden bg-black">
+      <div className="pointer-events-none absolute inset-0 opacity-60">
+        <div className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-indigo-500/30 blur-[120px]" />
+        <div className="absolute right-0 top-40 h-72 w-72 rounded-full bg-blue-500/20 blur-[140px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-5xl px-6 py-10">
+        <section className="overflow-hidden rounded-3xl border border-white/5 bg-white/5 px-6 py-8 shadow-xl shadow-indigo-950/30">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Encrypted summaries</p>
+              <div>
+                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Summaries that still sound like you</h1>
+                <p className="mt-2 max-w-2xl text-base text-zinc-300">
+                  Unlock your vault, pick a window, and get a recap that keeps your tone, languages, and highlights intact.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-zinc-200">
+                <span className="rounded-full bg-white/10 px-3 py-1">No credit card. Encrypted by default.</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">Works in every language you write.</span>
+                <span className="rounded-full bg-white/10 px-3 py-1">Exportable anytime.</span>
+              </div>
+            </div>
+            <div className="flex gap-3 rounded-2xl border border-white/10 bg-black/40 px-5 py-4 text-sm text-zinc-200 shadow-inner">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-zinc-400">Status</p>
+                <p className="font-semibold text-white">{humanizePeriod(reminder.period)} cadence</p>
+                <p className="text-xs text-zinc-400">Ready when you are.</p>
+              </div>
+              <div className="h-full w-px bg-white/10" />
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-zinc-400">Range</p>
+                <p className="font-semibold text-white">{formatWindow(reminder.window) || "Select below"}</p>
+                <p className="text-xs text-zinc-400">Adjust with presets or custom dates.</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {reminder.due && (
-          <div className="mt-6 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 p-4 text-sm text-indigo-100">
+          <div className="mt-6 rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-4 text-sm text-indigo-50 shadow-lg shadow-indigo-900/30">
             <p className="text-sm font-semibold text-white">
               {humanizePeriod(reminder.period)} recap ready to generate
             </p>
@@ -108,7 +142,7 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
         )}
 
         {reminder.minimumMet === false && (
-          <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-50 shadow-lg shadow-amber-900/30">
             <p className="text-sm font-semibold text-white">Write a few more days first</p>
             <p className="mt-1 text-xs text-amber-100/80">
               Add at least {reminder.minimumRequired ?? 4} days in the last week to unlock your next weekly story.
