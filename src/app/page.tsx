@@ -38,7 +38,7 @@ export default function Landing({ searchParams }: LandingProps) {
             One honest line a day.
           </h1>
           <p className="mt-4 max-w-2xl text-pretty text-lg text-zinc-300">
-            Capture a single, encrypted line in under a minute. Your browser locks it with your passphrase and OneLine turns those lines into clear monthly, quarterly, or yearly stories.
+            Capture a single, encrypted line in under a minute. OneLine keeps it private, turns it into science-backed reflection, and helps you notice the patterns that change you.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -57,7 +57,7 @@ export default function Landing({ searchParams }: LandingProps) {
             </Link>
           </div>
 
-          <div className="mt-8 grid w-full max-w-3xl grid-cols-3 gap-3 text-left max-md:grid-cols-1">
+          <div className="mt-10 grid w-full max-w-3xl grid-cols-1 gap-3 text-left md:grid-cols-3">
             <Stat k="7s" v="Average time to write a line" />
             <Stat k="92%" v="Return the next week and keep going" />
             <Stat k="0 ads" v="Your words stay private. Always." />
@@ -74,7 +74,7 @@ export default function Landing({ searchParams }: LandingProps) {
           />
           <FeatureCard
             title="Encrypted by default"
-            desc="Your passphrase derives the key locally. Without it, servers only store ciphertext."
+            desc="Your passphrase derives the key locally; servers only see ciphertext."
             emoji="🔒"
           />
           <FeatureCard
@@ -88,41 +88,48 @@ export default function Landing({ searchParams }: LandingProps) {
       <section className="relative mx-auto mt-16 w-full max-w-6xl px-6 md:mt-20">
         <div className="grid gap-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-            <h2 className="text-left text-2xl font-semibold text-white">Privacy in plain English</h2>
-            <p>Everything happens client-side: key derivation, encryption, and unlock. We never see your passphrase or plaintext.</p>
-            <ul className="space-y-3 text-sm leading-relaxed text-zinc-400 md:text-base">
+            <h2 className="text-left text-2xl font-semibold text-white">Privacy that actually holds</h2>
+            <p className="text-zinc-300">Everything happens client-side: key derivation, encryption, and unlock. We never see your passphrase or plaintext.</p>
+            <ul className="space-y-3 text-sm leading-relaxed text-zinc-200 md:text-base">
               <li className="flex gap-3">
                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span>AES-GCM encryption before anything touches Supabase.</span>
+                <span><strong>End-to-end by default.</strong> AES-GCM before anything touches Supabase.</span>
               </li>
               <li className="flex gap-3">
                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span>Unlock with the exact same passphrase; lose it and the data stays locked.</span>
+                <span><strong>Passphrase = key.</strong> Lose it and the vault stays sealed; we cannot reset it.</span>
               </li>
               <li className="flex gap-3">
                 <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                <span>Export or delete anytime to exercise your data rights.</span>
+                <span><strong>Your data, your terms.</strong> Export or delete anytime without requests or support tickets.</span>
               </li>
             </ul>
             <Link
               href="/encryption"
               className="inline-flex w-fit items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(79,70,229,0.25)] transition hover:border-indigo-300/50 hover:bg-indigo-500/20"
             >
-              Learn more about the vault <span aria-hidden>→</span>
+              Learn how the vault works <span aria-hidden>→</span>
             </Link>
           </div>
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-5 text-sm text-zinc-200">
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">What we store</p>
-              <p className="mt-2 text-sm text-zinc-300">Ciphertext + IV only. Plain text never hits our database.</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">When AI runs</p>
-              <p className="mt-2 text-sm text-zinc-300">Only after you consent. Decrypt locally, send once, discard.</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+          <div className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-5 text-left text-sm leading-relaxed text-zinc-200 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+            <h3 className="text-lg font-semibold text-white">Built to change you</h3>
+            <ul className="space-y-3 text-zinc-300">
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                <span><strong>Daily micro-reflection.</strong> Neuroscience shows short, consistent check-ins reduce stress and sharpen recall.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span><strong>Identity-first habit.</strong> 333 characters train you to notice who you are becoming, not just what you did.</span>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
+                <span><strong>Stories powered by your words.</strong> Recaps keep your tone and highlight the growth you care about.</span>
+              </li>
+            </ul>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-200">
               <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">No recovery</p>
-              <p className="mt-2 text-sm text-zinc-300">We can’t reset your passphrase. It’s the cost of true privacy.</p>
+              <p className="mt-2 text-sm text-zinc-300">True privacy means we cannot unlock for you—protect your passphrase.</p>
             </div>
           </div>
         </div>
@@ -134,7 +141,7 @@ export default function Landing({ searchParams }: LandingProps) {
         <div className="grid gap-5 md:grid-cols-3">
           <StepCard n="1" title="End the day with one line">Two or three sentences that fit inside 333 characters.</StepCard>
           <StepCard n="2" title="Unlock with your passphrase">Write and read only when the vault is open locally.</StepCard>
-          <StepCard n="3" title="Generate a recap">Pick a period — last week, month, quarter, or year — and get a faithful story.</StepCard>
+          <StepCard n="3" title="Generate a recap">Pick a period — last week, month, quarter, or year — and see your progress in your own voice.</StepCard>
         </div>
       </section>
 
