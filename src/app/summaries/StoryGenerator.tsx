@@ -55,6 +55,95 @@ function addDays(d: Date, days: number) {
   return x;
 }
 
+function loadScript(src: string) {
+  return new Promise<void>((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.body.appendChild(script);
+  });
+}
+
+type StyledSegment = { text: string; bold: boolean };
+
+function toStyledSegments(html: string): StyledSegment[] {
+  if (typeof window === "undefined") {
+    return [{ text: html.replace(/<[^>]+>/g, " "), bold: false }];
+  }
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const segments: StyledSegment[] = [];
+
+  const walk = (node: Node, bold: boolean) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = (node.textContent || "").replace(/\s+/g, " ");
+      if (text.trim()) {
+        segments.push({ text, bold });
+      }
+      return;
+    }
+
+    if (!(node instanceof HTMLElement)) return;
+
+    const nextBold = bold || ["B", "STRONG", "H1", "H2", "H3"].includes(node.tagName);
+
+    if (node.tagName === "BR") {
+      segments.push({ text: "\n", bold });
+      return;
+    }
+
+    if (node.tagName === "LI") {
+      segments.push({ text: "• ", bold: nextBold });
+      node.childNodes.forEach((child) => walk(child, nextBold));
+      segments.push({ text: "\n", bold });
+      return;
+    }
+
+    node.childNodes.forEach((child) => walk(child, nextBold));
+  };
+
+  doc.body.childNodes.forEach((child) => walk(child, false));
+  return segments.length ? segments : [{ text: doc.body.textContent || "", bold: false }];
+}
+
+function wrapSegments(segments: StyledSegment[], maxWidth: number, measure: (text: string, bold: boolean) => number) {
+  const lines: StyledSegment[][] = [[]];
+  let currentWidth = 0;
+
+  segments.forEach((segment) => {
+    const parts = segment.text.split(/(\s+)/);
+    parts.forEach((part) => {
+      if (part === "") return;
+
+      if (part === "\n") {
+        if (lines[lines.length - 1].length) {
+          lines.push([]);
+        }
+        currentWidth = 0;
+        return;
+      }
+
+      const width = measure(part, segment.bold);
+      if (currentWidth + width > maxWidth && lines[lines.length - 1].length) {
+        lines.push([]);
+        currentWidth = 0;
+      }
+
+      lines[lines.length - 1].push({ text: part, bold: segment.bold });
+      currentWidth += width;
+    });
+  });
+
+  return lines.filter((line) => line.length);
+}
+
 function lastWeekRange() {
   const now = new Date();
   const day = now.getDay();
@@ -164,59 +253,159 @@ export default function StoryGenerator({
 
   const propsSignature = useRef<string | null>(null);
 
-  const exportStoryAsPdf = useCallback(() => {
+  const exportStoryAsPdf = useCallback(async () => {
     if (!story) {
       setError("Generate a story before exporting.");
       return;
     }
 
-    const renderedBlocks = (formattedStory.length ? formattedStory : formatStoryBlocks(story))
-      .map(
-        (block) =>
-          `<p style="margin: 0 0 12px 0; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); color: #0b0b0f; font-size: 15px; line-height: 1.6; font-family: 'New York', 'Georgia', serif; font-weight: 500;">${block}</p>`
-      )
-      .join("");
+    let exportRoot: HTMLDivElement | null = null;
 
-    const html = `<!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Your OneLine story</title>
-          <style>
-            body { background: #f6f7fb; color: #0b0b0f; margin: 0; padding: 32px; font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif; }
-            .frame { max-width: 780px; margin: 0 auto; padding: 28px; background: white; border-radius: 20px; box-shadow: 0 30px 80px rgba(15, 23, 42, 0.16); }
-            .eyebrow { display: inline-flex; align-items: center; gap: 8px; letter-spacing: 0.16em; font-size: 11px; text-transform: uppercase; color: #4338ca; font-weight: 700; }
-            .eyebrow span { display: inline-block; width: 32px; height: 2px; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #ec4899); }
-            .title { margin: 14px 0 22px; font-size: 28px; color: #0f172a; font-weight: 800; }
-          </style>
-        </head>
-        <body>
-          <div class="frame">
-            <div class="eyebrow"><span></span>YOUR STORY</div>
-            <h1 class="title">Personal recap</h1>
-            ${renderedBlocks}
-          </div>
-        </body>
-      </html>`;
+    try {
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
 
-    const blob = new Blob([html], { type: "text/html" });
-    const blobUrl = URL.createObjectURL(blob);
+      const { jsPDF } = (window as any).jspdf || {};
+      const html2canvas = (window as any).html2canvas as
+        | ((element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>)
+        | undefined;
 
-    const exportWindow = typeof window !== "undefined" ? window.open(blobUrl, "_blank", "noopener") : null;
-    if (!exportWindow) {
-      setError("Enable pop-ups to export your story.");
-      URL.revokeObjectURL(blobUrl);
-      return;
+      if (!jsPDF || !html2canvas) {
+        throw new Error("PDF tools unavailable");
+      }
+
+      exportRoot = document.createElement("div");
+      exportRoot.style.position = "absolute";
+      exportRoot.style.top = "-9999px";
+      exportRoot.style.left = "-9999px";
+      exportRoot.style.padding = "48px";
+      exportRoot.style.background = "linear-gradient(135deg, #0b1021, #101826)";
+      exportRoot.style.zIndex = "-1";
+      exportRoot.style.pointerEvents = "none";
+
+      const card = document.createElement("div");
+      card.style.maxWidth = "880px";
+      card.style.margin = "0 auto";
+      card.style.padding = "36px";
+      card.style.borderRadius = "28px";
+      card.style.background = "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(243,244,255,0.94))";
+      card.style.boxShadow = "0 24px 80px rgba(0,0,0,0.22)";
+      card.style.border = "1px solid rgba(99,102,241,0.2)";
+      card.style.fontFamily = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif";
+      card.style.color = "#0b0b15";
+
+      const eyebrow = document.createElement("div");
+      eyebrow.style.display = "inline-flex";
+      eyebrow.style.alignItems = "center";
+      eyebrow.style.gap = "10px";
+      eyebrow.style.letterSpacing = "0.22em";
+      eyebrow.style.fontSize = "11px";
+      eyebrow.style.fontWeight = "800";
+      eyebrow.style.textTransform = "uppercase";
+      eyebrow.style.color = "#4338ca";
+      eyebrow.innerHTML = '<span style="display:inline-block;width:44px;height:3px;border-radius:999px;background:linear-gradient(90deg,#6366f1,#ec4899);"></span> Your story';
+
+      const title = document.createElement("h1");
+      title.textContent = "Personal recap";
+      title.style.margin = "14px 0 14px";
+      title.style.fontSize = "30px";
+      title.style.fontWeight = "800";
+      title.style.letterSpacing = "-0.01em";
+
+      const subtitle = document.createElement("p");
+      subtitle.textContent = "A polished export of your narrative — ready to share or archive.";
+      subtitle.style.margin = "0 0 18px";
+      subtitle.style.color = "#4b5563";
+      subtitle.style.fontSize = "15px";
+      subtitle.style.fontWeight = "600";
+
+      const body = document.createElement("div");
+      body.style.display = "grid";
+      body.style.gap = "12px";
+
+      const blocks = formattedStory.length ? formattedStory : formatStoryBlocks(story);
+
+      const measure = (() => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        return (text: string, bold: boolean) => {
+          if (!ctx) return text.length * 7;
+          ctx.font = `${bold ? "700" : "500"} 15px 'Inter', 'Helvetica', sans-serif`;
+          return ctx.measureText(text).width;
+        };
+      })();
+
+      blocks.forEach((block) => {
+        const paragraph = document.createElement("div");
+        paragraph.style.padding = "16px 18px";
+        paragraph.style.borderRadius = "18px";
+        paragraph.style.background = "linear-gradient(180deg, rgba(99,102,241,0.08), rgba(15,23,42,0.04))";
+        paragraph.style.border = "1px solid rgba(99,102,241,0.14)";
+        paragraph.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.5)";
+        paragraph.style.fontFamily = "'Cormorant Garamond', 'Times New Roman', serif";
+        paragraph.style.fontSize = "18px";
+        paragraph.style.lineHeight = "1.62";
+        paragraph.style.color = "#0b0b15";
+
+        const lines = wrapSegments(toStyledSegments(block), 720, measure);
+        lines.forEach((line) => {
+          const lineEl = document.createElement("p");
+          lineEl.style.margin = "0";
+          lineEl.style.display = "block";
+          lineEl.style.lineHeight = "1.62";
+
+          line.forEach((segment) => {
+            const span = document.createElement("span");
+            span.textContent = segment.text;
+            span.style.fontWeight = segment.bold ? "700" : "500";
+            span.style.whiteSpace = "pre-wrap";
+            lineEl.appendChild(span);
+          });
+
+          paragraph.appendChild(lineEl);
+        });
+
+        body.appendChild(paragraph);
+      });
+
+      card.appendChild(eyebrow);
+      card.appendChild(title);
+      card.appendChild(subtitle);
+      card.appendChild(body);
+      exportRoot.appendChild(card);
+      document.body.appendChild(exportRoot);
+
+      const canvas = await html2canvas(exportRoot, { scale: 2, backgroundColor: "#0b1021" });
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("p", "pt", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "FAST");
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save("oneline-story.pdf");
+    } catch (err) {
+      console.error(err);
+      setError("Export failed. Please retry or allow downloads/pop-ups.");
+    } finally {
+      if (exportRoot?.parentNode) {
+        document.body.removeChild(exportRoot);
+      }
     }
-
-    const handleLoad = () => {
-      exportWindow.focus();
-      exportWindow.print();
-      exportWindow.removeEventListener("load", handleLoad);
-      URL.revokeObjectURL(blobUrl);
-    };
-
-    exportWindow.addEventListener("load", handleLoad);
   }, [formattedStory, story]);
 
   useEffect(() => {
