@@ -107,6 +107,15 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
           </div>
         )}
 
+        {reminder.minimumMet === false && (
+          <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+            <p className="text-sm font-semibold text-white">Write a few more days first</p>
+            <p className="mt-1 text-xs text-amber-100/80">
+              Add at least {reminder.minimumRequired ?? 4} days in the last week to unlock your next weekly story.
+            </p>
+          </div>
+        )}
+
         <div className="mt-8">
           <VaultGate>
             <StoryGenerator

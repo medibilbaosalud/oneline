@@ -23,6 +23,9 @@ type SummaryReminder = {
   window: { start: string; end: string };
   dueSince: string | null;
   lastSummaryAt: string | null;
+  minimumMet?: boolean;
+  minimumRequired?: number;
+  entryCount?: number;
 };
 
 type SettingsResponse = {
@@ -84,7 +87,7 @@ export default function SettingsClient() {
   const [storyLength, setStoryLength] = useState<StoryLength>("medium");
   const [storyTone, setStoryTone] = useState<StoryTone>("auto");
   const [storyPov, setStoryPov] = useState<StoryPov>("auto");
-  const [storyIncludeHighlights, setStoryIncludeHighlights] = useState(true);
+  const storyIncludeHighlights = true;
   const [storyNotes, setStoryNotes] = useState("");
   const [extendedGuidance, setExtendedGuidance] = useState(false);
   const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
@@ -132,7 +135,6 @@ export default function SettingsClient() {
               setStoryLength(prefs.length);
               setStoryTone(prefs.tone);
               setStoryPov(prefs.pov);
-              setStoryIncludeHighlights(prefs.includeHighlights);
               const nextExtended = !!prefs.extendedGuidance;
               setExtendedGuidance(nextExtended);
               setStoryNotes(
@@ -230,7 +232,6 @@ export default function SettingsClient() {
       setStoryLength(prefs.length);
       setStoryTone(prefs.tone);
       setStoryPov(prefs.pov);
-      setStoryIncludeHighlights(prefs.includeHighlights);
       const nextExtendedFromResponse = !!prefs.extendedGuidance;
       setExtendedGuidance(nextExtendedFromResponse);
       setStoryNotes(
@@ -473,18 +474,8 @@ export default function SettingsClient() {
               <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
                 <span className="text-sm font-medium text-neutral-100">Highlights</span>
                 <p className="mt-2 text-xs text-neutral-500">
-                  Include pinned entries and milestones automatically when building your story.
+                  Pinned entries and milestones are always woven into your summaries.
                 </p>
-                <label className="mt-3 inline-flex items-center gap-2 text-sm text-neutral-200">
-                  <input
-                    type="checkbox"
-                    checked={storyIncludeHighlights}
-                    disabled={settingsLoading || saving}
-                    onChange={(event) => setStoryIncludeHighlights(event.target.checked)}
-                    className="h-4 w-4 rounded border border-white/20 bg-neutral-900 text-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed"
-                  />
-                  Keep highlights in my summaries
-                </label>
               </div>
             </div>
 

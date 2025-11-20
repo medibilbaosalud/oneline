@@ -68,6 +68,9 @@ type SummaryReminder = {
   window: { start: string; end: string };
   dueSince: string | null;
   lastSummaryAt: string | null;
+  minimumMet?: boolean;
+  minimumRequired?: number;
+  entryCount?: number;
 };
 
 type TodayClientProps = {
@@ -362,6 +365,26 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
       <ProductTourAssistant />
       <VaultGate>
         <div className="space-y-6">
+          {summaryReminder && summaryReminder.minimumMet === false && showSummaryReminder && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Keep writing to unlock weekly stories</p>
+                  <p className="mt-1 text-xs text-amber-100/80">
+                    Add at least {summaryReminder.minimumRequired ?? 4} days from the last week to generate your first story.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSummaryReminder(false)}
+                  className="rounded-xl border border-white/20 px-4 py-2 text-xs font-medium text-amber-50 transition hover:bg-amber-500/10"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {summaryReminder && summaryReminder.due && showSummaryReminder && (
             <div className="rounded-2xl border border-indigo-500/40 bg-indigo-500/15 p-4 text-sm text-indigo-100">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

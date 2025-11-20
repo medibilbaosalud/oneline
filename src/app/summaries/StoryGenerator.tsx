@@ -70,7 +70,7 @@ export default function StoryGenerator({
   const { dataKey, unlockWithPassphrase, getCurrentKey } = useVault();
   // Preset + from/to
   const today = useMemo(() => new Date(), []);
-  const [preset, setPreset] = useState<Preset>(initialPreset ?? (initialRange ? "custom" : "90"));
+  const [preset, setPreset] = useState<Preset>(initialPreset ?? (initialRange ? "custom" : "lastWeek"));
   const [customFrom, setCustomFrom] = useState<string>(initialRange?.from ?? ymd(addDays(today, -30)));
   const [customTo, setCustomTo] = useState<string>(initialRange?.to ?? ymd(today));
 
@@ -78,9 +78,7 @@ export default function StoryGenerator({
   const [length, setLength] = useState<Length>(initialOptions?.length ?? "medium");
   const [tone, setTone] = useState<Tone>(initialOptions?.tone ?? "auto");
   const [pov, setPov] = useState<Pov>(initialOptions?.pov ?? "auto");
-  const [includeHighlights, setIncludeHighlights] = useState(
-    initialOptions?.includeHighlights ?? true,
-  );
+  const includeHighlights = true;
   const [notes, setNotes] = useState(initialOptions?.notes ?? "");
   const [language, setLanguage] = useState<SummaryLanguage>(initialOptions?.language ?? "en");
 
@@ -144,14 +142,13 @@ export default function StoryGenerator({
       setLength(initialOptions.length);
       setTone(initialOptions.tone);
       setPov(initialOptions.pov);
-      setIncludeHighlights(initialOptions.includeHighlights);
+      // Highlights are always on now; keep the saved preference for payload completeness.
       setNotes(initialOptions.notes ?? "");
       setLanguage(initialOptions.language ?? "en");
     } else {
       setLength("medium");
       setTone("auto");
       setPov("auto");
-      setIncludeHighlights(true);
       setNotes("");
       setLanguage("en");
     }
@@ -245,8 +242,8 @@ export default function StoryGenerator({
       const fromDate = new Date(`${from}T00:00:00Z`);
       const toDate = new Date(`${to}T00:00:00Z`);
       const diffDays = Math.max(1, Math.round((toDate.valueOf() - fromDate.valueOf()) / (1000 * 60 * 60 * 24)) + 1);
-      if (diffDays <= 8 && decrypted.length < 3) {
-        throw new Error("Keep writing a few more days to unlock your first weekly story.");
+      if (diffDays <= 8 && decrypted.length < 4) {
+        throw new Error("Write at least four days to unlock your first weekly story.");
       }
 
       const payload = {
@@ -452,15 +449,12 @@ export default function StoryGenerator({
           </label>
 
           {/* Highlights */}
-          <label className="flex items-start gap-3 pt-6">
-            <input
-              type="checkbox"
-              checked={includeHighlights}
-              onChange={(e) => setIncludeHighlights(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-zinc-300">Add a highlights section<br /><span className="text-xs text-zinc-500">When on, your story ends with the biggest wins and low points.</span></span>
-          </label>
+          <div className="flex flex-col gap-1 pt-6 text-sm text-zinc-300">
+            <span className="font-medium text-zinc-200">Highlights included automatically</span>
+            <span className="text-xs text-zinc-500">
+              Your story always ends with the week’s biggest wins and low points.
+            </span>
+          </div>
         </div>
 
         {/* Notes */}
