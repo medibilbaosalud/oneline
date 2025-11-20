@@ -337,12 +337,14 @@ export default function StoryGenerator({
       exportRoot = document.createElement("div");
       exportRoot.id = "oneline-story-export-root";
       exportRoot.style.position = "fixed";
-      exportRoot.style.inset = "0";
+      exportRoot.style.top = "-9999px";
+      exportRoot.style.left = "-9999px";
+      exportRoot.style.width = "100vw";
       exportRoot.style.padding = "48px";
       exportRoot.style.background = "linear-gradient(135deg, #0b1021, #101826)";
       exportRoot.style.zIndex = "-1";
       exportRoot.style.pointerEvents = "none";
-      exportRoot.style.opacity = "0";
+      exportRoot.style.opacity = "1";
 
       const card = document.createElement("div");
       card.style.maxWidth = "880px";
@@ -470,8 +472,14 @@ export default function StoryGenerator({
 
           const clonedRoot = doc.getElementById("oneline-story-export-root");
           if (clonedRoot) {
-            // Ensure the cloned export root keeps its inline styling without inherited CSS.
+            // Ensure the cloned export root keeps its inline styling without inherited CSS
+            // and is rendered within the viewport for capture.
             clonedRoot.setAttribute("style", exportRoot?.getAttribute("style") || "");
+            clonedRoot.style.top = "0";
+            clonedRoot.style.left = "0";
+            clonedRoot.style.transform = "translate(0, 0)";
+            clonedRoot.style.opacity = "1";
+            clonedRoot.style.pointerEvents = "none";
           }
         },
       });
