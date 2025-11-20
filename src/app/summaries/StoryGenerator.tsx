@@ -84,118 +84,6 @@ async function loadScriptWithFallback(sources: string[]) {
   throw lastError ?? new Error("Unable to load scripts");
 }
 
-function patchHtml2CanvasColorParser(html2canvas: any) {
-  const Color = html2canvas?.Color;
-  if (!Color || typeof Color.fromString !== "function") return;
-
-  // Avoid double patching
-  if ((Color as any).__patchedForLab === true) return;
-
-  const base = Color.fromString.bind(Color);
-
-  Color.fromString = (input: string) => {
-    const value = input?.trim().toLowerCase();
-
-    if (!value) return base(input);
-
-    // html2canvas doesn't understand modern color functions like lab()/oklab()/lch()/color().
-    const isUnsupported =
-      value.startsWith("lab(") || value.startsWith("oklab(") || value.startsWith("lch(") || value.startsWith("color(");
-
-    if (!isUnsupported) {
-      return base(input);
-    }
-
-    // Try letting the browser resolve the value and fall back to a neutral gray if it still fails.
-    try {
-      const tmp = document.createElement("span");
-      tmp.style.color = input;
-      if (tmp.style.color) {
-        return base(tmp.style.color);
-      }
-    } catch (err) {
-      console.warn("Color normalization failed", err);
-    }
-
-    return base("#111827");
-  };
-
-  (Color as any).__patchedForLab = true;
-}
-
-type StyledSegment = { text: string; bold: boolean };
-
-function toStyledSegments(html: string): StyledSegment[] {
-  if (typeof window === "undefined") {
-    return [{ text: html.replace(/<[^>]+>/g, " "), bold: false }];
-  }
-
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const segments: StyledSegment[] = [];
-
-  const walk = (node: Node, bold: boolean) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = (node.textContent || "").replace(/\s+/g, " ");
-      if (text.trim()) {
-        segments.push({ text, bold });
-      }
-      return;
-    }
-
-    if (!(node instanceof HTMLElement)) return;
-
-    const nextBold = bold || ["B", "STRONG", "H1", "H2", "H3"].includes(node.tagName);
-
-    if (node.tagName === "BR") {
-      segments.push({ text: "\n", bold });
-      return;
-    }
-
-    if (node.tagName === "LI") {
-      segments.push({ text: "• ", bold: nextBold });
-      node.childNodes.forEach((child) => walk(child, nextBold));
-      segments.push({ text: "\n", bold });
-      return;
-    }
-
-    node.childNodes.forEach((child) => walk(child, nextBold));
-  };
-
-  doc.body.childNodes.forEach((child) => walk(child, false));
-  return segments.length ? segments : [{ text: doc.body.textContent || "", bold: false }];
-}
-
-function wrapSegments(segments: StyledSegment[], maxWidth: number, measure: (text: string, bold: boolean) => number) {
-  const lines: StyledSegment[][] = [[]];
-  let currentWidth = 0;
-
-  segments.forEach((segment) => {
-    const parts = segment.text.split(/(\s+)/);
-    parts.forEach((part) => {
-      if (part === "") return;
-
-      if (part === "\n") {
-        if (lines[lines.length - 1].length) {
-          lines.push([]);
-        }
-        currentWidth = 0;
-        return;
-      }
-
-      const width = measure(part, segment.bold);
-      if (currentWidth + width > maxWidth && lines[lines.length - 1].length) {
-        lines.push([]);
-        currentWidth = 0;
-      }
-
-      lines[lines.length - 1].push({ text: part, bold: segment.bold });
-      currentWidth += width;
-    });
-  });
-
-  return lines.filter((line) => line.length);
-}
-
 function lastWeekRange() {
   const now = new Date();
   const day = now.getDay();
@@ -311,283 +199,70 @@ export default function StoryGenerator({
       return;
     }
 
-    let exportRoot: HTMLDivElement | null = null;
-
     try {
-      await loadScriptWithFallback([
-        "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
-        "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
-      ]);
       await loadScriptWithFallback([
         "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
         "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
       ]);
 
       const { jsPDF } = (window as any).jspdf || {};
-      const html2canvas = (window as any).html2canvas as
-        | ((element: HTMLElement, options?: any) => Promise<HTMLCanvasElement>)
-        | undefined;
 
-      if (!jsPDF || !html2canvas) {
+      if (!jsPDF) {
         throw new Error("PDF tools unavailable");
       }
 
-      patchHtml2CanvasColorParser((window as any).html2canvas);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 56;
+      const marginY = 64;
+      const maxWidth = pageWidth - marginX * 2;
+      let cursorY = marginY;
 
-      const captureScale = Math.max(3, Math.ceil(window.devicePixelRatio || 1));
+      const plainParagraphs = story
+        .replace(/\r/g, "")
+        .split(/\n\s*\n/)
+        .map((para) => para.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*/g, "").trim())
+        .filter(Boolean);
 
-      exportRoot = document.createElement("div");
-      exportRoot.id = "oneline-story-export-root";
-      exportRoot.style.position = "fixed";
-      exportRoot.style.top = "-120vh";
-      exportRoot.style.left = "-120vw";
-      exportRoot.style.width = "1480px";
-      exportRoot.style.minHeight = "2100px";
-      exportRoot.style.display = "flex";
-      exportRoot.style.justifyContent = "center";
-      exportRoot.style.alignItems = "center";
-      exportRoot.style.padding = "108px 84px";
-      exportRoot.style.background =
-        "radial-gradient(circle at 20% 20%, rgba(99,102,241,0.12), transparent 30%), " +
-        "radial-gradient(circle at 80% 10%, rgba(236,72,153,0.14), transparent 32%), " +
-        "linear-gradient(145deg, #0b1021, #0d1228 45%, #0f172a)";
-      exportRoot.style.zIndex = "-1";
-      exportRoot.style.pointerEvents = "none";
-      exportRoot.style.opacity = "1";
+      pdf.setFont("times", "bold");
+      pdf.setFontSize(18);
+      pdf.text("OneLine Story", marginX, cursorY, { baseline: "top" });
+      cursorY += 26;
 
-      const page = document.createElement("div");
-      page.style.position = "relative";
-      page.style.width = "100%";
-      page.style.maxWidth = "1120px";
-      page.style.minHeight = "1680px";
-      page.style.padding = "72px 70px";
-      page.style.borderRadius = "32px";
-      page.style.background = "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,246,255,0.97))";
-      page.style.boxShadow =
-        "0 32px 120px rgba(0,0,0,0.28), 0 8px 24px rgba(99,102,241,0.18), inset 0 1px 0 rgba(255,255,255,0.8)";
-      page.style.border = "1px solid rgba(99,102,241,0.18)";
-      page.style.fontFamily = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif";
-      page.style.color = "#0b0b15";
+      pdf.setFont("times", "normal");
+      pdf.setFontSize(12);
+      pdf.setTextColor(20, 20, 20);
 
-      const ribbon = document.createElement("div");
-      ribbon.style.position = "absolute";
-      ribbon.style.top = "0";
-      ribbon.style.left = "0";
-      ribbon.style.right = "0";
-      ribbon.style.height = "12px";
-      ribbon.style.borderRadius = "32px 32px 0 0";
-      ribbon.style.background = "linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)";
+      const ensureSpace = (additional: number) => {
+        if (cursorY + additional > pageHeight - marginY) {
+          pdf.addPage();
+          cursorY = marginY;
+          pdf.setFont("times", "normal");
+          pdf.setFontSize(12);
+          pdf.setTextColor(20, 20, 20);
+        }
+      };
 
-      const header = document.createElement("div");
-      header.style.display = "flex";
-      header.style.justifyContent = "space-between";
-      header.style.alignItems = "center";
-      header.style.marginBottom = "22px";
-      header.style.position = "relative";
-
-      const card = document.createElement("div");
-      card.style.position = "relative";
-      card.style.width = "100%";
-      card.style.minHeight = "100%";
-      card.style.padding = "12px";
-      card.style.borderRadius = "28px";
-      card.style.background = "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243,244,255,0.96))";
-      card.style.boxShadow = "0 18px 60px rgba(0,0,0,0.16)";
-      card.style.border = "1px solid rgba(99,102,241,0.18)";
-      card.style.fontFamily = "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif";
-      card.style.color = "#0b0b15";
-
-      const topRow = document.createElement("div");
-      topRow.style.display = "flex";
-      topRow.style.justifyContent = "space-between";
-      topRow.style.alignItems = "flex-start";
-      topRow.style.marginBottom = "18px";
-
-      const brand = document.createElement("div");
-      brand.style.display = "inline-flex";
-      brand.style.alignItems = "center";
-      brand.style.gap = "12px";
-      brand.style.letterSpacing = "0.16em";
-      brand.style.fontSize = "13px";
-      brand.style.fontWeight = "800";
-      brand.style.textTransform = "uppercase";
-      brand.style.color = "#0f172a";
-      brand.innerHTML =
-        '<span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899);box-shadow:0 12px 32px rgba(99,102,241,0.35);"></span><span>OneLine</span>';
-
-      const eyebrow = document.createElement("div");
-      eyebrow.style.display = "inline-flex";
-      eyebrow.style.alignItems = "center";
-      eyebrow.style.gap = "10px";
-      eyebrow.style.letterSpacing = "0.22em";
-      eyebrow.style.fontSize = "11px";
-      eyebrow.style.fontWeight = "800";
-      eyebrow.style.textTransform = "uppercase";
-      eyebrow.style.color = "#4338ca";
-      eyebrow.innerHTML = '<span style="display:inline-block;width:44px;height:3px;border-radius:999px;background:linear-gradient(90deg,#6366f1,#ec4899);"></span> Your story';
-
-      const title = document.createElement("h1");
-      title.textContent = "Personal recap";
-      title.style.margin = "0 0 8px";
-      title.style.fontSize = "32px";
-      title.style.fontWeight = "800";
-      title.style.letterSpacing = "-0.01em";
-
-      const subtitle = document.createElement("p");
-      subtitle.textContent = "A keepsake-ready export of your narrative — modern, archival, and encrypted by design.";
-      subtitle.style.margin = "0";
-      subtitle.style.color = "#4b5563";
-      subtitle.style.fontSize = "15px";
-      subtitle.style.fontWeight = "600";
-
-      const meta = document.createElement("div");
-      meta.style.display = "flex";
-      meta.style.flexDirection = "column";
-      meta.style.alignItems = "flex-end";
-      meta.style.gap = "8px";
-
-      const badge = document.createElement("div");
-      badge.textContent = "Encrypted journal recap";
-      badge.style.display = "inline-flex";
-      badge.style.alignItems = "center";
-      badge.style.gap = "8px";
-      badge.style.padding = "10px 14px";
-      badge.style.borderRadius = "999px";
-      badge.style.background = "linear-gradient(90deg, rgba(99,102,241,0.14), rgba(236,72,153,0.14))";
-      badge.style.color = "#312e81";
-      badge.style.fontSize = "12px";
-      badge.style.fontWeight = "700";
-      badge.style.letterSpacing = "0.02em";
-      badge.innerHTML = '<span style="width:8px;height:8px;border-radius:999px;background:#10b981;box-shadow:0 0 0 6px rgba(16,185,129,0.18);"></span><span>Private export</span>';
-
-      meta.appendChild(badge);
-
-      const body = document.createElement("div");
-      body.style.display = "grid";
-      body.style.gap = "14px";
-
-      const blocks = formattedStory.length ? formattedStory : formatStoryBlocks(story);
-
-      const measure = (() => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        return (text: string, bold: boolean) => {
-          if (!ctx) return text.length * 7;
-          ctx.font = `${bold ? "700" : "500"} 15px 'Inter', 'Helvetica', sans-serif`;
-          return ctx.measureText(text).width;
-        };
-      })();
-
-      blocks.forEach((block) => {
-        const paragraph = document.createElement("div");
-        paragraph.style.padding = "18px 20px";
-        paragraph.style.borderRadius = "18px";
-        paragraph.style.background = "linear-gradient(180deg, rgba(99,102,241,0.08), rgba(15,23,42,0.04))";
-        paragraph.style.border = "1px solid rgba(99,102,241,0.12)";
-        paragraph.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.6), 0 12px 28px rgba(0,0,0,0.04)";
-        paragraph.style.fontFamily = "'Cormorant Garamond', 'Times New Roman', serif";
-        paragraph.style.fontSize = "18px";
-        paragraph.style.lineHeight = "1.64";
-        paragraph.style.color = "#0b0b15";
-
-        const lines = wrapSegments(toStyledSegments(block), 780, measure);
+      plainParagraphs.forEach((paragraph, idx) => {
+        const lines = pdf.splitTextToSize(paragraph, maxWidth);
         lines.forEach((line) => {
-          const lineEl = document.createElement("p");
-          lineEl.style.margin = "0";
-          lineEl.style.display = "block";
-          lineEl.style.lineHeight = "1.62";
-
-          line.forEach((segment) => {
-            const span = document.createElement("span");
-            span.textContent = segment.text;
-            span.style.fontWeight = segment.bold ? "700" : "500";
-            span.style.whiteSpace = "pre-wrap";
-            lineEl.appendChild(span);
-          });
-
-          paragraph.appendChild(lineEl);
+          ensureSpace(16);
+          pdf.text(line, marginX, cursorY, { baseline: "top" });
+          cursorY += 16;
         });
 
-        body.appendChild(paragraph);
+        if (idx < plainParagraphs.length - 1) {
+          cursorY += 8;
+        }
       });
-
-      const leftStack = document.createElement("div");
-      leftStack.style.display = "flex";
-      leftStack.style.flexDirection = "column";
-      leftStack.style.gap = "8px";
-      leftStack.appendChild(brand);
-      leftStack.appendChild(eyebrow);
-
-      topRow.appendChild(leftStack);
-      topRow.appendChild(meta);
-
-      header.appendChild(topRow);
-      header.appendChild(title);
-      header.appendChild(subtitle);
-
-      card.appendChild(ribbon);
-      card.appendChild(header);
-      card.appendChild(body);
-
-      page.appendChild(card);
-      exportRoot.appendChild(page);
-      document.body.appendChild(exportRoot);
-
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-      const canvas = await html2canvas(exportRoot, {
-        scale: captureScale,
-        backgroundColor: "#0b1021",
-        onclone: (doc: Document) => {
-          doc.querySelectorAll("link[rel='stylesheet'], style").forEach((node) => {
-            // Remove global styles that may include modern color() definitions unsupported by html2canvas.
-            node.parentNode?.removeChild(node);
-          });
-
-          const clonedRoot = doc.getElementById("oneline-story-export-root");
-          if (clonedRoot) {
-            // Ensure the cloned export root keeps its inline styling without inherited CSS
-            // and is rendered within the viewport for capture.
-            clonedRoot.setAttribute("style", exportRoot?.getAttribute("style") || "");
-            clonedRoot.style.top = "0";
-            clonedRoot.style.left = "0";
-            clonedRoot.style.transform = "translate(0, 0)";
-            clonedRoot.style.opacity = "1";
-            clonedRoot.style.pointerEvents = "none";
-          }
-        },
-      });
-      const imgData = canvas.toDataURL("image/png");
-
-      const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: [1480, 2100] });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "MEDIUM");
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight, undefined, "MEDIUM");
-        heightLeft -= pdfHeight;
-      }
 
       pdf.save("oneline-story.pdf");
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Export failed. Please retry after allowing downloads.");
-    } finally {
-      if (exportRoot?.parentNode) {
-        document.body.removeChild(exportRoot);
-      }
     }
-  }, [formattedStory, story]);
+  }, [story]);
 
   useEffect(() => {
     const signature = JSON.stringify({
