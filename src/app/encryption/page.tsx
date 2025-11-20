@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function EncryptionExplainerPage() {
   return (
-    <div className="relative isolate min-h-screen overflow-x-visible bg-[#050507] text-zinc-100">
+    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#050507] text-zinc-100">
       <div className="pointer-events-none absolute inset-0 -z-20 bg-[#03030a]" aria-hidden />
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(129,140,248,0.26),transparent_42%),radial-gradient(circle_at_82%_12%,rgba(236,72,153,0.18),transparent_36%),radial-gradient(circle_at_50%_70%,rgba(45,212,191,0.18),transparent_48%)]"
@@ -42,7 +42,7 @@ export default function EncryptionExplainerPage() {
           </div>
         </header>
 
-        <section className="mt-12 grid gap-6 md:grid-cols-[1.05fr_0.95fr]">
+        <section className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-4 rounded-3xl border border-white/10 bg-neutral-950/80 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.55)] backdrop-blur">
             <h2 className="text-2xl font-semibold text-white">The path of your data</h2>
             <ul className="space-y-3 text-sm leading-relaxed text-zinc-300 md:text-base">
@@ -108,7 +108,7 @@ export default function EncryptionExplainerPage() {
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 rounded-3xl border border-white/10 bg-neutral-950/80 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.55)] backdrop-blur md:grid-cols-2">
+        <section className="mt-10 grid grid-cols-1 gap-6 rounded-3xl border border-white/10 bg-neutral-950/80 p-6 shadow-[0_22px_70px_rgba(0,0,0,0.55)] backdrop-blur md:grid-cols-2">
           <div className="space-y-3">
             <p className="text-xs uppercase tracking-[0.28em] text-indigo-200/80">Science-backed storytelling</p>
             <h2 className="text-2xl font-semibold text-white">How your story is generated</h2>
