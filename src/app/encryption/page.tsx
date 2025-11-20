@@ -9,13 +9,13 @@ export const metadata: Metadata = {
 
 export default function EncryptionExplainerPage() {
   return (
-    <div className="relative isolate min-h-screen overflow-hidden bg-[#050507] text-zinc-100">
+    <div className="relative isolate min-h-screen overflow-x-visible bg-[#050507] text-zinc-100">
       <div className="pointer-events-none absolute inset-0 -z-20 bg-[#03030a]" aria-hidden />
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(129,140,248,0.26),transparent_42%),radial-gradient(circle_at_82%_12%,rgba(236,72,153,0.18),transparent_36%),radial-gradient(circle_at_50%_70%,rgba(45,212,191,0.18),transparent_48%)]"
         aria-hidden
       />
-      <main className="relative mx-auto max-w-5xl px-6 py-16 md:py-20">
+      <main className="relative mx-auto w-full max-w-5xl px-4 py-16 sm:px-6 md:py-20">
         <header className="space-y-4 text-pretty text-center md:text-left">
           <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.32em] text-indigo-200/80">
             End-to-end by design
