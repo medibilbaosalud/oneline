@@ -163,6 +163,47 @@ export default function StoryGenerator({
 
   const propsSignature = useRef<string | null>(null);
 
+  const exportStoryAsPdf = useCallback(() => {
+    if (!story) return;
+
+    const printWindow = typeof window !== "undefined" ? window.open("", "_blank", "noopener") : null;
+    if (!printWindow) {
+      setError("Enable pop-ups to export your story.");
+      return;
+    }
+
+    const renderedBlocks = (formattedStory.length ? formattedStory : formatStoryBlocks(story))
+      .map((block) => `<p style="margin: 0 0 12px 0; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.06); color: #0b0b0f; font-size: 15px; line-height: 1.6; font-family: 'New York', 'Georgia', serif; font-weight: 500;">${block}</p>`)
+      .join("");
+
+    const html = `<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Your OneLine story</title>
+          <style>
+            body { background: #f6f7fb; color: #0b0b0f; margin: 0; padding: 32px; font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif; }
+            .frame { max-width: 780px; margin: 0 auto; padding: 28px; background: white; border-radius: 20px; box-shadow: 0 30px 80px rgba(15, 23, 42, 0.16); }
+            .eyebrow { display: inline-flex; align-items: center; gap: 8px; letter-spacing: 0.16em; font-size: 11px; text-transform: uppercase; color: #4338ca; font-weight: 700; }
+            .eyebrow span { display: inline-block; width: 32px; height: 2px; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #ec4899); }
+            .title { margin: 14px 0 22px; font-size: 28px; color: #0f172a; font-weight: 800; }
+          </style>
+        </head>
+        <body>
+          <div class="frame">
+            <div class="eyebrow"><span></span>YOUR STORY</div>
+            <h1 class="title">Personal recap</h1>
+            ${renderedBlocks}
+          </div>
+        </body>
+      </html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }, [formattedStory, story]);
+
   useEffect(() => {
     const signature = JSON.stringify({
       options: initialOptions ?? null,
@@ -575,9 +616,18 @@ export default function StoryGenerator({
         {!loading && story && (
           <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-indigo-900/20 to-purple-900/10 p-5 shadow-xl shadow-indigo-950/40">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.12),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.12),transparent_26%)]" />
-            <div className="relative mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">
-              <span className="h-[2px] w-6 rounded-full bg-indigo-400" />
-              <span>Your story</span>
+            <div className="relative mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">
+                <span className="h-[2px] w-6 rounded-full bg-indigo-400" />
+                <span>Your story</span>
+              </div>
+              <button
+                type="button"
+                onClick={exportStoryAsPdf}
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-indigo-50 shadow-sm transition hover:border-white/30 hover:bg-white/10"
+              >
+                Export as PDF
+              </button>
             </div>
 
             <div className="relative space-y-3 font-serif text-[17px] leading-relaxed text-zinc-50">
