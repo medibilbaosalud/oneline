@@ -8,9 +8,14 @@ import {
   entryLimitFor,
   guidanceLimitFor,
 } from "@/lib/summaryPreferences";
-import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
+import type {
+  SummaryLanguage,
+  SummaryPreferences,
+  ThemePreference,
+} from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
+import { useTheme } from "@/components/ThemeProvider";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
@@ -76,6 +81,7 @@ function formatWindow(window?: { start: string; end: string }) {
 export default function SettingsClient() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
+  const { theme, setTheme, ready: themeReady } = useTheme();
   const [frequency, setFrequency] = useState<Frequency>("weekly");
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,12 +98,19 @@ export default function SettingsClient() {
   const [extendedGuidance, setExtendedGuidance] = useState(false);
   const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
+  const [themePreference, setThemePreference] = useState<ThemePreference>("dark");
 
   const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
 
   const extendedToggleClassName = extendedGuidance
     ? "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-indigo-400/60 bg-indigo-500/20 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60"
     : "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-white/15 bg-white/5 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60";
+
+  useEffect(() => {
+    if (themeReady) {
+      setThemePreference(theme);
+    }
+  }, [theme, themeReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -141,6 +154,9 @@ export default function SettingsClient() {
                 clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtended)),
               );
               setStoryLanguage(prefs.language);
+              const prefTheme = prefs.theme ?? "dark";
+              setThemePreference(prefTheme);
+              setTheme(prefTheme);
               primeEntryLimitsCache({
                 entryLimit: entryLimitFor(nextExtended),
                 guidanceLimit: guidanceLimitFor(nextExtended),
@@ -191,6 +207,7 @@ export default function SettingsClient() {
     const trimmedNotes = typeof rawNotesSource === "string" ? rawNotesSource.trim() : "";
     const limitedNotes = trimmedNotes.length > limit ? trimmedNotes.slice(0, limit) : trimmedNotes;
     const nextLanguage = overrides.language ?? storyLanguage;
+    const nextTheme = overrides.theme ?? themePreference;
 
     try {
       const sessionRes = await supabase.auth.getSession();
@@ -218,6 +235,7 @@ export default function SettingsClient() {
             extendedGuidance: nextExtended,
             notes: limitedNotes.length ? limitedNotes : undefined,
             language: nextLanguage,
+            theme: nextTheme,
           },
         }),
       });
@@ -238,6 +256,9 @@ export default function SettingsClient() {
         clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtendedFromResponse)),
       );
       setStoryLanguage(prefs.language);
+      const savedTheme = prefs.theme ?? themePreference;
+      setThemePreference(savedTheme);
+      setTheme(savedTheme);
       setReminder(json.settings.reminder ?? null);
       if (!suppressFeedback) {
         setFeedback("Saved.");
@@ -285,6 +306,16 @@ export default function SettingsClient() {
       });
       return;
     }
+  };
+
+  const handleThemeSelection = async (next: ThemePreference) => {
+    if (settingsLoading || saving) return;
+    setThemePreference(next);
+    setTheme(next);
+    await handleSaveSettings({
+      preferenceOverrides: { theme: next },
+      suppressFeedback: true,
+    });
   };
 
   async function handleExport() {
@@ -342,7 +373,7 @@ export default function SettingsClient() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-50">
+    <main className="min-h-screen app-shell">
       <div className="mx-auto max-w-4xl px-6 py-12">
         <header className="max-w-2xl space-y-2">
           <p className="text-sm uppercase tracking-[0.3em] text-indigo-300/80">Account</p>
@@ -354,17 +385,17 @@ export default function SettingsClient() {
         </header>
 
         <div className="mt-8 space-y-6">
-          <section className="rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg shadow-black/20">
-            <h2 className="text-lg font-semibold text-neutral-100">Profile</h2>
+          <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-semibold">Profile</h2>
             {settingsLoading ? (
-              <p className="mt-3 text-sm text-neutral-400">Loading your account…</p>
+              <p className="mt-3 text-sm app-muted">Loading your account…</p>
             ) : (
               <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                 <div>
-                  <p className="text-sm text-neutral-500">Signed in as</p>
-                  <p className="truncate text-base font-medium text-neutral-100">{email ?? "Unknown"}</p>
+                  <p className="text-sm app-muted">Signed in as</p>
+                  <p className="truncate text-base font-medium">{email ?? "Unknown"}</p>
                   {lastSignIn && (
-                    <p className="mt-1 text-xs text-neutral-500">Last sign-in: {new Date(lastSignIn).toLocaleString()}</p>
+                    <p className="mt-1 text-xs app-muted">Last sign-in: {new Date(lastSignIn).toLocaleString()}</p>
                   )}
                 </div>
                 <button
@@ -377,11 +408,11 @@ export default function SettingsClient() {
             )}
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg shadow-black/20">
+          <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-neutral-100">Summary planner</h2>
-                <p className="text-sm text-neutral-400">
+                <h2 className="text-lg font-semibold">Summary planner</h2>
+                <p className="text-sm app-muted">
                   Choose how often OneLine should compile your recent entries into a recap and how it should sound.
                 </p>
               </div>
@@ -390,7 +421,8 @@ export default function SettingsClient() {
                   value={frequency}
                   disabled={settingsLoading || saving}
                   onChange={(e) => setFrequency(e.target.value as Frequency)}
-                  className="rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ backgroundColor: "var(--app-panel)", borderColor: "var(--app-border)", color: "var(--app-text)" }}
                 >
                   <option value="weekly">Weekly digest</option>
                   <option value="monthly">Monthly recap</option>
@@ -409,8 +441,8 @@ export default function SettingsClient() {
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
-                <label htmlFor="story-length" className="text-sm font-medium text-neutral-100">
+              <div className="rounded-2xl border app-panel p-4">
+                <label htmlFor="story-length" className="text-sm font-medium">
                   Story length
                 </label>
                 <select
@@ -418,19 +450,20 @@ export default function SettingsClient() {
                   value={storyLength}
                   disabled={settingsLoading || saving}
                   onChange={(event) => setStoryLength(event.target.value as StoryLength)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ backgroundColor: "var(--app-panel)", borderColor: "var(--app-border)" }}
                 >
                   <option value="short">Short (around 4 paragraphs)</option>
                   <option value="medium">Medium (balanced)</option>
                   <option value="long">Long (10+ paragraphs)</option>
                 </select>
-                <p className="mt-2 text-xs text-neutral-500">
+                <p className="mt-2 text-xs app-muted">
                   We’ll pre-fill the generator with this depth every time you create a story.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
-                <label htmlFor="story-tone" className="text-sm font-medium text-neutral-100">
+              <div className="rounded-2xl border app-panel p-4">
+                <label htmlFor="story-tone" className="text-sm font-medium">
                   Tone
                 </label>
                 <select
@@ -438,7 +471,8 @@ export default function SettingsClient() {
                   value={storyTone}
                   disabled={settingsLoading || saving}
                   onChange={(event) => setStoryTone(event.target.value as StoryTone)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ backgroundColor: "var(--app-panel)", borderColor: "var(--app-border)" }}
                 >
                   <option value="auto">Auto (let the model decide)</option>
                   <option value="warm">Warm & encouraging</option>
@@ -446,13 +480,13 @@ export default function SettingsClient() {
                   <option value="poetic">Poetic</option>
                   <option value="direct">Direct & concise</option>
                 </select>
-                <p className="mt-2 text-xs text-neutral-500">
+                <p className="mt-2 text-xs app-muted">
                   Choose the emotional flavour you want in your summaries.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
-                <label htmlFor="story-pov" className="text-sm font-medium text-neutral-100">
+              <div className="rounded-2xl border app-panel p-4">
+                <label htmlFor="story-pov" className="text-sm font-medium">
                   Point of view
                 </label>
                 <select
@@ -460,27 +494,69 @@ export default function SettingsClient() {
                   value={storyPov}
                   disabled={settingsLoading || saving}
                   onChange={(event) => setStoryPov(event.target.value as StoryPov)}
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ backgroundColor: "var(--app-panel)", borderColor: "var(--app-border)" }}
                 >
                   <option value="auto">Auto</option>
                   <option value="first">First person</option>
                   <option value="third">Third person</option>
                 </select>
-                <p className="mt-2 text-xs text-neutral-500">
+                <p className="mt-2 text-xs app-muted">
                   Decide whether the recap should sound like you or like a narrator.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
-                <span className="text-sm font-medium text-neutral-100">Highlights</span>
-                <p className="mt-2 text-xs text-neutral-500">
+              <div className="rounded-2xl border app-panel p-4">
+                <label className="text-sm font-medium">Appearance</label>
+                <p className="mt-2 text-xs app-muted">
+                  Pick light or dark. We’ll remember it for this account and device.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleThemeSelection("light")}
+                    disabled={settingsLoading || saving}
+                    aria-pressed={themePreference === "light"}
+                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      themePreference === "light"
+                        ? "border-indigo-400 bg-indigo-500 text-white shadow"
+                        : "bg-transparent"
+                    }`}
+                    style={
+                      themePreference === "light" ? undefined : { borderColor: "var(--app-border)" }
+                    }
+                  >
+                    Light
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleThemeSelection("dark")}
+                    disabled={settingsLoading || saving}
+                    aria-pressed={themePreference === "dark"}
+                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      themePreference === "dark"
+                        ? "border-indigo-400 bg-indigo-500 text-white shadow"
+                        : "bg-transparent"
+                    }`}
+                    style={
+                      themePreference === "dark" ? undefined : { borderColor: "var(--app-border)" }
+                    }
+                  >
+                    Dark
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border app-panel p-4">
+                <span className="text-sm font-medium">Highlights</span>
+                <p className="mt-2 text-xs app-muted">
                   Pinned entries and milestones are always woven into your summaries.
                 </p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/5 bg-black/15 p-4">
-              <label htmlFor="story-notes" className="text-sm font-medium text-neutral-100">
+            <div className="mt-6 rounded-2xl border app-panel p-4">
+              <label htmlFor="story-notes" className="text-sm font-medium">
                 Personal guidance (optional)
               </label>
               <textarea
@@ -490,9 +566,10 @@ export default function SettingsClient() {
                 disabled={settingsLoading || saving}
                 onChange={(event) => setStoryNotes(event.target.value)}
                 placeholder="Anything you want Gemini to emphasize when it writes your recap."
-                className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-3 text-sm text-neutral-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 w-full rounded-xl border px-3 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ backgroundColor: "var(--app-panel)", borderColor: "var(--app-border)" }}
               />
-              <div className="mt-1 flex flex-col gap-1 text-xs text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-1 flex flex-col gap-1 text-xs app-muted sm:flex-row sm:items-center sm:justify-between">
                 <span>We’ll pre-fill the generator with this note — you can still edit it before sending.</span>
                 <span>
                   {storyNotes.length}/{guidanceLimit}
@@ -500,15 +577,15 @@ export default function SettingsClient() {
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.07] via-white/[0.03] to-transparent p-6">
+            <div className="mt-6 overflow-hidden rounded-3xl border app-panel p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-3">
                   <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.28em] text-indigo-200/80">
                     Extended
                   </span>
                   <div>
-                    <h3 className="text-xl font-semibold text-neutral-50">Extended guidance mode</h3>
-                    <p className="mt-2 max-w-md text-sm text-neutral-400">
+                    <h3 className="text-xl font-semibold">Extended guidance mode</h3>
+                    <p className="mt-2 max-w-md text-sm app-muted">
                       Double your personal brief limit to 666 characters so you can share richer context with every summary request.
                     </p>
                   </div>
@@ -530,23 +607,23 @@ export default function SettingsClient() {
                       }`}
                     />
                   </button>
-                  <span className="text-sm font-medium text-neutral-200">
+                  <span className="text-sm font-medium">
                     {extendedGuidance ? "Enabled" : "Disabled"}
                   </span>
                 </div>
               </div>
-              <p className="mt-4 text-xs text-neutral-500">
+              <p className="mt-4 text-xs app-muted">
                 Turning this off will gently trim your note back to the standard {GUIDANCE_NOTES_LIMIT_BASE}-character limit.
               </p>
             </div>
 
             {reminder && (
-              <div className="mt-6 rounded-2xl border border-white/5 bg-black/20 p-4 text-xs text-neutral-400">
+              <div className="mt-6 rounded-2xl border app-panel p-4 text-xs app-muted">
                 <p>
                   Last story captured:
-                  <span className="ml-1 text-neutral-200">{formatDateLabel(reminder.lastSummaryAt)}</span>
+                  <span className="ml-1 font-medium">{formatDateLabel(reminder.lastSummaryAt)}</span>
                 </p>
-                <p className={`mt-2 ${reminder.due ? "text-amber-300" : "text-neutral-400"}`}>
+                <p className={`mt-2 ${reminder.due ? "text-amber-500" : "app-muted"}`}>
                   {reminder.due
                     ? `It’s time for your ${reminder.period} story covering ${formatWindow(reminder.window)}. We’ll also remind you on the Today screen.`
                     : `Your ${humanizeFrequency(reminder.period).toLowerCase()} cadence is active. We’ll prompt you again after the current window closes.`}
@@ -554,18 +631,18 @@ export default function SettingsClient() {
               </div>
             )}
 
-            <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-neutral-300">
+            <div className="mt-4 rounded-2xl border app-panel p-4 text-sm app-muted">
               <p className="font-medium text-neutral-100">New Year automation</p>
-              <p className="mt-2 text-neutral-400">
+              <p className="mt-2">
                 Every 1 January (Madrid time) we automatically generate a &ldquo;Year in review&rdquo; story for the previous year and
                 file it under your summaries. You can always tweak or regenerate it manually from the Year Story tool.
               </p>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg shadow-black/20">
-            <h2 className="text-lg font-semibold text-neutral-100">Data control</h2>
-            <p className="mt-2 text-sm text-neutral-400">
+          <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-semibold">Data control</h2>
+            <p className="mt-2 text-sm app-muted">
               Download a full copy of your entries or remove everything. Exports are delivered instantly as JSON.
             </p>
 
@@ -586,8 +663,8 @@ export default function SettingsClient() {
           </section>
 
           {(feedback || error) && (
-            <div className="rounded-3xl border border-white/10 bg-neutral-900/80 p-4 text-sm">
-              {feedback && <p className="text-emerald-400">{feedback}</p>}
+            <div className="rounded-3xl border app-panel p-4 text-sm">
+              {feedback && <p className="text-emerald-500">{feedback}</p>}
               {error && <p className="text-rose-400">{error}</p>}
             </div>
           )}

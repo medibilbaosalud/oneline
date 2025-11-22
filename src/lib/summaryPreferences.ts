@@ -3,12 +3,14 @@ const SUMMARY_TONES = ['auto', 'warm', 'neutral', 'poetic', 'direct'] as const;
 const SUMMARY_POVS = ['auto', 'first', 'third'] as const;
 const FREQUENCIES = ['weekly', 'monthly', 'yearly'] as const;
 const SUMMARY_LANGUAGES = ['en', 'es', 'de', 'fr'] as const;
+const THEMES = ['dark', 'light'] as const;
 
 export type SummaryLength = typeof SUMMARY_LENGTHS[number];
 export type SummaryTone = typeof SUMMARY_TONES[number];
 export type SummaryPov = typeof SUMMARY_POVS[number];
 export type SummaryFrequency = typeof FREQUENCIES[number];
 export type SummaryLanguage = typeof SUMMARY_LANGUAGES[number];
+export type ThemePreference = typeof THEMES[number];
 
 export type SummaryPreferences = {
   length: SummaryLength;
@@ -18,6 +20,7 @@ export type SummaryPreferences = {
   notes: string | null;
   extendedGuidance: boolean;
   language: SummaryLanguage;
+  theme?: ThemePreference;
 };
 
 export type SummaryReminder = {
@@ -53,6 +56,7 @@ export const DEFAULT_SUMMARY_PREFERENCES: SummaryPreferences = {
   notes: null,
   extendedGuidance: false,
   language: 'en',
+  theme: 'dark',
 };
 
 export function isSummaryLength(value: unknown): value is SummaryLength {
@@ -73,6 +77,10 @@ export function isSummaryFrequency(value: unknown): value is SummaryFrequency {
 
 export function isSummaryLanguage(value: unknown): value is SummaryLanguage {
   return typeof value === 'string' && SUMMARY_LANGUAGES.includes(value as SummaryLanguage);
+}
+
+export function isThemePreference(value: unknown): value is ThemePreference {
+  return typeof value === 'string' && THEMES.includes(value as ThemePreference);
 }
 
 function sanitizeNotes(value: unknown, limit: number): string | null {
@@ -112,9 +120,13 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
     source.interface_language ??
     source.locale;
 
+  const themeSource = source.theme ?? source.theme_preference ?? source.appearance ?? source.display_theme;
+
   const language = isSummaryLanguage(languageSource)
     ? languageSource
     : DEFAULT_SUMMARY_PREFERENCES.language;
+
+  const theme = isThemePreference(themeSource) ? themeSource : DEFAULT_SUMMARY_PREFERENCES.theme;
 
   return {
     length: isSummaryLength(lengthSource) ? lengthSource : DEFAULT_SUMMARY_PREFERENCES.length,
@@ -125,6 +137,7 @@ export function coerceSummaryPreferences(input: unknown): SummaryPreferences {
     notes: sanitizeNotes(notesSource, noteLimit),
     extendedGuidance: nextExtendedGuidance,
     language,
+    theme,
   };
 }
 
