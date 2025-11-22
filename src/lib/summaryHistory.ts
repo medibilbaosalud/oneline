@@ -10,8 +10,8 @@ export type StoredSummary = {
   from?: string;
   to?: string;
   period?: string;
-  cipher: string;
-  iv: string;
+  cipher_b64: string;
+  iv_b64: string;
 };
 
 function storageKey(userId: string) {
@@ -27,7 +27,7 @@ export async function persistSummary(
   const trimmed = story.trim();
   if (!trimmed) return;
 
-  const { cipher, iv } = await encryptText(key, trimmed);
+  const { cipher_b64, iv_b64 } = await encryptText(key, trimmed);
   const existing = (await idbGet<StoredSummary[]>(storageKey(userId))) ?? [];
   const entry: StoredSummary = {
     id: crypto.randomUUID(),
@@ -35,8 +35,8 @@ export async function persistSummary(
     from: meta.from,
     to: meta.to,
     period: meta.period,
-    cipher,
-    iv,
+    cipher_b64,
+    iv_b64,
   };
 
   const next = [entry, ...existing].slice(0, 50);
@@ -49,7 +49,7 @@ export async function loadSummaries(userId: string, key: CryptoKey) {
 
   for (const item of stored) {
     try {
-      const text = await decryptText(key, item.cipher, item.iv);
+      const text = await decryptText(key, item.cipher_b64, item.iv_b64);
       decrypted.push({
         id: item.id,
         createdAt: item.createdAt,
