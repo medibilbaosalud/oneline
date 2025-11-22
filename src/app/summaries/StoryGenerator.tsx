@@ -13,6 +13,11 @@ type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
 type Pov = "auto" | "first" | "third";
 type Preset = "30" | "90" | "180" | "year" | "lastWeek" | "custom";
 
+type TextSegment = {
+  text: string;
+  bold: boolean;
+};
+
 type StoryGeneratorProps = {
   initialOptions?: SummaryPreferences;
   initialPreset?: Preset;
@@ -43,6 +48,27 @@ function formatStoryBlocks(story: string) {
 function ymd(d: Date) {
   const iso = new Date(d).toISOString();
   return iso.slice(0, 10);
+}
+
+function parseSegments(paragraph: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  const pattern = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(paragraph)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ text: paragraph.slice(lastIndex, match.index), bold: false });
+    }
+    segments.push({ text: match[1], bold: true });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < paragraph.length) {
+    segments.push({ text: paragraph.slice(lastIndex), bold: false });
+  }
+
+  return segments;
 }
 
 function startOfYear(d = new Date()) {
@@ -218,42 +244,80 @@ export default function StoryGenerator({
       const marginY = 64;
       const maxWidth = pageWidth - marginX * 2;
       let cursorY = marginY;
+      const lineHeight = 18;
 
-      const plainParagraphs = story
+      const segmentsByParagraph = story
         .replace(/\r/g, "")
         .split(/\n\s*\n/)
-        .map((para) => para.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*/g, "").trim())
-        .filter(Boolean);
+        .map((para) => para.trim())
+        .filter(Boolean)
+        .map((para) => parseSegments(para));
 
       pdf.setFont("times", "bold");
-      pdf.setFontSize(18);
+      pdf.setFontSize(20);
+      pdf.setTextColor(28, 34, 78);
       pdf.text("OneLine Story", marginX, cursorY, { baseline: "top" });
-      cursorY += 26;
+      cursorY += 22;
 
-      pdf.setFont("times", "normal");
+      pdf.setFont("times", "italic");
       pdf.setFontSize(12);
-      pdf.setTextColor(20, 20, 20);
+      pdf.setTextColor(90, 96, 122);
+      const dateLine = from && to ? `Range: ${from} → ${to}` : "Private recap";
+      pdf.text(dateLine, marginX, cursorY, { baseline: "top" });
+      cursorY += 12;
+
+      pdf.setDrawColor(144, 153, 180);
+      pdf.setLineWidth(0.6);
+      pdf.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 18;
+
+      pdf.setFontSize(13);
+      pdf.setTextColor(26, 26, 26);
 
       const ensureSpace = (additional: number) => {
         if (cursorY + additional > pageHeight - marginY) {
           pdf.addPage();
           cursorY = marginY;
-          pdf.setFont("times", "normal");
-          pdf.setFontSize(12);
-          pdf.setTextColor(20, 20, 20);
+          pdf.setFontSize(13);
+          pdf.setTextColor(26, 26, 26);
         }
       };
 
-      plainParagraphs.forEach((paragraph, idx) => {
-        const lines = pdf.splitTextToSize(paragraph, maxWidth) as string[];
-        lines.forEach((line: string) => {
-          ensureSpace(16);
-          pdf.text(line, marginX, cursorY, { baseline: "top" });
-          cursorY += 16;
+      const writeParagraph = (segments: TextSegment[]) => {
+        let cursorX = marginX;
+        ensureSpace(lineHeight);
+
+        segments.forEach((segment) => {
+          const words = segment.text.split(/\s+/).filter(Boolean);
+          if (words.length === 0) {
+            return;
+          }
+
+          pdf.setFont("times", segment.bold ? "bold" : "normal");
+
+          words.forEach((word) => {
+            const spacer = cursorX === marginX ? "" : " ";
+            const textToRender = `${spacer}${word}`;
+            const textWidth = pdf.getTextWidth(textToRender);
+
+            if (cursorX + textWidth > marginX + maxWidth) {
+              cursorY += lineHeight;
+              ensureSpace(lineHeight);
+              cursorX = marginX;
+            }
+
+            pdf.text(textToRender, cursorX, cursorY, { baseline: "top" });
+            cursorX += textWidth;
+          });
         });
 
-        if (idx < plainParagraphs.length - 1) {
-          cursorY += 8;
+        cursorY += lineHeight;
+      };
+
+      segmentsByParagraph.forEach((segments, idx) => {
+        writeParagraph(segments);
+        if (idx < segmentsByParagraph.length - 1) {
+          cursorY += 6;
         }
       });
 
@@ -262,7 +326,7 @@ export default function StoryGenerator({
       console.error(err);
       setError(err instanceof Error ? err.message : "Export failed. Please retry after allowing downloads.");
     }
-  }, [story]);
+  }, [from, story, to]);
 
   useEffect(() => {
     const signature = JSON.stringify({
