@@ -63,13 +63,13 @@ export default function SummaryHistory() {
   }, [dataKey, ready, userId]);
 
   return (
-    <section className="mt-10 space-y-4">
+    <section id="summary-history" className="mt-10 space-y-4">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Saved stories</p>
           <h2 className="text-lg font-semibold text-white">Summary history</h2>
           <p className="text-sm text-neutral-400">
-            We keep an encrypted copy of every story you generate on this device. Unlock your vault to read them.
+            We keep an encrypted copy of every story you generate on this device—nothing goes to Supabase. Unlock your vault to read them.
           </p>
         </div>
       </header>

@@ -65,17 +65,33 @@ export default async function HistoryPage() {
   return (
     <main className="min-h-screen bg-[#0A0A0B] text-zinc-100">
       <div className="mx-auto w-full max-w-3xl px-4 py-8">
-        <h1 className="mb-6 text-3xl font-semibold">History</h1>
+        <header className="mb-6 space-y-3">
+          <h1 className="text-3xl font-semibold">History</h1>
+          <p className="text-sm text-zinc-400">
+            Review your encrypted journal entries and keep a private archive of generated summaries. Both stay protected by your
+            vault key.
+          </p>
+          <div className="flex flex-wrap gap-3 text-xs text-zinc-300">
+            <a className="rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:border-indigo-400 hover:text-white" href="#journal-history">
+              Journal entries
+            </a>
+            <a className="rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:border-indigo-400 hover:text-white" href="#summary-history">
+              Summaries
+            </a>
+          </div>
+        </header>
 
         <VaultGate>
           <div className="space-y-10">
-            {entries.length > 0 ? (
-              <HistoryClient initialEntries={entries} initialEntryLimit={entryLimit} />
-            ) : (
-              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-zinc-400">
-                No entries yet.
-              </div>
-            )}
+            <section id="journal-history">
+              {entries.length > 0 ? (
+                <HistoryClient initialEntries={entries} initialEntryLimit={entryLimit} />
+              ) : (
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-zinc-400">
+                  No entries yet.
+                </div>
+              )}
+            </section>
 
             <SummaryHistory />
           </div>
