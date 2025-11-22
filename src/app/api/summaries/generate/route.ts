@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const { used } = await ensureMonthlySummaryWindow(sb, user.id, new Date());
   const unlimited = user.email?.toLowerCase() === "aitoralboniga@gmail.com";
-  const limit = unlimited ? 1000000 : 10;
+  const limit = unlimited ? 1000000 : 20;
   if (!unlimited && used >= limit) {
     return NextResponse.json({ error: "monthly-limit-reached" }, { status: 429 });
   }
