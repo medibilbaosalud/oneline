@@ -9,6 +9,7 @@ import { idbDel, idbGet, idbSet } from '@/lib/localVault';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
+const PASSPHRASE_KEY_PREFIX = 'oneline.v1.passphrase';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
@@ -16,11 +17,17 @@ let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
 let lastVaultError: string | null = null;
+let cachedPassphrase: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
+let autoUnlockAttemptedFor: string | null = null;
 
 function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
+}
+
+function passphraseKeyForUser(userId: string) {
+  return `${PASSPHRASE_KEY_PREFIX}.${userId}`;
 }
 
 function notify() {
@@ -31,6 +38,19 @@ function notify() {
       // ignore listener errors
     }
   });
+}
+
+async function persistPassphrase(passphrase: string | null) {
+  if (!currentUserId) return;
+  const key = passphraseKeyForUser(currentUserId);
+  if (passphrase) {
+    cachedPassphrase = passphrase;
+    await idbSet(key, passphrase).catch(() => {});
+  } else {
+    cachedPassphrase = null;
+    await idbDel(key).catch(() => {});
+  }
+  notify();
 }
 
 async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
@@ -79,6 +99,8 @@ async function ensureInitialized() {
         hasStoredBundle = false;
         lastVaultError = null;
         sharedKey = null;
+        cachedPassphrase = null;
+        autoUnlockAttemptedFor = null;
       }
 
       if (!currentUserId) {
@@ -93,7 +115,6 @@ async function ensureInitialized() {
         cachedBundle = localBundle;
         hasStoredBundle = true;
         lastVaultError = null;
-        return;
       }
 
       const remoteBundle = await fetchRemoteBundle();
@@ -106,6 +127,24 @@ async function ensureInitialized() {
         cachedBundle = null;
         hasStoredBundle = false;
         lastVaultError = null;
+      }
+
+      const storedPassphraseKey = passphraseKeyForUser(currentUserId);
+      const savedPassphrase = (await idbGet<string>(storedPassphraseKey).catch(() => null)) ?? null;
+      cachedPassphrase = savedPassphrase;
+
+      if (cachedBundle && cachedPassphrase && autoUnlockAttemptedFor !== currentUserId && !sharedKey) {
+        autoUnlockAttemptedFor = currentUserId;
+        try {
+          sharedKey = await unwrapDataKey(cachedBundle, cachedPassphrase);
+          lastVaultError = null;
+        } catch {
+          sharedKey = null;
+          cachedPassphrase = null;
+          await idbDel(storedPassphraseKey).catch(() => {});
+          lastVaultError =
+            'Stored passphrase could not decrypt your vault. Re-enter the exact phrase to unlock and optionally save it again.';
+        }
       }
     } finally {
       initialized = true;
@@ -152,7 +191,7 @@ export function useVault() {
     };
   }, []);
 
-  const createWithPassphrase = useCallback(async (passphrase: string, rememberDevice: boolean) => {
+  const createWithPassphrase = useCallback(async (passphrase: string, rememberDevice: boolean, rememberPassphrase?: boolean) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
     if (!currentUserId) throw new Error('Sign in before creating your vault');
@@ -170,10 +209,15 @@ export function useVault() {
       await saveRemoteBundle(bundle);
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
     }
+    if (rememberPassphrase) {
+      await persistPassphrase(passphrase);
+    } else {
+      await persistPassphrase(null);
+    }
     notify();
   }, []);
 
-  const unlockWithPassphrase = useCallback(async (passphrase: string) => {
+  const unlockWithPassphrase = useCallback(async (passphrase: string, opts?: { rememberPassphrase?: boolean }) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
@@ -194,6 +238,11 @@ export function useVault() {
       cachedBundle = bundle;
       hasStoredBundle = true;
       lastVaultError = null;
+      if (opts?.rememberPassphrase) {
+        await persistPassphrase(passphrase);
+      } else if (opts?.rememberPassphrase === false) {
+        await persistPassphrase(null);
+      }
       notify();
     } catch (error) {
       sharedKey = null;
@@ -210,6 +259,8 @@ export function useVault() {
     sharedKey = null;
     if (wipeLocal && currentUserId) {
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
+      await idbDel(passphraseKeyForUser(currentUserId)).catch(() => {});
+      cachedPassphrase = null;
       hasStoredBundle = !!cachedBundle;
     }
     notify();
@@ -223,6 +274,7 @@ export function useVault() {
     unlockWithPassphrase,
     lock,
     vaultError: lastVaultError,
+    hasStoredPassphrase: !!cachedPassphrase,
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,

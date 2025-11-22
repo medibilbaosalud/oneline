@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 import { OnboardingAssistant } from "@/components/OnboardingAssistant";
@@ -14,6 +14,27 @@ export function ProductTourAssistant() {
   const [open, setOpen] = useState(false);
   const [storageKey, setStorageKey] = useState<string | null>(null);
   const [canRender, setCanRender] = useState(false);
+  const hasSyncedRemoteSeen = useRef(false);
+
+  const markTourSeen = useCallback(
+    async (key: string | null) => {
+      const timestamp = new Date().toISOString();
+
+      if (typeof window !== "undefined" && key) {
+        window.localStorage.setItem(key, timestamp);
+      }
+
+      if (hasSyncedRemoteSeen.current) return;
+
+      try {
+        await supabase.auth.updateUser({ data: { onboarding_tour_seen_at: timestamp } });
+        hasSyncedRemoteSeen.current = true;
+      } catch (err) {
+        console.error("[tour] failed to persist seen flag", err);
+      }
+    },
+    [supabase],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -36,11 +57,20 @@ export function ProductTourAssistant() {
 
         let shouldAutoOpen = false;
         if (typeof window !== "undefined") {
-          const hasSeen = Boolean(window.localStorage.getItem(key));
+          const hasSeenLocal = Boolean(window.localStorage.getItem(key));
+          const hasSeenRemote = Boolean(user.user_metadata?.onboarding_tour_seen_at);
+          const hasSeen = hasSeenLocal || hasSeenRemote;
           const intent = window.localStorage.getItem(INTENT_KEY);
-          shouldAutoOpen = Boolean(intent && !hasSeen);
+          const firstVisit = !hasSeenLocal;
+
+          shouldAutoOpen = !hasSeen && (firstVisit || Boolean(intent));
+
           if (intent) {
             window.localStorage.removeItem(INTENT_KEY);
+          }
+
+          if (shouldAutoOpen) {
+            markTourSeen(key);
           }
         }
 
@@ -56,7 +86,7 @@ export function ProductTourAssistant() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, [markTourSeen, supabase]);
 
   useEffect(() => {
     if (ready) return;
@@ -66,18 +96,14 @@ export function ProductTourAssistant() {
   }, [ready]);
 
   const handleDismiss = useCallback(() => {
-    if (storageKey && typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey, new Date().toISOString());
-    }
+    markTourSeen(storageKey);
     setOpen(false);
-  }, [storageKey]);
+  }, [markTourSeen, storageKey]);
 
   const handleOpen = useCallback(() => {
-    if (storageKey && typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey, new Date().toISOString());
-    }
+    markTourSeen(storageKey);
     setOpen(true);
-  }, [storageKey]);
+  }, [markTourSeen, storageKey]);
 
   if (!ready || !canRender) {
     return null;

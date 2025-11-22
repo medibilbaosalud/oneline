@@ -348,7 +348,7 @@ export default function VisitorExperience() {
             Walk through the OneLine workspace
           </h1>
           <p className="mt-4 text-sm text-neutral-400 md:text-base">
-            Explore the editor, history, summaries, and settings without creating an account. Everything is read-only here — to save your own encrypted entries you’ll need to sign in and unlock your vault with a passphrase only you know.
+            Explore the editor, history, summaries, and settings without creating an account. Everything here is read-only so you can see the flow before saving your own encrypted entries.
           </p>
         </header>
 
@@ -366,9 +366,6 @@ export default function VisitorExperience() {
               Explore the workspace (no sign-in needed)
             </span>
           </button>
-          <p className="max-w-xl text-sm text-neutral-400 md:text-base">
-            Press the button to open a full, read-only replica of the Today, History, Summaries, and Settings pages — exactly how members see them, just with demo data and callouts.
-          </p>
         </div>
 
         {showInterface ? (

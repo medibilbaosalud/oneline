@@ -10,6 +10,8 @@ import {
   type SummaryFrequency,
 } from "@/lib/summaryPreferences";
 
+const MIN_WEEKLY_ENTRIES = 4;
+
 const TABLE = "user_vaults";
 
 export async function GET() {
@@ -42,7 +44,29 @@ export async function GET() {
     basePreferences,
     data?.story_length ?? basePreferences.length,
   );
-  const reminder = computeSummaryReminder(frequency, data?.last_summary_at ?? null);
+  const reminderBase = computeSummaryReminder(frequency, data?.last_summary_at ?? null);
+
+  let reminder = reminderBase;
+  if (frequency === "weekly") {
+    const { start, end } = reminderBase.window;
+    const { count, error: countError } = await supabase
+      .from("journal")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.user.id)
+      .gte("day", start)
+      .lte("day", end);
+
+    if (!countError) {
+      const minimumMet = (count ?? 0) >= MIN_WEEKLY_ENTRIES;
+      reminder = {
+        ...reminderBase,
+        due: reminderBase.due && minimumMet,
+        entryCount: count ?? 0,
+        minimumRequired: MIN_WEEKLY_ENTRIES,
+        minimumMet,
+      };
+    }
+  }
 
   return NextResponse.json({ ok: true, frequency, preferences, reminder });
 }

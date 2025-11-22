@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useVault } from '@/hooks/useVault';
 
 export default function VaultGate({ children }: { children: React.ReactNode }) {
@@ -14,12 +14,18 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     createWithPassphrase,
     unlockWithPassphrase,
     vaultError,
+    hasStoredPassphrase,
   } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
+  const [rememberPassphrase, setRememberPassphrase] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setRememberPassphrase(hasStoredPassphrase);
+  }, [hasStoredPassphrase]);
 
   if (loading) {
     return (
@@ -54,9 +60,9 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     setFormError(null);
     try {
       if (hasBundle) {
-        await unlockWithPassphrase(trimmed);
+        await unlockWithPassphrase(trimmed, { rememberPassphrase });
       } else {
-        await createWithPassphrase(trimmed, remember);
+        await createWithPassphrase(trimmed, remember, rememberPassphrase);
       }
       setPassphrase('');
       setConfirmPassphrase('');
@@ -146,6 +152,16 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             </label>
           )}
 
+          <label className="flex items-center gap-2 text-xs text-neutral-400">
+            <input
+              type="checkbox"
+              checked={rememberPassphrase}
+              onChange={(event) => setRememberPassphrase(event.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-neutral-900"
+            />
+            Save this passphrase locally for faster unlocks on this device
+          </label>
+
           {formError && <p className="text-sm text-rose-400">{formError}</p>}
         </div>
 
@@ -159,6 +175,9 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
         </button>
         <p className="text-xs text-neutral-500">
           Tip: Prefer a long passphrase you can remember. Store it in a password manager — if it changes or is lost, the encrypted data stays locked forever.
+        </p>
+        <p className="text-[11px] text-neutral-500">
+          If you save it locally, still back it up elsewhere. Clearing this device will remove the stored passphrase and you’ll need to type it again.
         </p>
       </div>
     </div>
