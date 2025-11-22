@@ -82,17 +82,20 @@ async function ensureInitialized() {
     return;
   }
 
+  const supabase = supabaseBrowser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
+
+  const needsFreshInit = !initialized || userId !== currentUserId;
+  if (!needsFreshInit) return;
+
   initialized = false;
   notify();
 
   loadingPromise = (async () => {
     try {
-      const supabase = supabaseBrowser();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const userId = user?.id ?? null;
-
       if (userId !== currentUserId) {
         currentUserId = userId;
         cachedBundle = null;
@@ -123,7 +126,7 @@ async function ensureInitialized() {
         hasStoredBundle = true;
         await idbSet(key, remoteBundle).catch(() => {});
         lastVaultError = null;
-      } else {
+      } else if (!localBundle) {
         cachedBundle = null;
         hasStoredBundle = false;
         lastVaultError = null;
