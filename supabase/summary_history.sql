@@ -1,5 +1,6 @@
--- Summary history storage (encrypted payloads only)
--- Run this in Supabase SQL editor or via `supabase db remote commit`.
+
+-- Ensure UUID generator is available for the primary key default.
+create extension if not exists "pgcrypto";
 
 create table if not exists public.summary_histories (
   id uuid primary key default gen_random_uuid(),
