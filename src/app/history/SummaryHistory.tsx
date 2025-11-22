@@ -69,7 +69,7 @@ export default function SummaryHistory() {
           <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Saved stories</p>
           <h2 className="text-lg font-semibold text-white">Summary history</h2>
           <p className="text-sm text-neutral-400">
-            We keep an encrypted copy of every story you generate on this device—nothing goes to Supabase. Unlock your vault to read them.
+            We keep an encrypted copy of every story you generate inside Supabase under your account. Unlock your vault to read them on any device.
           </p>
         </div>
       </header>

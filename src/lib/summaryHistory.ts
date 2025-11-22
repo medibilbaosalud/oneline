@@ -1,8 +1,8 @@
 // src/lib/summaryHistory.ts
-// SECURITY: Stores generated stories locally in IndexedDB encrypted with the user's vault key.
+// SECURITY: Stores generated stories in Supabase encrypted with the user's vault key.
 
 import { encryptText, decryptText } from "@/lib/crypto";
-import { idbGet, idbSet } from "@/lib/localVault";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 export type StoredSummary = {
   id: string;
@@ -14,9 +14,16 @@ export type StoredSummary = {
   iv_b64: string;
 };
 
-function storageKey(userId: string) {
-  return `oneline.v1.summary-history.${userId}`;
-}
+type SupabaseSummaryRow = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  from_date: string | null;
+  to_date: string | null;
+  period: string | null;
+  cipher_b64: string;
+  iv_b64: string;
+};
 
 export async function persistSummary(
   userId: string,
@@ -28,23 +35,36 @@ export async function persistSummary(
   if (!trimmed) return;
 
   const { cipher_b64, iv_b64 } = await encryptText(key, trimmed);
-  const existing = (await idbGet<StoredSummary[]>(storageKey(userId))) ?? [];
-  const entry: StoredSummary = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    from: meta.from,
-    to: meta.to,
-    period: meta.period,
+  const supabase = supabaseBrowser();
+
+  const { error } = await supabase.from("summary_histories").insert({
+    user_id: userId,
+    from_date: meta.from ?? null,
+    to_date: meta.to ?? null,
+    period: meta.period ?? null,
     cipher_b64,
     iv_b64,
-  };
+  });
 
-  const next = [entry, ...existing].slice(0, 50);
-  await idbSet(storageKey(userId), next);
+  if (error) {
+    throw new Error(error.message || "Unable to save summary history.");
+  }
 }
 
 export async function loadSummaries(userId: string, key: CryptoKey) {
-  const stored = (await idbGet<StoredSummary[]>(storageKey(userId))) ?? [];
+  const supabase = supabaseBrowser();
+  const { data, error } = await supabase
+    .from("summary_histories")
+    .select("id, created_at, from_date, to_date, period, cipher_b64, iv_b64")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    throw new Error(error.message || "Unable to load summary history.");
+  }
+
+  const stored = (data ?? []) as SupabaseSummaryRow[];
   const decrypted = [] as { id: string; createdAt: string; from?: string; to?: string; period?: string; text: string }[];
 
   for (const item of stored) {
@@ -52,10 +72,10 @@ export async function loadSummaries(userId: string, key: CryptoKey) {
       const text = await decryptText(key, item.cipher_b64, item.iv_b64);
       decrypted.push({
         id: item.id,
-        createdAt: item.createdAt,
-        from: item.from,
-        to: item.to,
-        period: item.period,
+        createdAt: item.created_at,
+        from: item.from_date ?? undefined,
+        to: item.to_date ?? undefined,
+        period: item.period ?? undefined,
         text,
       });
     } catch {
