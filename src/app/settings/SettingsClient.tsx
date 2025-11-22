@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useVault } from "@/hooks/useVault";
 import {
   GUIDANCE_NOTES_LIMIT_BASE,
   GUIDANCE_NOTES_LIMIT_EXTENDED,
@@ -9,6 +10,7 @@ import {
   guidanceLimitFor,
 } from "@/lib/summaryPreferences";
 import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
+import { clearStoredPassphrase, getStoredPassphrase } from "@/lib/passphraseStorage";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
 
@@ -76,6 +78,7 @@ function formatWindow(window?: { start: string; end: string }) {
 export default function SettingsClient() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
+  const { lock, hasStoredPassphrase } = useVault();
   const [frequency, setFrequency] = useState<Frequency>("weekly");
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,6 +95,7 @@ export default function SettingsClient() {
   const [extendedGuidance, setExtendedGuidance] = useState(false);
   const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
+  const [passphraseStored, setPassphraseStored] = useState(false);
 
   const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
 
@@ -101,6 +105,9 @@ export default function SettingsClient() {
 
   useEffect(() => {
     let cancelled = false;
+
+    const stored = getStoredPassphrase();
+    setPassphraseStored(!!stored);
 
     (async () => {
       try {
@@ -166,6 +173,11 @@ export default function SettingsClient() {
       cancelled = true;
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const stored = getStoredPassphrase();
+    setPassphraseStored(!!stored);
+  }, [hasStoredPassphrase]);
 
   async function handleSaveSettings({
     nextFrequency,
@@ -333,6 +345,19 @@ export default function SettingsClient() {
     } catch (err: unknown) {
       setError(messageFromError(err, "Delete failed"));
     }
+  }
+
+  async function handleForgetPassphrase() {
+    setFeedback(null);
+    setError(null);
+    clearStoredPassphrase();
+    setPassphraseStored(false);
+    try {
+      await lock(false);
+    } catch {
+      // ignoring lock errors keeps the UI responsive
+    }
+    setFeedback("Removed the stored passphrase on this device. You'll need to re-enter it next time.");
   }
 
   async function handleSignOut() {
@@ -566,6 +591,36 @@ export default function SettingsClient() {
                 file it under your summaries. You can always tweak or regenerate it manually from the Year Story tool.
               </p>
             </div>
+          </section>
+
+          <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-semibold">Passphrase on this device</h2>
+            <p className="mt-2 text-sm app-muted">
+              Your encryption passphrase never leaves the browser. You can keep it in local storage for faster unlocks on this
+              device, but avoid enabling it on shared or public computers.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                  passphraseStored
+                    ? 'border border-emerald-400/50 bg-emerald-500/10 text-emerald-100'
+                    : 'border border-white/10 bg-white/5 text-neutral-200'
+                }`}
+              >
+                {passphraseStored ? 'Passphrase is stored on this device' : 'Passphrase is not stored on this device'}
+              </span>
+              <button
+                type="button"
+                onClick={handleForgetPassphrase}
+                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-neutral-100 transition hover:bg-white/10"
+              >
+                Forget on this device
+              </button>
+            </div>
+            <p className="mt-3 text-xs app-muted">
+              Clearing browser data or switching devices will also remove the stored passphrase; keep a backup in a password manager.
+            </p>
           </section>
 
           <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">

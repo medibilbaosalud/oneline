@@ -6,10 +6,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { decryptText, encryptText, generateDataKey, unwrapDataKey, wrapDataKey, type WrappedBundle } from '@/lib/crypto';
 import { idbDel, idbGet, idbSet } from '@/lib/localVault';
+import { clearStoredPassphrase, getStoredPassphrase, setStoredPassphrase } from '@/lib/passphraseStorage';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
-const PASSPHRASE_KEY_PREFIX = 'oneline.v1.passphrase';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
@@ -26,10 +26,6 @@ function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
 }
 
-function passphraseKeyForUser(userId: string) {
-  return `${PASSPHRASE_KEY_PREFIX}.${userId}`;
-}
-
 function notify() {
   listeners.forEach((listener) => {
     try {
@@ -41,14 +37,12 @@ function notify() {
 }
 
 async function persistPassphrase(passphrase: string | null) {
-  if (!currentUserId) return;
-  const key = passphraseKeyForUser(currentUserId);
   if (passphrase) {
     cachedPassphrase = passphrase;
-    await idbSet(key, passphrase).catch(() => {});
+    setStoredPassphrase(passphrase);
   } else {
     cachedPassphrase = null;
-    await idbDel(key).catch(() => {});
+    clearStoredPassphrase();
   }
   notify();
 }
@@ -132,8 +126,7 @@ async function ensureInitialized() {
         lastVaultError = null;
       }
 
-      const storedPassphraseKey = passphraseKeyForUser(currentUserId);
-      const savedPassphrase = (await idbGet<string>(storedPassphraseKey).catch(() => null)) ?? null;
+      const savedPassphrase = getStoredPassphrase();
       cachedPassphrase = savedPassphrase;
 
       if (cachedBundle && cachedPassphrase && autoUnlockAttemptedFor !== currentUserId && !sharedKey) {
@@ -144,7 +137,7 @@ async function ensureInitialized() {
         } catch {
           sharedKey = null;
           cachedPassphrase = null;
-          await idbDel(storedPassphraseKey).catch(() => {});
+          clearStoredPassphrase();
           lastVaultError =
             'Stored passphrase could not decrypt your vault. Re-enter the exact phrase to unlock and optionally save it again.';
         }
@@ -262,7 +255,7 @@ export function useVault() {
     sharedKey = null;
     if (wipeLocal && currentUserId) {
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
-      await idbDel(passphraseKeyForUser(currentUserId)).catch(() => {});
+      clearStoredPassphrase();
       cachedPassphrase = null;
       hasStoredBundle = !!cachedBundle;
     }
