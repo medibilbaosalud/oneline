@@ -1,16 +1,10 @@
 // src/app/api/summaries/generate/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { ensureMonthlySummaryWindow, incrementMonthlySummaryUsage } from "@/lib/summaryUsage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-// Monthly window in UTC
-function monthWindowUTC(d = new Date()) {
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
-  const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0));
-  return { start, end };
-}
 
 export async function POST(req: NextRequest) {
   const sb = await supabaseServer();
@@ -24,20 +18,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
-  const { start, end } = monthWindowUTC();
-
-  // Limit: 10 summaries per user per month
-  const { count, error: countErr } = await sb
-    .from("summaries") // Adjust if your production table has a different name
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("created_at", start.toISOString())
-    .lt("created_at", end.toISOString());
-
-  if (countErr) {
-    return NextResponse.json({ error: countErr.message }, { status: 400 });
-  }
-  if ((count ?? 0) >= 10) {
+  const { used } = await ensureMonthlySummaryWindow(sb, user.id, new Date());
+  const unlimited = user.email?.toLowerCase() === "aitoralboniga@gmail.com";
+  const limit = unlimited ? 1000000 : 10;
+  if (!unlimited && used >= limit) {
     return NextResponse.json({ error: "monthly-limit-reached" }, { status: 429 });
   }
 

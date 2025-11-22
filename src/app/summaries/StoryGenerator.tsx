@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
 import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { persistSummary } from "@/lib/summaryHistory";
 
 const WEEKLY_GUARD_MESSAGE = "Write at least four days to unlock your first weekly story.";
 
@@ -79,6 +81,16 @@ function addDays(d: Date, days: number) {
   const x = new Date(d);
   x.setDate(x.getDate() + days);
   return x;
+}
+
+function inferPeriod(start: string, end: string): "weekly" | "monthly" | "yearly" {
+  const startMs = Date.parse(`${start}T00:00:00Z`);
+  const endMs = Date.parse(`${end}T00:00:00Z`);
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return "monthly";
+  const diffDays = Math.max(0, Math.round((endMs - startMs) / (24 * 60 * 60 * 1000)));
+  if (diffDays <= 10) return "weekly";
+  if (diffDays <= 62) return "monthly";
+  return "yearly";
 }
 
 async function loadScriptWithFallback(sources: string[]) {
@@ -493,8 +505,22 @@ export default function StoryGenerator({
         throw new Error(json?.error || res.statusText || "Failed to generate story");
       }
 
-      setStory(json?.story || "");
+      const storyText = json?.story || "";
+      setStory(storyText);
       refreshQuota();
+
+      try {
+        const supabase = supabaseBrowser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const uid = user?.id;
+        if (uid && key && storyText) {
+          await persistSummary(uid, key, storyText, { from, to, period: inferPeriod(from, to) });
+        }
+      } catch {
+        // Best-effort persistence only; rendering still succeeds without local history.
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to generate");
     } finally {

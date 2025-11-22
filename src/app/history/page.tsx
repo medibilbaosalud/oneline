@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 
 import VaultGate from '@/components/VaultGate';
 import HistoryClient from './HistoryClient';
+import SummaryHistory from './SummaryHistory';
 import { supabaseServer } from '@/lib/supabaseServer';
 import {
   ENTRY_LIMIT_BASE,
@@ -67,13 +68,17 @@ export default async function HistoryPage() {
         <h1 className="mb-6 text-3xl font-semibold">History</h1>
 
         <VaultGate>
-          {entries.length > 0 ? (
-            <HistoryClient initialEntries={entries} initialEntryLimit={entryLimit} />
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-zinc-400">
-              No entries yet.
-            </div>
-          )}
+          <div className="space-y-10">
+            {entries.length > 0 ? (
+              <HistoryClient initialEntries={entries} initialEntryLimit={entryLimit} />
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-zinc-400">
+                No entries yet.
+              </div>
+            )}
+
+            <SummaryHistory />
+          </div>
         </VaultGate>
       </div>
     </main>
