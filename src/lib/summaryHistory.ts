@@ -37,14 +37,18 @@ export async function persistSummary(
   const { cipher_b64, iv_b64 } = await encryptText(key, trimmed);
   const supabase = supabaseBrowser();
 
-  const { error } = await supabase.from("summary_histories").insert({
+  const payload = {
     user_id: userId,
     from_date: meta.from ?? null,
     to_date: meta.to ?? null,
     period: meta.period ?? null,
     cipher_b64,
     iv_b64,
-  });
+  };
+
+  // NOTE: Supabase client typing does not yet include the summary_histories table. Cast to any
+  // so we can insert while keeping runtime behavior intact until generated types are added.
+  const { error } = await (supabase as any).from("summary_histories").insert(payload);
 
   if (error) {
     throw new Error(error.message || "Unable to save summary history.");
