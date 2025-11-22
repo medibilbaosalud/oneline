@@ -8,14 +8,9 @@ import {
   entryLimitFor,
   guidanceLimitFor,
 } from "@/lib/summaryPreferences";
-import type {
-  SummaryLanguage,
-  SummaryPreferences,
-  ThemePreference,
-} from "@/lib/summaryPreferences";
+import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
-import { useTheme } from "@/components/ThemeProvider";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
@@ -81,7 +76,6 @@ function formatWindow(window?: { start: string; end: string }) {
 export default function SettingsClient() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
-  const { theme, setTheme, ready: themeReady } = useTheme();
   const [frequency, setFrequency] = useState<Frequency>("weekly");
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -98,19 +92,12 @@ export default function SettingsClient() {
   const [extendedGuidance, setExtendedGuidance] = useState(false);
   const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
-  const [themePreference, setThemePreference] = useState<ThemePreference>("dark");
 
   const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
 
   const extendedToggleClassName = extendedGuidance
     ? "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-indigo-400/60 bg-indigo-500/20 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60"
     : "relative inline-flex h-10 w-16 items-center justify-start rounded-full border border-white/15 bg-white/5 px-1 transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60";
-
-  useEffect(() => {
-    if (themeReady) {
-      setThemePreference(theme);
-    }
-  }, [theme, themeReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,9 +141,6 @@ export default function SettingsClient() {
                 clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtended)),
               );
               setStoryLanguage(prefs.language);
-              const prefTheme = prefs.theme ?? "dark";
-              setThemePreference(prefTheme);
-              setTheme(prefTheme);
               primeEntryLimitsCache({
                 entryLimit: entryLimitFor(nextExtended),
                 guidanceLimit: guidanceLimitFor(nextExtended),
@@ -207,7 +191,6 @@ export default function SettingsClient() {
     const trimmedNotes = typeof rawNotesSource === "string" ? rawNotesSource.trim() : "";
     const limitedNotes = trimmedNotes.length > limit ? trimmedNotes.slice(0, limit) : trimmedNotes;
     const nextLanguage = overrides.language ?? storyLanguage;
-    const nextTheme = overrides.theme ?? themePreference;
 
     try {
       const sessionRes = await supabase.auth.getSession();
@@ -235,7 +218,6 @@ export default function SettingsClient() {
             extendedGuidance: nextExtended,
             notes: limitedNotes.length ? limitedNotes : undefined,
             language: nextLanguage,
-            theme: nextTheme,
           },
         }),
       });
@@ -256,9 +238,6 @@ export default function SettingsClient() {
         clampGuidanceNotes(prefs.notes ?? "", guidanceLimitFor(nextExtendedFromResponse)),
       );
       setStoryLanguage(prefs.language);
-      const savedTheme = prefs.theme ?? themePreference;
-      setThemePreference(savedTheme);
-      setTheme(savedTheme);
       setReminder(json.settings.reminder ?? null);
       if (!suppressFeedback) {
         setFeedback("Saved.");
@@ -306,16 +285,6 @@ export default function SettingsClient() {
       });
       return;
     }
-  };
-
-  const handleThemeSelection = async (next: ThemePreference) => {
-    if (settingsLoading || saving) return;
-    setThemePreference(next);
-    setTheme(next);
-    await handleSaveSettings({
-      preferenceOverrides: { theme: next },
-      suppressFeedback: true,
-    });
   };
 
   async function handleExport() {
@@ -504,47 +473,6 @@ export default function SettingsClient() {
                 <p className="mt-2 text-xs app-muted">
                   Decide whether the recap should sound like you or like a narrator.
                 </p>
-              </div>
-
-              <div className="rounded-2xl border app-panel p-4">
-                <label className="text-sm font-medium">Appearance</label>
-                <p className="mt-2 text-xs app-muted">
-                  Pick light or dark. We’ll remember it for this account and device.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleThemeSelection("light")}
-                    disabled={settingsLoading || saving}
-                    aria-pressed={themePreference === "light"}
-                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60 ${
-                      themePreference === "light"
-                        ? "border-indigo-400 bg-indigo-500 text-white shadow"
-                        : "bg-transparent"
-                    }`}
-                    style={
-                      themePreference === "light" ? undefined : { borderColor: "var(--app-border)" }
-                    }
-                  >
-                    Light
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleThemeSelection("dark")}
-                    disabled={settingsLoading || saving}
-                    aria-pressed={themePreference === "dark"}
-                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-60 ${
-                      themePreference === "dark"
-                        ? "border-indigo-400 bg-indigo-500 text-white shadow"
-                        : "bg-transparent"
-                    }`}
-                    style={
-                      themePreference === "dark" ? undefined : { borderColor: "var(--app-border)" }
-                    }
-                  >
-                    Dark
-                  </button>
-                </div>
               </div>
 
               <div className="rounded-2xl border app-panel p-4">

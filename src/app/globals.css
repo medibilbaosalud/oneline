@@ -8,28 +8,7 @@
   --app-text: #e2e8f0;
   --app-muted: #94a3b8;
   --app-accent: #7cc0ff;
-}
-
-body.theme-dark {
-  --app-bg: #050915;
-  --app-surface: #0f172a;
-  --app-panel: #0c1224;
-  --app-border: rgba(255, 255, 255, 0.12);
-  --app-text: #e2e8f0;
-  --app-muted: #94a3b8;
-  --app-accent: #7cc0ff;
   color-scheme: dark;
-}
-
-body.theme-light {
-  --app-bg: #f8fafc;
-  --app-surface: #ffffff;
-  --app-panel: #f5f7fb;
-  --app-border: #e2e8f0;
-  --app-text: #0f172a;
-  --app-muted: #475569;
-  --app-accent: #0f172a;
-  color-scheme: light;
 }
 
 body {
@@ -56,32 +35,6 @@ body {
 
 .app-accent {
   color: var(--app-accent);
-}
-
-.theme-light [class*="bg-neutral-950"],
-.theme-light [class*="bg-neutral-900"],
-.theme-light [class*="bg-neutral-800"] {
-  background-color: var(--app-surface) !important;
-  color: var(--app-text) !important;
-}
-
-.theme-light [class*="bg-black/"],
-.theme-light [class*="bg-white/1"],
-.theme-light [class*="bg-white/5"] {
-  background-color: var(--app-panel) !important;
-  color: var(--app-text) !important;
-}
-
-.theme-light [class*="text-neutral-50"],
-.theme-light [class*="text-neutral-100"],
-.theme-light [class*="text-white"] {
-  color: var(--app-text) !important;
-}
-
-.theme-light [class*="text-neutral-400"],
-.theme-light [class*="text-neutral-500"],
-.theme-light [class*="text-neutral-600"] {
-  color: var(--app-muted) !important;
 }
 
 /* ---- OneLine Landing Animations (server-safe) ---- */

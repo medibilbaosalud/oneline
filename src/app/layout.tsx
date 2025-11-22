@@ -44,7 +44,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${inter.className} min-h-screen app-shell theme-dark`}>
+      <body className={`${inter.className} min-h-screen app-shell`}>
         <Providers>
           <PwaRegister />
           {/* Global navigation across all pages */}
