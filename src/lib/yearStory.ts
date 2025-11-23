@@ -331,7 +331,24 @@ export async function generateYearStory(
         maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
       },
     });
-    const story = (response?.response?.text?.() ?? '').trim();
+    const story =
+      (
+        response?.response?.text?.() ??
+        response?.response?.candidates
+          ?.map((candidate) =>
+            candidate?.content?.parts
+              ?.map((part: unknown) => {
+                if (typeof part === 'string') return part;
+                if (part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string') {
+                  return (part as { text: string }).text;
+                }
+                return '';
+              })
+              .join(' '),
+          )
+          .find((text) => typeof text === 'string' && text.trim().length > 0) ??
+        ''
+      ).trim();
     if (!story) {
       return {
         story: feed.replace(/^(?=\S)/gm, '- '),
