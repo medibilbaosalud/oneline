@@ -141,34 +141,133 @@ ${options.strict ? '- Treat every detail literally; no embellishments beyond cla
 
   // Prompt designed for a continuous narrative that keeps chronology but reads like one story.
   return `
-Eres un escritor experto en narrativa personal y diarios.
-Recibirás una lista de entradas de diario ordenadas cronológicamente, cada una con fecha y texto.
-Tu tarea es transformarlas en UNA SOLA HISTORIA CONTINUA, escrita en primera persona, con tono íntimo y natural.
+Eres un escritor experto en narrativa personal y diarios contemporáneos.
+Vas a recibir un conjunto de entradas de diario ordenadas cronológicamente, cada una con fecha y texto.
 
-Instrucciones clave:
-- No hagas un resumen día por día.
-- No pongas títulos ni encabezados por fecha.
-- No uses listas ni viñetas en el relato principal.
-- Escribe todo como si fuera un relato continuo de mi vida durante ese período, siguiendo un hilo narrativo claro.
-- Mantén el orden temporal de los acontecimientos, pero exprésalos como recuerdos encadenados: inicio del periodo, desarrollo, momentos clave y cierre.
-- Integra las fechas solo de forma aproximada si es necesario (por ejemplo, "unos días después", "al principio del trimestre", "más adelante ese mes"), pero no como formato de diario con "- 2025-11-22".
-- No inventes hechos que no aparezcan en las entradas, pero sí puedes hacer inferencias suaves sobre emociones, aprendizajes o cambios (por ejemplo, cómo ha ido evolucionando mi estado de ánimo o mis relaciones).
+Tu objetivo principal es transformar TODO ese material en UNA SOLA HISTORIA CONTINUA, escrita en primera persona, con tono íntimo, coherente y natural, como si la hubiera escrito yo mismo/a a partir de mis propios recuerdos.
+
+Quiero tres cosas a la vez:
+1) Una narrativa fluida que cuente lo que ha pasado.
+2) Un análisis implícito de patrones: qué cosas me hacen sentir bien o mal, qué personas suman o restan, qué temas se repiten.
+3) Que respetes y copies al máximo MI VOZ: mi vocabulario, mis expresiones y mi forma real de escribir.
+
+Instrucciones de estilo (muy importantes)
+-----------------------------------------
+
+- Escribe siempre en primera persona del singular ("yo"), salvo que ${povLine} indique otra cosa.
+- Haz que parezca que lo he escrito yo:
+  - copia mi forma de hablar,
+  - mi nivel de informalidad,
+  - mi manera de usar puntuación, puntos y comas, frases largas o cortas.
 - Usa el mismo idioma predominante que aparece en las entradas originales: ${languageLine}
+- Si uso expresiones o palabras en otros idiomas (por ejemplo euskera, inglés u otros), MANTÉNLAS en ese idioma y en el mismo contexto. No las traduzcas ni las neutralices.
+- Mantén mi vocabulario: si utilizo tacos, expresiones coloquiales, abreviaturas o emojis, puedes usarlos también (sin exagerar, pero de forma natural).
 - ${toneLine}
 - ${povLine}
 - ${fidelityRules}
 ${userNotes}
+- Preserva nombres propios, tecnicismos y términos no ingleses tal y como aparezcan en las entradas.
+- No hagas frases impersonales tipo “el autor siente…”. Escríbelo como si fuera mi propia voz: “yo siento”, “yo pienso”, “me rayé”, etc.
+- Evita sonar académico o distante; prioriza un estilo cercano, honesto y directo.
 
-Narrativa:
-- Cuenta la historia como un solo capítulo sin saltos bruscos ni secciones por día.
-- Target length: ${minWords}–${maxWords} words. Comienza directo con el relato.
-- Preserva términos no ingleses tal cual aparezcan.
+Instrucciones sobre la narrativa
+--------------------------------
 
-Finaliza el resultado con:
-- Una sección breve **Highlights** con 5–8 viñetas que recojan logros, retos o momentos clave.
-- Un cierre titulado **If I could tell my future self one thing…** con 3–4 líneas en el mismo idioma del relato.
+- No hagas un resumen día por día.
+- No pongas títulos ni encabezados por fecha.
+- No repitas el formato original de las entradas (por ejemplo: "- 2025-11-22 ...").
+- No uses listas ni viñetas en el relato principal.
+- Escribe todo como una historia continua de ese periodo de mi vida, con un hilo narrativo claro.
+- Mantén el orden temporal global, pero exprésalo como recuerdos encadenados:
+  - cómo empezaba la etapa,
+  - cómo fueron cambiando las cosas,
+  - momentos clave,
+  - y cómo estaba yo hacia el final.
+- Puedes fusionar o comprimir días parecidos para que la historia fluya; no hace falta mencionar cada día explícitamente.
+- Habla tanto de lo que pasó (hechos concretos) como de cómo me sentía y qué conclusiones iba sacando.
+- Integra el paso del tiempo de forma aproximada ("al principio de esa semana", "unos días después", "más adelante ese mes") sin usar fechas exactas ni marcar días como secciones independientes.
+- No inventes hechos que no aparezcan en las entradas, pero SÍ puedes hacer inferencias suaves y naturales sobre:
+  - mi estado de ánimo,
+  - mi nivel de energía,
+  - mis miedos,
+  - mis ilusiones,
+  - mis cambios de perspectiva.
 
-Aquí tienes mis entradas de diario. Convierte TODO el contenido en una única narrativa continua:
+Detección de patrones (integrado en la historia)
+------------------------------------------------
+
+Mientras escribes la narrativa, presta especial atención a:
+
+- Qué cosas tienden a hacerme sentir mejor:
+  - actividades, personas, planes, lugares, logros, pequeñas rutinas…
+- Qué cosas tienden a hacerme sentir peor:
+  - situaciones, pensamientos, hábitos, problemas que se repiten…
+- Qué personas aparecen como apoyo, motivación o buena influencia.
+- Qué personas, dinámicas o ambientes me drenan, me frustran o me generan conflicto.
+- Temas que se repiten:
+  - estudios, amigos, proyectos, salud mental, redes sociales, juegos, trabajo, relaciones, etc.
+- Cualquier cambio de tendencia:
+  - momentos en los que empiezo a ver las cosas distinto,
+  - decisiones que marcan un antes y un después,
+  - cosas que al principio me afectaban mucho y luego menos (o al revés).
+
+No escribas esta parte como un análisis separado al principio: estas ideas deben estar mezcladas dentro de la historia, como reflexiones naturales del narrador (“me di cuenta de que…”, “cada vez que hacía X me sentía mejor”, “con Y casi siempre acababa rayado”, etc.).
+
+Estructura de la salida
+-----------------------
+
+1) Narrativa principal
+
+- Empieza directamente con el relato, sin frases meta tipo “A continuación presento un resumen”.
+- Cuenta la historia como un solo capítulo continuo, sin secciones por día.
+- No incluyas encabezados de sección en esta parte.
+- No utilices listas ni viñetas en la narrativa principal.
+- Usa un tono honesto y reflexivo, pero sin ponerse demasiado dramático salvo que el contenido lo justifique.
+- Target length: entre ${minWords} y ${maxWords} palabras.
+  - Si el contenido es muy denso, prioriza claridad, fluidez y detección de patrones antes que mencionar cada detalle menor.
+
+2) Sección de patrones: **Patterns I can see**
+
+Al terminar la narrativa, añade una sección titulada exactamente:
+
+**Patterns I can see**
+
+En esta sección usa viñetas. Organízala (si es posible) en subapartados como:
+
+- *What tends to make me feel better:*
+  - 3–6 viñetas sobre actividades, personas, hábitos o contextos que mejoran mi estado de ánimo.
+- *What tends to make me feel worse:*
+  - 3–6 viñetas sobre cosas que suelen bajarme el ánimo, generarme estrés o rayadas.
+- *People and relationships:*
+  - 3–6 viñetas donde resumas brevemente qué personas parecen ser buena influencia y cuáles no, siempre basándote en lo que aparece en las entradas.
+
+Mantén el idioma principal del relato también en los textos de estas viñetas, respetando palabras en otros idiomas igual que en el resto del texto.
+
+3) Sección de resumen breve: **Highlights**
+
+Después de **Patterns I can see**, añade una sección titulada:
+
+**Highlights**
+
+- Incluye 5–8 viñetas.
+- Cada viñeta debe recoger un logro, reto o momento clave del periodo, escrito de forma breve y concreta.
+
+4) Mensaje al yo del futuro
+
+Por último, añade una sección titulada:
+
+**If I could tell my future self one thing…**
+
+- Escribe 3–4 líneas en el mismo idioma del relato.
+- Tienen que sonar como un mensaje sincero que yo me dejaría a mí mismo/a en el futuro:
+  - combinando lo que he vivido,
+  - los patrones que has detectado,
+  - y el consejo más importante que se repite a lo largo de la historia.
+
+Entrada
+-------
+
+Aquí tienes mis entradas de diario. Convierte TODO el contenido en una única narrativa continua siguiendo exactamente las instrucciones anteriores:
 
 ${feed}
 `.trim();
