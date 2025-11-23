@@ -27,6 +27,7 @@ export default function SiteHeader() {
             <Link href="/today" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60">Today</Link>
             <Link href="/history" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60">History</Link>
             <Link href="/summaries" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60">Summaries</Link>
+            <Link href="/summaries#feedback" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60">Feedback</Link>
             <Link href="/how-to-use" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60">How to use</Link>
             <Link href="/settings" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60">Settings</Link>
           </div>
@@ -80,6 +81,9 @@ export default function SiteHeader() {
               </Link>
               <Link href="/summaries" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60" onClick={() => setOpen(false)}>
                 Summaries
+              </Link>
+              <Link href="/summaries#feedback" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60" onClick={() => setOpen(false)}>
+                Feedback
               </Link>
               <Link href="/how-to-use" className="rounded-md px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800/60" onClick={() => setOpen(false)}>
                 How to use

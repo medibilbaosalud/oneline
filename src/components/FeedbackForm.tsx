@@ -14,9 +14,11 @@ const feedbackOptions: { value: FeedbackType; label: string; helper: string }[] 
 export default function FeedbackForm({
   defaultPage,
   className,
+  id,
 }: {
   defaultPage?: string;
   className?: string;
+  id?: string;
 }) {
   const pathname = usePathname();
   const [type, setType] = useState<FeedbackType>("bug");
@@ -64,6 +66,7 @@ export default function FeedbackForm({
 
   return (
     <section
+      id={id}
       className={`overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 text-white shadow-xl shadow-indigo-950/20 ${
         className ?? ""
       }`}

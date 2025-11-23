@@ -131,6 +131,23 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
           </div>
         </section>
 
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-zinc-200 shadow-inner shadow-black/30">
+          <div className="flex flex-col gap-3 items-start justify-between sm:flex-row sm:items-center">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Feedback</p>
+              <p className="font-semibold text-white">Spotted an issue or have an idea?</p>
+              <p className="text-xs text-zinc-300">Every user can send feedback—no login required. It lives at the bottom of this page.</p>
+            </div>
+            <a
+              href="#feedback"
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/20"
+            >
+              Jump to feedback
+              <span aria-hidden>↘</span>
+            </a>
+          </div>
+        </div>
+
         {reminder.due && (
           <div className="mt-6 rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-4 text-sm text-indigo-50 shadow-lg shadow-indigo-900/30">
             <p className="text-sm font-semibold text-white">
@@ -162,7 +179,7 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
         </div>
 
         <div className="mt-10">
-          <FeedbackForm />
+          <FeedbackForm id="feedback" />
         </div>
       </div>
     </main>

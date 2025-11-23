@@ -90,3 +90,12 @@ export async function loadSummaries(userId: string, key: CryptoKey) {
   return decrypted;
 }
 
+export async function deleteSummary(userId: string, id: string) {
+  const supabase = supabaseBrowser();
+  const { error } = await supabase.from("summary_histories").delete().eq("user_id", userId).eq("id", id);
+
+  if (error) {
+    throw new Error(error.message || "Unable to delete this summary.");
+  }
+}
+

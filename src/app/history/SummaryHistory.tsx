@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useVault } from "@/hooks/useVault";
-import { loadSummaries } from "@/lib/summaryHistory";
+import { deleteSummary, loadSummaries } from "@/lib/summaryHistory";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 type SummaryItem = {
@@ -21,6 +21,7 @@ export default function SummaryHistory() {
   const [items, setItems] = useState<SummaryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -61,6 +62,23 @@ export default function SummaryHistory() {
       active = false;
     };
   }, [dataKey, ready, userId]);
+
+  async function handleDelete(id: string) {
+    if (!userId) return;
+    const confirmed = window.confirm("Delete this saved summary? This cannot be undone.");
+    if (!confirmed) return;
+
+    setDeletingId(id);
+    setError(null);
+    try {
+      await deleteSummary(userId, id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete this summary.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <section id="summary-history" className="mt-10 space-y-4">
@@ -122,6 +140,14 @@ export default function SummaryHistory() {
                     {(item.from ?? "?") + " → " + (item.to ?? "?")}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(item.id)}
+                  disabled={deletingId === item.id}
+                  className="ml-auto inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-100 transition hover:border-rose-400/60 hover:text-white disabled:opacity-50"
+                >
+                  {deletingId === item.id ? "Deleting…" : "Delete"}
+                </button>
               </div>
 
               <div className="relative mt-3 space-y-2 font-serif text-[16px] leading-relaxed text-zinc-50">
