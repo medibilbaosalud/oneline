@@ -97,8 +97,6 @@ export async function POST(req: NextRequest) {
     }
 
     const modelName = mode === 'advanced' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
-    // Align output caps with the target word ranges so MAX_TOKENS does not halt otherwise valid narratives.
-    const maxTokens = mode === 'advanced' ? 3200 : 2200;
 
     // Soft TPM guard to avoid spikes; falls back to a gentle 429 if exceeded.
     const minuteStart = new Date();
@@ -120,7 +118,6 @@ export async function POST(req: NextRequest) {
     const { story, wordCount, tokenUsage } = await generateYearStory(entries, from, to, options, {
       mode,
       modelName,
-      maxOutputTokens: maxTokens,
     });
     const consumedTokens = tokenUsage?.totalTokenCount ?? 0;
 

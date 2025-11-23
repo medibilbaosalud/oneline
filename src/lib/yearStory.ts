@@ -358,7 +358,6 @@ function describeBlockedResponse(response: unknown): string | null {
 type StoryModelConfig = {
   mode: SummaryMode;
   modelName: string;
-  maxOutputTokens: number;
 };
 
 async function loadGenerativeModel(config: StoryModelConfig) {
@@ -396,8 +395,6 @@ export async function generateYearStory(
     const model = await loadGenerativeModel({
       mode: modelConfig?.mode ?? 'standard',
       modelName: modelConfig?.modelName ?? 'gemini-2.5-flash',
-      // Match the API layer defaults so the requested word ranges have enough room to complete.
-      maxOutputTokens: modelConfig?.maxOutputTokens ?? 2200,
     });
     if (!model) {
       const combined = entries
@@ -413,9 +410,7 @@ export async function generateYearStory(
 
     const response = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
-      },
+      generationConfig: {},
     });
 
     const story = extractStoryText(response);
