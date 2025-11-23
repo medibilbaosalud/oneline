@@ -273,6 +273,39 @@ ${feed}
 `.trim();
 }
 
+function extractStoryText(response: unknown) {
+  // Prefer the helper provided by the SDK, then fall back to concatenating candidate parts.
+  const textFn = (response as { response?: { text?: () => string } })?.response?.text;
+  const direct = typeof textFn === 'function' ? textFn() : '';
+  if (typeof direct === 'string' && direct.trim()) {
+    return direct.trim();
+  }
+
+  const candidates = (response as { response?: { candidates?: unknown[] } })?.response?.candidates;
+  if (Array.isArray(candidates)) {
+    for (const candidate of candidates) {
+      const parts = (candidate as { content?: { parts?: unknown[] } })?.content?.parts;
+      if (!Array.isArray(parts)) continue;
+
+      const collected = parts
+        .map((part) => {
+          if (typeof part === 'string') return part;
+          if (part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string') {
+            return (part as { text: string }).text;
+          }
+          return '';
+        })
+        .filter((chunk) => typeof chunk === 'string' && chunk.trim().length > 0)
+        .join('\n')
+        .trim();
+
+      if (collected) return collected;
+    }
+  }
+
+  return '';
+}
+
 type StoryModelConfig = {
   mode: SummaryMode;
   modelName: string;
@@ -331,30 +364,9 @@ export async function generateYearStory(
         maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
       },
     });
-    const story =
-      (
-        response?.response?.text?.() ??
-        response?.response?.candidates
-          ?.map((candidate) =>
-            candidate?.content?.parts
-              ?.map((part: unknown) => {
-                if (typeof part === 'string') return part;
-                if (part && typeof part === 'object' && 'text' in part && typeof (part as { text?: unknown }).text === 'string') {
-                  return (part as { text: string }).text;
-                }
-                return '';
-              })
-              .join(' '),
-          )
-          .find((text) => typeof text === 'string' && text.trim().length > 0) ??
-        ''
-      ).trim();
+    const story = extractStoryText(response);
     if (!story) {
-      return {
-        story: feed.replace(/^(?=\S)/gm, '- '),
-        wordCount: feed.split(/\s+/).length,
-        tokenUsage: { totalTokenCount: 0 },
-      };
+      throw new Error('Model returned an empty story');
     }
 
     return {
