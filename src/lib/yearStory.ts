@@ -275,13 +275,16 @@ ${feed}
 
 function extractStoryText(response: unknown) {
   // Prefer the helper provided by the SDK, then fall back to concatenating candidate parts.
-  const textFn = (response as { response?: { text?: () => string } })?.response?.text;
-  const direct = typeof textFn === 'function' ? textFn() : '';
+  const topTextFn = (response as { text?: () => string })?.text;
+  const nestedTextFn = (response as { response?: { text?: () => string } })?.response?.text;
+  const direct = typeof topTextFn === 'function' ? topTextFn() : typeof nestedTextFn === 'function' ? nestedTextFn() : '';
   if (typeof direct === 'string' && direct.trim()) {
     return direct.trim();
   }
 
-  const candidates = (response as { response?: { candidates?: unknown[] } })?.response?.candidates;
+  const nestedCandidates = (response as { response?: { candidates?: unknown[] } })?.response?.candidates;
+  const topCandidates = (response as { candidates?: unknown[] })?.candidates;
+  const candidates = Array.isArray(nestedCandidates) ? nestedCandidates : topCandidates;
   if (Array.isArray(candidates)) {
     for (const candidate of candidates) {
       const parts = (candidate as { content?: { parts?: unknown[] } })?.content?.parts;
@@ -304,6 +307,36 @@ function extractStoryText(response: unknown) {
   }
 
   return '';
+}
+
+function describeBlockedResponse(response: unknown): string | null {
+  const promptFeedback = (response as {
+    response?: { promptFeedback?: { blockReason?: string; safetyRatings?: { category?: string; probability?: string }[] } };
+  })?.response?.promptFeedback;
+
+  const blockReason = promptFeedback?.blockReason;
+  if (typeof blockReason === 'string' && blockReason.trim()) {
+    const ratings = promptFeedback?.safetyRatings?.filter((rating) => rating?.category && rating?.probability);
+    const ratingLine = ratings?.length
+      ? ` (${ratings
+          .map((r) => `${String(r.category)}=${String(r.probability)}`)
+          .join(', ')})`
+      : '';
+    return `The model blocked this request for safety reasons${ratingLine}. Try removing sensitive content or shortening the range.`;
+  }
+
+  const candidates = (response as { response?: { candidates?: { finishReason?: string; finishMessage?: string }[] } })?.response
+    ?.candidates;
+  if (Array.isArray(candidates) && candidates.length > 0) {
+    const finishReason = candidates[0]?.finishReason;
+    const finishMessage = candidates[0]?.finishMessage;
+    if (typeof finishReason === 'string' && finishReason.trim()) {
+      const base = finishMessage && typeof finishMessage === 'string' ? finishMessage : finishReason;
+      return `The model could not return a story (${base}). Please adjust the entries and try again.`;
+    }
+  }
+
+  return null;
 }
 
 type StoryModelConfig = {
@@ -359,14 +392,16 @@ export async function generateYearStory(
     }
 
     const response = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }], }],
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
       },
     });
+
     const story = extractStoryText(response);
     if (!story) {
-      throw new Error('Model returned an empty story');
+      const blockMessage = describeBlockedResponse(response);
+      throw new Error(blockMessage ?? 'Model returned an empty story. Please try a shorter range or tweak the content.');
     }
 
     return {

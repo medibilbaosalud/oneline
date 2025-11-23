@@ -150,7 +150,9 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'generation_failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const lowered = typeof message === 'string' ? message.toLowerCase() : '';
+    const status = lowered.includes('blocked') || lowered.includes('empty story') ? 502 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
