@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+import type { SummaryMode } from './summaryUsageDaily';
 import type { SummaryLanguage } from './summaryPreferences';
 
 export type YearStoryOptions = {
@@ -171,11 +172,20 @@ OUTPUT:
 `.trim();
 }
 
-async function loadGenerativeModel() {
+type StoryModelConfig = {
+  mode: SummaryMode;
+  modelName: string;
+  maxOutputTokens: number;
+};
+
+async function loadGenerativeModel(config: StoryModelConfig) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const genAI = new GoogleGenerativeAI(apiKey);
-  const modelNames = ['gemini-2.5-flash-lite'];
+  const modelNames = config.mode === 'advanced'
+    ? ['gemini-2.5-pro']
+    : ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+
   for (const name of modelNames) {
     try {
       return genAI.getGenerativeModel({ model: name });
@@ -191,12 +201,17 @@ export async function generateYearStory(
   from: string,
   to: string,
   options: YearStoryOptions,
+  modelConfig?: Partial<StoryModelConfig>,
 ) {
   const feed = entriesToFeed(entries);
   const prompt = buildYearStoryPrompt(feed, from, to, options, feed.length);
 
   try {
-    const model = await loadGenerativeModel();
+    const model = await loadGenerativeModel({
+      mode: modelConfig?.mode ?? 'standard',
+      modelName: modelConfig?.modelName ?? 'gemini-2.5-flash',
+      maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
+    });
     if (!model) {
       const combined = entries
         .map((entry) => `[${ymd(entry.day ?? entry.created_at ?? new Date())}] ${entry.content}`)
@@ -205,21 +220,29 @@ export async function generateYearStory(
       return {
         story: `### Your ${from.slice(0, 4)} in review\n\n${excerpt}\n\n---\n*Add GEMINI_API_KEY to unlock rich narratives.*`,
         wordCount: excerpt.split(/\s+/).length,
+        tokenUsage: { totalTokenCount: 0 },
       };
     }
 
-    const response = await model.generateContent(prompt);
+    const response = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }], }],
+      generationConfig: {
+        maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
+      },
+    });
     const story = (response?.response?.text?.() ?? '').trim();
     if (!story) {
       return {
         story: feed.replace(/^(?=\S)/gm, '- '),
         wordCount: feed.split(/\s+/).length,
+        tokenUsage: { totalTokenCount: 0 },
       };
     }
 
     return {
       story,
       wordCount: story.split(/\s+/).length,
+      tokenUsage: response?.response?.usageMetadata ?? { totalTokenCount: 0 },
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to generate year story';

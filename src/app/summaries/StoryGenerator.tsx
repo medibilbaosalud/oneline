@@ -7,6 +7,7 @@ import { decryptText } from "@/lib/crypto";
 import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { persistSummary } from "@/lib/summaryHistory";
+import type { SummaryMode } from "@/lib/summaryUsageDaily";
 
 const WEEKLY_GUARD_MESSAGE = "Write at least four days to unlock your first weekly story.";
 
@@ -169,6 +170,7 @@ export default function StoryGenerator({
   const [length, setLength] = useState<Length>(initialOptions?.length ?? "medium");
   const [tone, setTone] = useState<Tone>(initialOptions?.tone ?? "auto");
   const [pov, setPov] = useState<Pov>(initialOptions?.pov ?? "auto");
+  const [mode, setMode] = useState<SummaryMode>("standard");
   const includeHighlights = true;
   const [notes, setNotes] = useState(initialOptions?.notes ?? "");
   const [language, setLanguage] = useState<SummaryLanguage>(initialOptions?.language ?? "en");
@@ -188,6 +190,10 @@ export default function StoryGenerator({
   const [modalPassphrase, setModalPassphrase] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
   const [allowShortRangeOverride, setAllowShortRangeOverride] = useState(false);
+  const [usageInfo, setUsageInfo] = useState<
+    | { mode: SummaryMode; usageUnits: number; remainingUnits: number; dailyLimit: number }
+    | null
+  >(null);
 
   const lengthGuidance: Record<Length, string> = {
     short: "~200–300 words",
@@ -483,6 +489,7 @@ export default function StoryGenerator({
         consent: true,
         from,
         to,
+        mode,
         options: {
           length,
           tone,
@@ -500,13 +507,34 @@ export default function StoryGenerator({
         body: JSON.stringify(payload),
       });
 
-      const json = (await res.json().catch(() => null)) as { story?: string; error?: string } | null;
+      const json = (await res.json().catch(() => null)) as
+        | { story?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
+        | null;
       if (!res.ok) {
-        throw new Error(json?.error || res.statusText || "Failed to generate story");
+        const message = json?.message || json?.error || res.statusText || "Failed to generate story";
+        setUsageInfo((current) =>
+          json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null
+            ? {
+                mode,
+                usageUnits: json.usageUnits,
+                remainingUnits: json.remainingUnits,
+                dailyLimit: json.dailyLimit,
+              }
+            : current,
+        );
+        throw new Error(message);
       }
 
       const storyText = json?.story || "";
       setStory(storyText);
+      if (json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null) {
+        setUsageInfo({
+          mode,
+          usageUnits: json.usageUnits,
+          remainingUnits: json.remainingUnits,
+          dailyLimit: json.dailyLimit,
+        });
+      }
       refreshQuota();
 
       try {
@@ -621,6 +649,35 @@ export default function StoryGenerator({
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Privacy</p>
             <p className="text-sm text-zinc-100">Vault stays client-side until you consent to send.</p>
             <p className="text-[11px] text-zinc-500">We never store your passphrase.</p>
+          </div>
+        </div>
+        <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 md:grid-cols-3">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Model</p>
+            <p className="text-sm text-zinc-100">Pick the engine for this summary.</p>
+            <p className="text-[11px] text-zinc-500">Advanced uses two daily units; standard uses one.</p>
+          </div>
+          <div className="md:col-span-2 flex flex-wrap gap-2">
+            {(
+              [
+                { key: "standard", label: "Standard", desc: "gemini-2.5-flash · 1 unit" },
+                { key: "advanced", label: "Advanced", desc: "gemini-2.5-pro · 2 units" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setMode(option.key)}
+                className={`flex min-w-[180px] flex-col gap-1 rounded-xl border px-3 py-2 text-left shadow-sm transition ${
+                  mode === option.key
+                    ? "border-indigo-400 bg-indigo-500/20 text-white"
+                    : "border-white/10 bg-white/5 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                }`}
+              >
+                <span className="text-sm font-semibold">{option.label}</span>
+                <span className="text-xs text-zinc-400">{option.desc}</span>
+              </button>
+            ))}
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -757,6 +814,12 @@ export default function StoryGenerator({
             >
               Generate anyway
             </button>
+          )}
+          {usageInfo && (
+            <span className="text-sm text-zinc-400">
+              Used {usageInfo.usageUnits} of {usageInfo.dailyLimit} units today ({usageInfo.remainingUnits} left) · Last run: {" "}
+              <span className="font-semibold text-indigo-100">{usageInfo.mode}</span>
+            </span>
           )}
         </div>
       </div>
