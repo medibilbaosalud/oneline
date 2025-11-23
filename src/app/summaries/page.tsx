@@ -9,6 +9,7 @@ export const revalidate = 0;
 
 import VaultGate from "@/components/VaultGate";
 import StoryGenerator from "./StoryGenerator";
+import FeedbackForm from "@/components/FeedbackForm";
 import {
   DEFAULT_SUMMARY_PREFERENCES,
   coerceSummaryPreferences,
@@ -158,6 +159,10 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
               initialRange={initialRange}
             />
           </VaultGate>
+        </div>
+
+        <div className="mt-10">
+          <FeedbackForm />
         </div>
       </div>
     </main>
