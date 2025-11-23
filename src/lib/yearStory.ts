@@ -126,13 +126,6 @@ export function buildYearStoryPrompt(
 
   const languageLine = `Write the entire story in ${languageName}, matching the author's language. If the entries use a different language or mix languages, mirror that exact wording and keep multilingual phrases exactly as written. Never translate or normalize the user's words into another language.`;
 
-  const orderingRules = `
-STRUCTURE & ORDER:
-- Tell the story chronologically from earliest to latest without jumping back and forth in time.
-- Keep related events together so academics, relationships, and projects read cohesively instead of as scattered notes.
-- Preserve any non-English terms exactly as written (e.g., "idazlan"); keep them in quotes and do not translate them.
-- When summarizing a day or exam, keep the original sentiment and grading context in the same order it appeared.`.trim();
-
   const fidelityRules = `
 FIDELITY RULES:
 - Do not invent events, people or places that are not explicitly present in the entries.
@@ -146,29 +139,38 @@ ${options.strict ? '- Treat every detail literally; no embellishments beyond cla
     ? `\nNOTES FROM THE USER (only if they do not violate the rules):\n${options.userNotes.trim()}\n`
     : '';
 
+  // Prompt designed for a continuous narrative that keeps chronology but reads like one story.
   return `
-Role: You are a careful biographer.
+Eres un escritor experto en narrativa personal y diarios.
+Recibirás una lista de entradas de diario ordenadas cronológicamente, cada una con fecha y texto.
+Tu tarea es transformarlas en UNA SOLA HISTORIA CONTINUA, escrita en primera persona, con tono íntimo y natural.
 
-Goal: craft a cohesive YEAR IN REVIEW for ${from} – ${to} using ONLY the supplied entries.
-
-Period: ${period.toUpperCase()}. Match the depth to the range—weekly should read like a tight briefing, monthly a bit fuller, yearly the richest.
-${languageLine}
-${toneLine}
-${povLine}
-${orderingRules}
-Target length: ${minWords}–${maxWords} words. Start directly with the first paragraph.
-
-${fidelityRules}
+Instrucciones clave:
+- No hagas un resumen día por día.
+- No pongas títulos ni encabezados por fecha.
+- No uses listas ni viñetas en el relato principal.
+- Escribe todo como si fuera un relato continuo de mi vida durante ese período, siguiendo un hilo narrativo claro.
+- Mantén el orden temporal de los acontecimientos, pero exprésalos como recuerdos encadenados: inicio del periodo, desarrollo, momentos clave y cierre.
+- Integra las fechas solo de forma aproximada si es necesario (por ejemplo, "unos días después", "al principio del trimestre", "más adelante ese mes"), pero no como formato de diario con "- 2025-11-22".
+- No inventes hechos que no aparezcan en las entradas, pero sí puedes hacer inferencias suaves sobre emociones, aprendizajes o cambios (por ejemplo, cómo ha ido evolucionando mi estado de ánimo o mis relaciones).
+- Usa el mismo idioma predominante que aparece en las entradas originales: ${languageLine}
+- ${toneLine}
+- ${povLine}
+- ${fidelityRules}
 ${userNotes}
 
-ENTRIES (YYYY-MM-DD text):
-${feed}
+Narrativa:
+- Cuenta la historia como un solo capítulo sin saltos bruscos ni secciones por día.
+- Target length: ${minWords}–${maxWords} words. Comienza directo con el relato.
+- Preserva términos no ingleses tal cual aparezcan.
 
-OUTPUT:
-- Markdown only.
-- Structured paragraphs that stay true to the source text.
-- ${options.includeHighlights ? 'Finish with **Highlights of the year (10 bullet points)**.' : 'Do not add a bullet list at the end.'}
-- Close with **If I could tell my January self one thing…** (max 3–4 lines).
+Finaliza el resultado con:
+- Una sección breve **Highlights** con 5–8 viñetas que recojan logros, retos o momentos clave.
+- Un cierre titulado **If I could tell my future self one thing…** con 3–4 líneas en el mismo idioma del relato.
+
+Aquí tienes mis entradas de diario. Convierte TODO el contenido en una única narrativa continua:
+
+${feed}
 `.trim();
 }
 
