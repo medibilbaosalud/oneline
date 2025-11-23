@@ -242,11 +242,9 @@ Estructura de la salida
 - Target length: entre ${minWords} y ${maxWords} palabras.
   - Si el contenido es muy denso, prioriza claridad, fluidez y detección de patrones antes que mencionar cada detalle menor.
 
-2) Sección de patrones: **Patterns I can see**
+2) Sección de patrones: título traducido al idioma principal (equivalente a **Patterns I can see**)
 
-Al terminar la narrativa, añade una sección titulada exactamente:
-
-**Patterns I can see**
+Al terminar la narrativa, añade una sección con un título en el idioma principal equivalente a **Patterns I can see**, manteniendo el sentido del encabezado y el formato en negrita.
 
 En esta sección usa viñetas. Organízala (si es posible) en subapartados como:
 
@@ -259,20 +257,16 @@ En esta sección usa viñetas. Organízala (si es posible) en subapartados como:
 
 Mantén el idioma principal del relato también en los textos de estas viñetas, respetando palabras en otros idiomas igual que en el resto del texto.
 
-3) Sección de resumen breve: **Highlights**
+3) Sección de resumen breve: título traducido al idioma principal (equivalente a **Highlights**)
 
-Después de **Patterns I can see**, añade una sección titulada:
-
-**Highlights**
+Después de la sección de patrones, añade un título en el idioma principal equivalente a **Highlights**, manteniendo el sentido y el formato en negrita.
 
 - Incluye 5–8 viñetas.
 - Cada viñeta debe recoger un logro, reto o momento clave del periodo, escrito de forma breve y concreta.
 
 4) Mensaje al yo del futuro
 
-Por último, añade una sección titulada:
-
-**If I could tell my future self one thing…**
+Por último, añade una sección con un título en el idioma principal equivalente a **If I could tell my future self one thing…**, preservando el sentido y el formato en negrita.
 
 - Escribe 3–4 líneas en el mismo idioma del relato.
 - Tienen que sonar como un mensaje sincero que yo me dejaría a mí mismo/a en el futuro:
