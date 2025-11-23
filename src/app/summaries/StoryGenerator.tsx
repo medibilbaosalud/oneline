@@ -660,8 +660,16 @@ export default function StoryGenerator({
           <div className="md:col-span-2 flex flex-wrap gap-2">
             {(
               [
-                { key: "standard", label: "Standard", desc: "gemini-2.5-flash · 1 unit" },
-                { key: "advanced", label: "Advanced", desc: "gemini-2.5-pro · 2 units" },
+                {
+                  key: "standard",
+                  label: "Fast (best for most days)",
+                  desc: "Responsive and balanced · 1 unit",
+                },
+                {
+                  key: "advanced",
+                  label: "Our most advanced",
+                  desc: "Richer depth and nuance · 2 units",
+                },
               ] as const
             ).map((option) => (
               <button
