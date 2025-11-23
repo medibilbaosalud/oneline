@@ -560,7 +560,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Feedback</p>
-                <h2 className="text-lg font-semibold text-white">Help us keep Today smooth</h2>
+                <h2 className="text-lg font-semibold text-white">Help us keep improving OneLine</h2>
                 <p className="text-sm text-zinc-300">
                   Spot a glitch or have a suggestion? Send it from here—no login required.
                 </p>
