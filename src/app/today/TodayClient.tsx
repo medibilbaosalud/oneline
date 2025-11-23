@@ -11,6 +11,7 @@ import { encryptText, decryptText } from '@/lib/crypto';
 import { ENTRY_LIMIT_BASE } from '@/lib/summaryPreferences';
 import { useEntryLimits } from '@/hooks/useEntryLimits';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import FeedbackForm from '@/components/FeedbackForm';
 
 type StreakData = {
   current: number;
@@ -415,10 +416,10 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 </div>
               </div>
             </div>
-          )}
+        )}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-            <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+          <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
@@ -553,6 +554,23 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 </div>
               </div>
             </aside>
+          </div>
+
+          <div className="mt-8">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Feedback</p>
+                <h2 className="text-lg font-semibold text-white">Help us keep Today smooth</h2>
+                <p className="text-sm text-zinc-300">
+                  Spot a glitch or have a suggestion? Send it from here—no login required.
+                </p>
+              </div>
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-100">
+                Seen by the team
+              </span>
+            </div>
+
+            <FeedbackForm defaultPage="/today" className="border-white/15 bg-neutral-900/60" />
           </div>
         </div>
       </VaultGate>
