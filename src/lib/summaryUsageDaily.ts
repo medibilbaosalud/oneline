@@ -103,36 +103,50 @@ export async function ensureMinuteUsage(
   model: string,
   minuteStartIso: string,
 ): Promise<SummaryMinuteUsageRow> {
-  const { data, error } = await client
-    .from("summary_usage_minute")
-    .select("id,model,minute_start,tokens_used")
-    .eq("model", model)
-    .eq("minute_start", minuteStartIso)
-    .maybeSingle();
+  try {
+    const { data, error } = await client
+      .from("summary_usage_minute")
+      .select("id,model,minute_start,tokens_used")
+      .eq("model", model)
+      .eq("minute_start", minuteStartIso)
+      .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      throw error;
+    }
+
+    if (data) {
+      return data as SummaryMinuteUsageRow;
+    }
+
+    const { data: inserted, error: insertErr } = await client
+      .from("summary_usage_minute")
+      .insert({
+        model,
+        minute_start: minuteStartIso,
+        tokens_used: 0,
+      })
+      .select("id,model,minute_start,tokens_used")
+      .single();
+
+    if (insertErr || !inserted) {
+      throw insertErr ?? new Error("Failed to seed minute usage");
+    }
+
+    return inserted as SummaryMinuteUsageRow;
+  } catch (error: unknown) {
+    if (isMissingMinuteTable(error)) {
+      // Graceful fallback when the optional per-minute table has not been provisioned.
+      return {
+        id: -1,
+        model,
+        minute_start: minuteStartIso,
+        tokens_used: 0,
+      };
+    }
+    const message = error instanceof Error ? error.message : "minute_usage_failed";
+    throw new Error(message);
   }
-
-  if (data) {
-    return data as SummaryMinuteUsageRow;
-  }
-
-  const { data: inserted, error: insertErr } = await client
-    .from("summary_usage_minute")
-    .insert({
-      model,
-      minute_start: minuteStartIso,
-      tokens_used: 0,
-    })
-    .select("id,model,minute_start,tokens_used")
-    .single();
-
-  if (insertErr || !inserted) {
-    throw new Error(insertErr?.message || "Failed to seed minute usage");
-  }
-
-  return inserted as SummaryMinuteUsageRow;
 }
 
 export async function bumpMinuteUsage(
@@ -140,12 +154,18 @@ export async function bumpMinuteUsage(
   row: SummaryMinuteUsageRow,
   tokens: number,
 ): Promise<void> {
+  if (row.id < 0) return;
   const { error } = await client
     .from("summary_usage_minute")
     .update({ tokens_used: row.tokens_used + Math.max(0, tokens) })
     .eq("id", row.id);
 
-  if (error) {
+  if (error && !isMissingMinuteTable(error)) {
     throw new Error(error.message);
   }
+}
+
+function isMissingMinuteTable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return message.includes("summary_usage_minute");
 }
