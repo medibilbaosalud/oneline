@@ -151,7 +151,11 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'generation_failed';
     const lowered = typeof message === 'string' ? message.toLowerCase() : '';
-    const status = lowered.includes('blocked') || lowered.includes('empty story') ? 502 : 500;
+    const status = lowered.includes('blocked')
+      ? 502
+      : lowered.includes('max_tokens') || lowered.includes('empty story')
+        ? 422
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

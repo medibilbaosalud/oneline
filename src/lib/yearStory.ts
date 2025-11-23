@@ -88,6 +88,22 @@ export function entriesToFeed(entries: YearStoryEntry[]) {
     .join('\n');
 }
 
+// Limit the feed length to avoid exceeding Gemini input windows when prompts get long.
+function limitFeed(feed: string, maxChars = 16000) {
+  if (feed.length <= maxChars) return feed;
+  const lines = feed.split('\n');
+  const kept: string[] = [];
+  let total = 0;
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i];
+    const nextTotal = total + line.length + 1; // include newline padding
+    if (nextTotal > maxChars) break;
+    kept.push(line);
+    total = nextTotal;
+  }
+  return kept.reverse().join('\n');
+}
+
 export function buildYearStoryPrompt(
   feed: string,
   from: string,
@@ -369,9 +385,12 @@ export async function generateYearStory(
   to: string,
   options: YearStoryOptions,
   modelConfig?: Partial<StoryModelConfig>,
+  attempt: 0 | 1 = 0,
 ) {
   const feed = entriesToFeed(entries);
-  const prompt = buildYearStoryPrompt(feed, from, to, options, feed.length);
+  const feedLimit = attempt === 0 ? 16000 : 9000;
+  const trimmedFeed = limitFeed(feed, feedLimit);
+  const prompt = buildYearStoryPrompt(trimmedFeed, from, to, options, trimmedFeed.length);
 
   try {
     const model = await loadGenerativeModel({
@@ -411,6 +430,14 @@ export async function generateYearStory(
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to generate year story';
+    const lowered = message.toLowerCase();
+    const hitTokenLimit = lowered.includes('max_tokens') || lowered.includes('empty story');
+
+    // Retry once with a tighter feed window when Gemini signals token limits.
+    if (attempt === 0 && hitTokenLimit) {
+      return generateYearStory(entries, from, to, options, modelConfig, 1);
+    }
+
     throw new Error(message);
   }
 }
