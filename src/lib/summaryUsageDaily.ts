@@ -135,17 +135,16 @@ export async function ensureMinuteUsage(
 
     return inserted as SummaryMinuteUsageRow;
   } catch (error: unknown) {
-    if (isMissingMinuteTable(error)) {
-      // Graceful fallback when the optional per-minute table has not been provisioned.
-      return {
-        id: -1,
-        model,
-        minute_start: minuteStartIso,
-        tokens_used: 0,
-      };
+    if (!isMissingMinuteTable(error)) {
+      // Do not block generation if minute tracking fails for other reasons (e.g., RLS/DDL).
+      console.error("Skipping minute usage tracking", error);
     }
-    const message = error instanceof Error ? error.message : "minute_usage_failed";
-    throw new Error(message);
+    return {
+      id: -1,
+      model,
+      minute_start: minuteStartIso,
+      tokens_used: 0,
+    };
   }
 }
 
