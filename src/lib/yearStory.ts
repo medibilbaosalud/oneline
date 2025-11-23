@@ -396,7 +396,8 @@ export async function generateYearStory(
     const model = await loadGenerativeModel({
       mode: modelConfig?.mode ?? 'standard',
       modelName: modelConfig?.modelName ?? 'gemini-2.5-flash',
-      maxOutputTokens: modelConfig?.maxOutputTokens ?? 1024,
+      // Match the API layer defaults so the requested word ranges have enough room to complete.
+      maxOutputTokens: modelConfig?.maxOutputTokens ?? 2200,
     });
     if (!model) {
       const combined = entries

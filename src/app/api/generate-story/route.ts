@@ -97,7 +97,8 @@ export async function POST(req: NextRequest) {
     }
 
     const modelName = mode === 'advanced' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
-    const maxTokens = mode === 'advanced' ? 2048 : 1024;
+    // Align output caps with the target word ranges so MAX_TOKENS does not halt otherwise valid narratives.
+    const maxTokens = mode === 'advanced' ? 3200 : 2200;
 
     // Soft TPM guard to avoid spikes; falls back to a gentle 429 if exceeded.
     const minuteStart = new Date();
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
     const minuteIso = minuteStart.toISOString();
     const minuteUsage = await ensureMinuteUsage(supabase, modelName, minuteIso);
     const tpmSoftLimit = mode === 'advanced' ? 80000 : 160000;
-    const estimatedTokens = mode === 'advanced' ? 2200 : 1400;
+    const estimatedTokens = mode === 'advanced' ? 3500 : 2200;
     if (minuteUsage.tokens_used + estimatedTokens > tpmSoftLimit) {
       return NextResponse.json(
         {
