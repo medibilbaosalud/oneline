@@ -73,38 +73,6 @@ function adaptRangeByData(base: readonly [number, number], feedChars: number) {
   return base;
 }
 
-function inferLanguageFromFeed(feed: string, fallback: SummaryLanguage): SummaryLanguage {
-  const text = feed.toLowerCase();
-  let esScore = 0;
-  let deScore = 0;
-  let frScore = 0;
-
-  if (/[áéíóúñ¡¿]/.test(text)) esScore += 2;
-  if (/[äöüß]/.test(text)) deScore += 2;
-  if (/[àâçéèêëîïôûùüÿœæ]/.test(text)) frScore += 2;
-
-  const esWords = [' que ', ' de ', ' la ', ' el ', ' y ', ' con ', ' sin ', ' pero ', ' porque '];
-  const deWords = [' und ', ' nicht ', ' ich ', ' aber ', ' weil ', ' auch ', ' dann ', ' war '];
-  const frWords = [' et ', ' mais ', ' avec ', ' sans ', ' parce ', ' alors ', ' était ', ' je '];
-
-  esWords.forEach((word) => {
-    if (text.includes(word)) esScore += 1;
-  });
-  deWords.forEach((word) => {
-    if (text.includes(word)) deScore += 1;
-  });
-  frWords.forEach((word) => {
-    if (text.includes(word)) frScore += 1;
-  });
-
-  const maxScore = Math.max(esScore, deScore, frScore);
-  if (maxScore === 0) return fallback;
-  if (maxScore === esScore && esScore > deScore && esScore > frScore) return 'es';
-  if (maxScore === deScore && deScore > esScore && deScore > frScore) return 'de';
-  if (maxScore === frScore && frScore > esScore && frScore > deScore) return 'fr';
-  return fallback;
-}
-
 export function ymd(date: string | Date) {
   const iso = typeof date === 'string' ? date : new Date(date).toISOString();
   return iso.slice(0, 10);
@@ -159,21 +127,8 @@ export function buildYearStoryPrompt(
       ? 'Default to FIRST person if the entries are written that way; otherwise use a close THIRD person.'
       : `Point of view: ${povDescriptor(options.pov)}.`;
 
-  const inferredLanguage = inferLanguageFromFeed(feed, options.language);
-  const languageName = (() => {
-    switch (inferredLanguage) {
-      case 'es':
-        return 'Spanish';
-      case 'de':
-        return 'German';
-      case 'fr':
-        return 'French';
-      default:
-        return 'English';
-    }
-  })();
-
-  const languageLine = `Write the entire story in the predominant language of these entries (hint: ${languageName}). If the entries mostly use another language, switch fully to that language. Mirror any mixed-language words exactly as written and never translate or normalize them into a different language.`;
+  const languageLine =
+    'Detect the predominant language directly from the diary entries and narrate entirely in that language. If the entries mix languages, mirror that mix exactly as written. Do not default to a fallback language—always follow the diarist\'s own wording.';
 
   const fidelityRules = `
 FIDELITY RULES:
