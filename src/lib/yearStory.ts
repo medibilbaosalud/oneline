@@ -128,7 +128,7 @@ export function buildYearStoryPrompt(
       : `Point of view: ${povDescriptor(options.pov)}.`;
 
   const languageLine =
-    'Detect the predominant language directly from the diary entries and narrate entirely in that language. If the entries mix languages, mirror that mix exactly as written. Do not default to a fallback language—always follow the diarist\'s own wording.';
+    'Detect the predominant language directly from the diary entries and write the entire output in that language. If most entries are in German, write fully in German; if most are in French, write fully in French. When entries mix languages, mirror that mix exactly as written. Do not default to Spanish or English—always honor the diarist\'s language choices.';
 
   const fidelityRules = `
 FIDELITY RULES:
@@ -145,131 +145,132 @@ ${options.strict ? '- Treat every detail literally; no embellishments beyond cla
 
   // Prompt designed for a continuous narrative that keeps chronology but reads like one story.
   return `
-Eres un escritor experto en narrativa personal y diarios contemporáneos.
-Vas a recibir un conjunto de entradas de diario ordenadas cronológicamente, cada una con fecha y texto.
+You are an expert writer of personal narrative and contemporary journals.
+You will receive chronologically ordered diary entries, each with a date and text.
 
-Tu objetivo principal es transformar TODO ese material en UNA SOLA HISTORIA CONTINUA, escrita en primera persona, con tono íntimo, coherente y natural, como si la hubiera escrito yo mismo/a a partir de mis propios recuerdos.
+Your primary goal is to transform ALL of that material into ONE CONTINUOUS STORY, written in first person, with an intimate, coherent, and natural tone—as if I wrote it myself from my own memories.
 
-Quiero tres cosas a la vez:
-1) Una narrativa fluida que cuente lo que ha pasado.
-2) Un análisis implícito de patrones: qué cosas me hacen sentir bien o mal, qué personas suman o restan, qué temas se repiten.
-3) Que respetes y copies al máximo MI VOZ: mi vocabulario, mis expresiones y mi forma real de escribir.
+I want three things at once:
+1) A fluent narrative that tells what happened.
+2) An implicit pattern analysis: what makes me feel good or bad, which people help or drain me, which themes repeat.
+3) Maximum respect for MY VOICE: my vocabulary, expressions, and actual way of writing.
 
-Instrucciones de estilo (muy importantes)
------------------------------------------
+Style instructions (critical)
+-----------------------------
 
-- Escribe siempre en primera persona del singular ("yo"), salvo que ${povLine} indique otra cosa.
-- Haz que parezca que lo he escrito yo:
-  - copia mi forma de hablar,
-  - mi nivel de informalidad,
-  - mi manera de usar puntuación, puntos y comas, frases largas o cortas.
-- Usa el mismo idioma predominante que aparece en las entradas originales: ${languageLine}
-- Si uso expresiones o palabras en otros idiomas (por ejemplo euskera, inglés u otros), MANTÉNLAS en ese idioma y en el mismo contexto. No las traduzcas ni las neutralices.
-- Mantén mi vocabulario: si utilizo tacos, expresiones coloquiales, abreviaturas o emojis, puedes usarlos también (sin exagerar, pero de forma natural).
+- Write in first person singular ("I") unless ${povLine} says otherwise.
+- Make it feel like I wrote it:
+  - copy my way of speaking,
+  - my level of informality,
+  - my punctuation rhythm and sentence length.
+- Use the predominant language found in the entries: ${languageLine}
+- If I use expressions or words in other languages (e.g., Basque, English, German), KEEP them in that language and context. Do not translate or neutralize them.
+- Keep my vocabulary: if I use slang, colloquialisms, abbreviations, or emojis, include them naturally (without overdoing it).
 - ${toneLine}
 - ${povLine}
 - ${fidelityRules}
 ${userNotes}
-- Preserva nombres propios, tecnicismos y términos no ingleses tal y como aparezcan en las entradas.
-- No hagas frases impersonales tipo “el autor siente…”. Escríbelo como si fuera mi propia voz: “yo siento”, “yo pienso”, “me rayé”, etc.
-- Evita sonar académico o distante; prioriza un estilo cercano, honesto y directo.
+- Preserve names, technical terms, and non-English words exactly as they appear in the entries.
+- Avoid impersonal phrasing like “the author feels…”; write it as my own voice: “I feel”, “I think”, etc.
+- Avoid academic distance; prefer a close, honest, direct style.
 
-Instrucciones sobre la narrativa
---------------------------------
+Narrative instructions
+----------------------
 
-- No hagas un resumen día por día.
-- No pongas títulos ni encabezados por fecha.
-- No repitas el formato original de las entradas (por ejemplo: "- 2025-11-22 ...").
-- No uses listas ni viñetas en el relato principal.
-- Escribe todo como una historia continua de ese periodo de mi vida, con un hilo narrativo claro.
-- Mantén el orden temporal global, pero exprésalo como recuerdos encadenados:
-  - cómo empezaba la etapa,
-  - cómo fueron cambiando las cosas,
-  - momentos clave,
-  - y cómo estaba yo hacia el final.
-- Puedes fusionar o comprimir días parecidos para que la historia fluya; no hace falta mencionar cada día explícitamente.
-- Habla tanto de lo que pasó (hechos concretos) como de cómo me sentía y qué conclusiones iba sacando.
-- Integra el paso del tiempo de forma aproximada ("al principio de esa semana", "unos días después", "más adelante ese mes") sin usar fechas exactas ni marcar días como secciones independientes.
-- No inventes hechos que no aparezcan en las entradas, pero SÍ puedes hacer inferencias suaves y naturales sobre:
-  - mi estado de ánimo,
-  - mi nivel de energía,
-  - mis miedos,
-  - mis ilusiones,
-  - mis cambios de perspectiva.
+- Do NOT summarize day by day.
+- Do NOT add date headers or titles.
+- Do NOT repeat the original entry format (e.g., "- 2025-11-22 ...").
+- Do NOT use lists or bullets in the main narrative.
+- Write everything as one continuous story of that period, with a clear narrative thread.
+- Keep the overall time order, but express it like linked memories:
+  - how the period began,
+  - how things evolved,
+  - key moments,
+  - and how I was by the end.
+- You may merge or compress similar days so the story flows; you do not need to mention every day explicitly.
+- Talk about what happened (concrete events) and how I felt plus the conclusions I drew.
+- Integrate the passage of time approximately ("early in that week", "a few days later", "later that month") without exact dates or daily sections.
+- Do NOT invent facts that are not in the entries, but DO make gentle, natural inferences about:
+  - my mood,
+  - my energy,
+  - my fears,
+  - my hopes,
+  - my shifts in perspective.
 
-Detección de patrones (integrado en la historia)
-------------------------------------------------
+Pattern detection (woven into the story)
+----------------------------------------
 
-Mientras escribes la narrativa, presta especial atención a:
+While writing the narrative, pay close attention to:
 
-- Qué cosas tienden a hacerme sentir mejor:
-  - actividades, personas, planes, lugares, logros, pequeñas rutinas…
-- Qué cosas tienden a hacerme sentir peor:
-  - situaciones, pensamientos, hábitos, problemas que se repiten…
-- Qué personas aparecen como apoyo, motivación o buena influencia.
-- Qué personas, dinámicas o ambientes me drenan, me frustran o me generan conflicto.
-- Temas que se repiten:
-  - estudios, amigos, proyectos, salud mental, redes sociales, juegos, trabajo, relaciones, etc.
-- Cualquier cambio de tendencia:
-  - momentos en los que empiezo a ver las cosas distinto,
-  - decisiones que marcan un antes y un después,
-  - cosas que al principio me afectaban mucho y luego menos (o al revés).
+- What tends to make me feel better:
+  - activities, people, plans, places, achievements, small routines…
+- What tends to make me feel worse:
+  - situations, thoughts, habits, recurring problems…
+- People who appear as support, motivation, or good influence.
+- People, dynamics, or environments that drain, frustrate, or generate conflict.
+- Themes that repeat:
+  - school, friends, projects, mental health, social media, games, work, relationships, etc.
+- Any change in trend:
+  - moments when I start seeing things differently,
+  - decisions that mark a turning point,
+  - things that bothered me a lot at first and later less (or the opposite).
 
-No escribas esta parte como un análisis separado al principio: estas ideas deben estar mezcladas dentro de la historia, como reflexiones naturales del narrador (“me di cuenta de que…”, “cada vez que hacía X me sentía mejor”, “con Y casi siempre acababa rayado”, etc.).
+Do NOT write this as a separate analysis upfront; these ideas should be woven into the story as natural reflections (“I realized that…”, “whenever I did X I felt better”, “with Y I usually ended up stressed”, etc.).
 
-Estructura de la salida
------------------------
+Output structure
+----------------
 
-1) Narrativa principal
+1) Main narrative
 
-- Empieza directamente con el relato, sin frases meta tipo “A continuación presento un resumen”.
-- Cuenta la historia como un solo capítulo continuo, sin secciones por día.
-- No incluyas encabezados de sección en esta parte.
-- No utilices listas ni viñetas en la narrativa principal.
-- Usa un tono honesto y reflexivo, pero sin ponerse demasiado dramático salvo que el contenido lo justifique.
-- Target length: entre ${minWords} y ${maxWords} palabras.
-  - Si el contenido es muy denso, prioriza claridad, fluidez y detección de patrones antes que mencionar cada detalle menor.
+- Start directly with the story, no meta phrases like “Here is a summary”.
+- Tell it as one continuous chapter, no day-by-day sections.
+- Do not include section headers here.
+- Do not use lists or bullets in the main narrative.
+- Keep an honest, reflective tone without unnecessary drama unless the content justifies it.
+- Target length: between ${minWords} and ${maxWords} words.
+  - If the content is dense, prioritize clarity, flow, and pattern detection over mentioning every minor detail.
 
-2) Sección de patrones: título traducido al idioma principal (equivalente a **Patterns I can see**)
+2) Pattern section: **Patterns I can see** (translate this heading into the dominant diary language while keeping it bold)
 
-Al terminar la narrativa, añade una sección con un título en el idioma principal equivalente a **Patterns I can see**, manteniendo el sentido del encabezado y el formato en negrita.
+After the narrative, add a section titled with the dominant language equivalent of **Patterns I can see** and keep it bold.
 
-En esta sección usa viñetas. Organízala (si es posible) en subapartados como:
+In this section use bullets. Organize (if possible) into subsections like:
 
 - *What tends to make me feel better:*
-  - 3–6 viñetas sobre actividades, personas, hábitos o contextos que mejoran mi estado de ánimo.
+  - 3–6 bullets about activities, people, habits, or contexts that improve my mood.
 - *What tends to make me feel worse:*
-  - 3–6 viñetas sobre cosas que suelen bajarme el ánimo, generarme estrés o rayadas.
+  - 3–6 bullets about things that usually lower my mood, cause stress, or overthinking.
 - *People and relationships:*
-  - 3–6 viñetas donde resumas brevemente qué personas parecen ser buena influencia y cuáles no, siempre basándote en lo que aparece en las entradas.
+  - 3–6 bullets summarizing which people seem to be a good influence and which are not, always based on the entries.
 
-Mantén el idioma principal del relato también en los textos de estas viñetas, respetando palabras en otros idiomas igual que en el resto del texto.
+Keep the same dominant language (and mixed words) in these bullets as in the narrative.
 
-3) Sección de resumen breve: título traducido al idioma principal (equivalente a **Highlights**)
+3) Brief recap section: **Highlights** (translate this heading into the dominant diary language while keeping it bold)
 
-Después de la sección de patrones, añade un título en el idioma principal equivalente a **Highlights**, manteniendo el sentido y el formato en negrita.
+After the patterns, add a section titled with the dominant language equivalent of **Highlights**, bolded.
 
-- Incluye 5–8 viñetas.
-- Cada viñeta debe recoger un logro, reto o momento clave del periodo, escrito de forma breve y concreta.
+- Include 5–8 bullets.
+- Each bullet should capture a key achievement, challenge, or moment from the period, concise and concrete.
 
-4) Mensaje al yo del futuro
+4) Message to my future self
 
-Por último, añade una sección con un título en el idioma principal equivalente a **If I could tell my future self one thing…**, preservando el sentido y el formato en negrita.
+Finally, add a section titled with the dominant language equivalent of **If I could tell my future self one thing…**, keeping the meaning and bold formatting.
 
-- Escribe 3–4 líneas en el mismo idioma del relato.
-- Tienen que sonar como un mensaje sincero que yo me dejaría a mí mismo/a en el futuro:
-  - combinando lo que he vivido,
-  - los patrones que has detectado,
-  - y el consejo más importante que se repite a lo largo de la historia.
+- Write 3–4 lines in the same language as the narrative.
+- It should sound like a sincere note I would leave to my future self:
+  - combining what I lived,
+  - the patterns you detected,
+  - and the most important advice that repeats through the story.
 
-Entrada
--------
+Input
+-----
 
-Aquí tienes mis entradas de diario. Convierte TODO el contenido en una única narrativa continua siguiendo exactamente las instrucciones anteriores:
+Here are my diary entries. Convert ALL of the content into one continuous narrative following the instructions above:
 
 ${feed}
 `.trim();
-}
+ }
+
 
 function extractStoryText(response: unknown) {
   // Prefer the helper provided by the SDK, then fall back to concatenating candidate parts.
