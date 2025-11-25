@@ -96,6 +96,7 @@ export default function SettingsClient() {
   const [storyLanguage, setStoryLanguage] = useState<SummaryLanguage>("en");
   const [reminder, setReminder] = useState<SummaryReminder | null>(null);
   const [passphraseStored, setPassphraseStored] = useState(false);
+  const [sendingNotification, setSendingNotification] = useState(false);
 
   const guidanceLimit = extendedGuidance ? GUIDANCE_NOTES_LIMIT_EXTENDED : GUIDANCE_NOTES_LIMIT_BASE;
 
@@ -360,6 +361,24 @@ export default function SettingsClient() {
     setFeedback("Removed the stored passphrase on this device. You'll need to re-enter it next time.");
   }
 
+  async function handleSendTestNotification() {
+    setFeedback(null);
+    setError(null);
+    setSendingNotification(true);
+    try {
+      const res = await fetch("/api/debug/create-notification", { method: "POST" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Could not send a test notification.");
+      }
+      setFeedback("Test notification sent. Check the bell at the top.");
+    } catch (err: unknown) {
+      setError(messageFromError(err, "Could not send a test notification."));
+    } finally {
+      setSendingNotification(false);
+    }
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.replace("/auth");
@@ -621,6 +640,25 @@ export default function SettingsClient() {
             <p className="mt-3 text-xs app-muted">
               Clearing browser data or switching devices will also remove the stored passphrase; keep a backup in a password manager.
             </p>
+          </section>
+
+          <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-semibold">Notifications</h2>
+            <p className="mt-2 text-sm app-muted">
+              Trigger a quick test alert to verify the in-app bell and unread counter.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleSendTestNotification}
+                disabled={sendingNotification}
+                className="rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {sendingNotification ? "Sending…" : "Send test notification"}
+              </button>
+              <p className="text-xs app-muted">Only you can see notifications tied to your account.</p>
+            </div>
           </section>
 
           <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
