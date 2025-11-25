@@ -66,7 +66,7 @@ async function persistPassphrase(passphrase: string | null) {
   notify();
 }
 
-type RemoteVaultPayload = { bundle: WrappedBundle | null; hasVault: boolean };
+type RemoteVaultPayload = { bundle: WrappedBundle | null; hasVault: boolean; status: 'ok' | 'auth' | 'error' };
 
 async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   try {
@@ -74,15 +74,15 @@ async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
     if (!res.ok) {
       // If auth is not ready yet, err on the safe side and assume a vault may exist to avoid overwriting it.
       if (res.status === 401 || res.status === 403) {
-        return { bundle: null, hasVault: true };
+        return { bundle: null, hasVault: true, status: 'auth' };
       }
-      return { bundle: null, hasVault: hasStoredBundle || expectedRemoteVault };
+      return { bundle: null, hasVault: true, status: 'error' };
     }
     const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
     const bundle = payload?.bundle ?? null;
-    return { bundle, hasVault: payload?.hasVault ?? !!bundle };
+    return { bundle, hasVault: payload?.hasVault ?? !!bundle, status: 'ok' };
   } catch {
-    return { bundle: null, hasVault: false };
+    return { bundle: null, hasVault: true, status: 'error' };
   }
 }
 
@@ -151,7 +151,7 @@ async function ensureInitialized() {
       }
 
       const remote = await fetchRemoteBundle();
-      expectedRemoteVault = remote.hasVault;
+      expectedRemoteVault = remote.hasVault || remote.status !== 'ok';
       if (remote.bundle) {
         cachedBundle = remote.bundle;
         hasStoredBundle = true;
@@ -241,6 +241,9 @@ export function useVault() {
 
     // Safety check: if a vault already exists remotely or locally, do not generate a new key.
     const remote = await fetchRemoteBundle();
+    if (remote.status !== 'ok') {
+      throw new Error('Unable to confirm your existing vault. Ensure you are signed in and try again.');
+    }
     if (remote.bundle || cachedBundle || hasStoredBundle || remote.hasVault || expectedRemoteVault) {
       const existingBundle = remote.bundle ?? cachedBundle;
       if (existingBundle) {
@@ -294,7 +297,7 @@ export function useVault() {
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
         const remote = await fetchRemoteBundle();
-        expectedRemoteVault = remote.hasVault;
+        expectedRemoteVault = remote.hasVault || remote.status !== 'ok';
         bundle = remote.bundle;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
