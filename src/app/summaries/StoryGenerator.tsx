@@ -5,11 +5,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
 import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { persistSummary } from "@/lib/summaryHistory";
+import type { SummaryMode } from "@/lib/summaryUsageDaily";
+
+const WEEKLY_GUARD_MESSAGE = "Write at least four days to unlock your first weekly story.";
 
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
 type Pov = "auto" | "first" | "third";
-type Preset = "30" | "90" | "180" | "year" | "custom";
+type Preset = "30" | "90" | "180" | "year" | "lastWeek" | "custom";
+
+type TextSegment = {
+  text: string;
+  bold: boolean;
+};
 
 type StoryGeneratorProps = {
   initialOptions?: SummaryPreferences;
@@ -17,9 +27,51 @@ type StoryGeneratorProps = {
   initialRange?: { from: string; to: string } | null;
 };
 
+function escapeHtml(raw: string) {
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatStoryBlocks(story: string) {
+  return story
+    .trim()
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const escaped = escapeHtml(block);
+      return escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br />");
+    });
+}
+
 function ymd(d: Date) {
   const iso = new Date(d).toISOString();
   return iso.slice(0, 10);
+}
+
+function parseSegments(paragraph: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  const pattern = /\*\*(.+?)\*\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(paragraph)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ text: paragraph.slice(lastIndex, match.index), bold: false });
+    }
+    segments.push({ text: match[1], bold: true });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < paragraph.length) {
+    segments.push({ text: paragraph.slice(lastIndex), bold: false });
+  }
+
+  return segments;
 }
 
 function startOfYear(d = new Date()) {
@@ -32,11 +84,61 @@ function addDays(d: Date, days: number) {
   return x;
 }
 
+function inferPeriod(start: string, end: string): "weekly" | "monthly" | "yearly" {
+  const startMs = Date.parse(`${start}T00:00:00Z`);
+  const endMs = Date.parse(`${end}T00:00:00Z`);
+  if (Number.isNaN(startMs) || Number.isNaN(endMs)) return "monthly";
+  const diffDays = Math.max(0, Math.round((endMs - startMs) / (24 * 60 * 60 * 1000)));
+  if (diffDays <= 10) return "weekly";
+  if (diffDays <= 62) return "monthly";
+  return "yearly";
+}
+
+async function loadScriptWithFallback(sources: string[]) {
+  let lastError: Error | null = null;
+
+  for (const src of sources) {
+    // If already present, resolve immediately
+    if (document.querySelector(`script[src="${src}"]`)) {
+      return;
+    }
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.crossOrigin = "anonymous";
+        script.referrerPolicy = "no-referrer";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.body.appendChild(script);
+      });
+      return;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError ?? new Error("Unable to load scripts");
+}
+
+function lastWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const end = new Date(now);
+  end.setDate(now.getDate() - (day === 0 ? 7 : day));
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  return { from: ymd(start), to: ymd(end) };
+}
+
 type Quota = {
   limit: number;
   used: number;
   remaining: number;
   resetAt: string;
+  unlimited?: boolean;
   period: {
     start: string;
     end: string;
@@ -60,7 +162,7 @@ export default function StoryGenerator({
   const { dataKey, unlockWithPassphrase, getCurrentKey } = useVault();
   // Preset + from/to
   const today = useMemo(() => new Date(), []);
-  const [preset, setPreset] = useState<Preset>(initialPreset ?? (initialRange ? "custom" : "90"));
+  const [preset, setPreset] = useState<Preset>(initialPreset ?? (initialRange ? "custom" : "lastWeek"));
   const [customFrom, setCustomFrom] = useState<string>(initialRange?.from ?? ymd(addDays(today, -30)));
   const [customTo, setCustomTo] = useState<string>(initialRange?.to ?? ymd(today));
 
@@ -68,9 +170,8 @@ export default function StoryGenerator({
   const [length, setLength] = useState<Length>(initialOptions?.length ?? "medium");
   const [tone, setTone] = useState<Tone>(initialOptions?.tone ?? "auto");
   const [pov, setPov] = useState<Pov>(initialOptions?.pov ?? "auto");
-  const [includeHighlights, setIncludeHighlights] = useState(
-    initialOptions?.includeHighlights ?? true,
-  );
+  const [mode, setMode] = useState<SummaryMode>("standard");
+  const includeHighlights = true;
   const [notes, setNotes] = useState(initialOptions?.notes ?? "");
   const [language, setLanguage] = useState<SummaryLanguage>(initialOptions?.language ?? "en");
 
@@ -78,6 +179,8 @@ export default function StoryGenerator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
+  const formattedStory = useMemo(() => (story ? formatStoryBlocks(story) : []), [story]);
+  const [loadingPhrase, setLoadingPhrase] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
   const [quotaError, setQuotaError] = useState<string | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(true);
@@ -86,11 +189,33 @@ export default function StoryGenerator({
   const [modalError, setModalError] = useState<string | null>(null);
   const [modalPassphrase, setModalPassphrase] = useState("");
   const [modalBusy, setModalBusy] = useState(false);
+  const [allowShortRangeOverride, setAllowShortRangeOverride] = useState(false);
+  const [usageInfo, setUsageInfo] = useState<
+    | { mode: SummaryMode; usageUnits: number; remainingUnits: number; dailyLimit: number }
+    | null
+  >(null);
+
+  const lengthGuidance: Record<Length, string> = {
+    short: "~200–300 words",
+    medium: "~600–800 words",
+    long: "~1200+ words",
+  };
+
+  const loadingPhrases = [
+    "Weaving your week together…",
+    "Threading highlights without changing your words…",
+    "Letting your tone lead the story…",
+    "Balancing bright spots and low points…",
+    "Keeping languages exactly as you wrote them…",
+  ];
 
   // Resolve the date range according to the preset
   const { from, to } = useMemo(() => {
     if (preset === "custom") {
       return { from: customFrom, to: customTo };
+    }
+    if (preset === "lastWeek") {
+      return lastWeekRange();
     }
     const now = new Date();
     if (preset === "year") {
@@ -106,7 +231,120 @@ export default function StoryGenerator({
     return { from: ymd(addDays(now, -180)), to: ymd(now) };
   }, [preset, customFrom, customTo]);
 
+  useEffect(() => {
+    setAllowShortRangeOverride(false);
+  }, [from, to]);
+
   const propsSignature = useRef<string | null>(null);
+
+  const exportStoryAsPdf = useCallback(async () => {
+    if (!story) {
+      setError("Generate a story before exporting.");
+      return;
+    }
+
+    try {
+      await loadScriptWithFallback([
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+      ]);
+
+      const { jsPDF } = (window as any).jspdf || {};
+
+      if (!jsPDF) {
+        throw new Error("PDF tools unavailable");
+      }
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 56;
+      const marginY = 64;
+      const maxWidth = pageWidth - marginX * 2;
+      let cursorY = marginY;
+      const lineHeight = 18;
+
+      const segmentsByParagraph = story
+        .replace(/\r/g, "")
+        .split(/\n\s*\n/)
+        .map((para) => para.trim())
+        .filter(Boolean)
+        .map((para) => parseSegments(para));
+
+      pdf.setFont("times", "bold");
+      pdf.setFontSize(20);
+      pdf.setTextColor(28, 34, 78);
+      pdf.text("OneLine Story", marginX, cursorY, { baseline: "top" });
+      cursorY += 22;
+
+      pdf.setFont("times", "italic");
+      pdf.setFontSize(12);
+      pdf.setTextColor(90, 96, 122);
+      const dateLine = from && to ? `Range: ${from} → ${to}` : "Private recap";
+      pdf.text(dateLine, marginX, cursorY, { baseline: "top" });
+      cursorY += 12;
+
+      pdf.setDrawColor(144, 153, 180);
+      pdf.setLineWidth(0.6);
+      pdf.line(marginX, cursorY, pageWidth - marginX, cursorY);
+      cursorY += 18;
+
+      pdf.setFontSize(13);
+      pdf.setTextColor(26, 26, 26);
+
+      const ensureSpace = (additional: number) => {
+        if (cursorY + additional > pageHeight - marginY) {
+          pdf.addPage();
+          cursorY = marginY;
+          pdf.setFontSize(13);
+          pdf.setTextColor(26, 26, 26);
+        }
+      };
+
+      const writeParagraph = (segments: TextSegment[]) => {
+        let cursorX = marginX;
+        ensureSpace(lineHeight);
+
+        segments.forEach((segment) => {
+          const words = segment.text.split(/\s+/).filter(Boolean);
+          if (words.length === 0) {
+            return;
+          }
+
+          pdf.setFont("times", segment.bold ? "bold" : "normal");
+
+          words.forEach((word) => {
+            const spacer = cursorX === marginX ? "" : " ";
+            const textToRender = `${spacer}${word}`;
+            const textWidth = pdf.getTextWidth(textToRender);
+
+            if (cursorX + textWidth > marginX + maxWidth) {
+              cursorY += lineHeight;
+              ensureSpace(lineHeight);
+              cursorX = marginX;
+            }
+
+            pdf.text(textToRender, cursorX, cursorY, { baseline: "top" });
+            cursorX += textWidth;
+          });
+        });
+
+        cursorY += lineHeight;
+      };
+
+      segmentsByParagraph.forEach((segments, idx) => {
+        writeParagraph(segments);
+        if (idx < segmentsByParagraph.length - 1) {
+          cursorY += 6;
+        }
+      });
+
+      pdf.save("oneline-story.pdf");
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : "Export failed. Please retry after allowing downloads.");
+    }
+  }, [from, story, to]);
 
   useEffect(() => {
     const signature = JSON.stringify({
@@ -125,14 +363,13 @@ export default function StoryGenerator({
       setLength(initialOptions.length);
       setTone(initialOptions.tone);
       setPov(initialOptions.pov);
-      setIncludeHighlights(initialOptions.includeHighlights);
+      // Highlights are always on now; keep the saved preference for payload completeness.
       setNotes(initialOptions.notes ?? "");
       setLanguage(initialOptions.language ?? "en");
     } else {
       setLength("medium");
       setTone("auto");
       setPov("auto");
-      setIncludeHighlights(true);
       setNotes("");
       setLanguage("en");
     }
@@ -173,6 +410,23 @@ export default function StoryGenerator({
     refreshQuota();
   }, [refreshQuota]);
 
+  useEffect(() => {
+    if (!loading) {
+      setLoadingPhrase(null);
+      return;
+    }
+
+    let index = Math.floor(Math.random() * loadingPhrases.length);
+    setLoadingPhrase(loadingPhrases[index]);
+
+    const timer = setInterval(() => {
+      index = (index + 1) % loadingPhrases.length;
+      setLoadingPhrase(loadingPhrases[index]);
+    }, 2200);
+
+    return () => clearInterval(timer);
+  }, [loading, loadingPhrases]);
+
   function openConsent() {
     setModalError(null);
     setModalPassphrase("");
@@ -185,6 +439,7 @@ export default function StoryGenerator({
       setLoading(true);
       setError(null);
       setStory("");
+      setLoadingPhrase(loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)]);
 
       const params = new URLSearchParams({ from, to });
       const historyRes = await fetch(`/api/history?${params.toString()}`, { cache: "no-store" });
@@ -223,10 +478,18 @@ export default function StoryGenerator({
         throw new Error("No decryptable entries in that range.");
       }
 
+      const fromDate = new Date(`${from}T00:00:00Z`);
+      const toDate = new Date(`${to}T00:00:00Z`);
+      const diffDays = Math.max(1, Math.round((toDate.valueOf() - fromDate.valueOf()) / (1000 * 60 * 60 * 24)) + 1);
+      if (diffDays <= 8 && decrypted.length < 4 && !allowShortRangeOverride) {
+        throw new Error(WEEKLY_GUARD_MESSAGE);
+      }
+
       const payload = {
         consent: true,
         from,
         to,
+        mode,
         options: {
           length,
           tone,
@@ -244,13 +507,48 @@ export default function StoryGenerator({
         body: JSON.stringify(payload),
       });
 
-      const json = (await res.json().catch(() => null)) as { story?: string; error?: string } | null;
+      const json = (await res.json().catch(() => null)) as
+        | { story?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
+        | null;
       if (!res.ok) {
-        throw new Error(json?.error || res.statusText || "Failed to generate story");
+        const message = json?.message || json?.error || res.statusText || "Failed to generate story";
+        setUsageInfo((current) =>
+          json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null
+            ? {
+                mode,
+                usageUnits: json.usageUnits,
+                remainingUnits: json.remainingUnits,
+                dailyLimit: json.dailyLimit,
+              }
+            : current,
+        );
+        throw new Error(message);
       }
 
-      setStory(json?.story || "");
+      const storyText = json?.story || "";
+      setStory(storyText);
+      if (json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null) {
+        setUsageInfo({
+          mode,
+          usageUnits: json.usageUnits,
+          remainingUnits: json.remainingUnits,
+          dailyLimit: json.dailyLimit,
+        });
+      }
       refreshQuota();
+
+      try {
+        const supabase = supabaseBrowser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        const uid = user?.id;
+        if (uid && key && storyText) {
+          await persistSummary(uid, key, storyText, { from, to, period: inferPeriod(from, to) });
+        }
+      } catch {
+        // Best-effort persistence only; rendering still succeeds without local history.
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to generate");
     } finally {
@@ -299,43 +597,95 @@ export default function StoryGenerator({
   }
 
   return (
-    <div className="w-full space-y-6 text-zinc-100">
+    <div className="w-full space-y-8 text-zinc-100">
       {/* Controles */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-sm">
-        <div className="mb-4 flex flex-col gap-2 rounded-xl border border-white/5 bg-black/40 p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-sm font-medium text-zinc-200">Monthly summaries</p>
-            {quota && (
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
-                Resets {new Date(quota.resetAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+      <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-black/60 to-indigo-900/20 p-5 shadow-2xl shadow-indigo-950/40">
+        <div className="mb-5 grid gap-3 rounded-2xl border border-white/10 bg-black/40 p-4 sm:grid-cols-3">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Quota</p>
+            {quotaLoading ? (
+              <p className="text-sm text-zinc-300">Checking allowance…</p>
+            ) : quotaError ? (
+              <p className="text-sm text-rose-400">{quotaError}</p>
+            ) : quota ? (
+              <p className="text-sm text-zinc-100">
+                {quota.unlimited ? (
+                  <span className="font-semibold">Unlimited stories enabled for this account</span>
+                ) : (
+                  <>
+                    <span className="font-semibold">{quota.remaining}</span> of {quota.limit} stories left
+                  </>
+                )}
               </p>
+            ) : (
+              <p className="text-sm text-zinc-300">Sign in to see your allowance.</p>
             )}
-          </div>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              {quotaLoading ? (
-                <p className="text-sm text-zinc-400">Checking allowance…</p>
-              ) : quotaError ? (
-                <p className="text-sm text-rose-400">{quotaError}</p>
-              ) : quota ? (
-                <p className="text-sm text-zinc-300">
-                  {quota.remaining} of {quota.limit} stories left this month
-                </p>
-              ) : (
-                <p className="text-sm text-zinc-400">Sign in to see your allowance.</p>
-              )}
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-all"
+                style={{
+                  width: quota
+                    ? quota.unlimited
+                      ? "100%"
+                      : `${Math.min(100, (quota.used / quota.limit) * 100)}%`
+                    : "0%",
+                }}
+              />
             </div>
-            {quota && (
-              <div className="text-right text-xs text-zinc-500">
-                <span className="font-medium text-zinc-200">{quota.used}</span> generated so far
-              </div>
-            )}
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+              {quota
+                ? quota.unlimited
+                  ? "Unlimited allowance active"
+                  : `Resets ${new Date(quota.resetAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                : "Refresh to update"}
+            </p>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-indigo-500 transition-all"
-              style={{ width: quota ? `${Math.min(100, (quota.used / quota.limit) * 100)}%` : "0%" }}
-            />
+          <div className="space-y-1 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Voice</p>
+            <p className="text-sm text-zinc-100">Keeps your languages, tone, and highlights intact.</p>
+            <p className="text-[11px] text-zinc-500">Gemini prompt preserves code-switching automatically.</p>
+          </div>
+          <div className="space-y-1 rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Privacy</p>
+            <p className="text-sm text-zinc-100">Vault stays client-side until you consent to send.</p>
+            <p className="text-[11px] text-zinc-500">We never store your passphrase.</p>
+          </div>
+        </div>
+        <div className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 md:grid-cols-3">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Model</p>
+            <p className="text-sm text-zinc-100">Pick the engine for this summary.</p>
+            <p className="text-[11px] text-zinc-500">Advanced uses two daily units; standard uses one.</p>
+          </div>
+          <div className="md:col-span-2 flex flex-wrap gap-2">
+            {(
+              [
+                {
+                  key: "standard",
+                  label: "Fast (best for most days)",
+                  desc: "Responsive and balanced · 1 unit",
+                },
+                {
+                  key: "advanced",
+                  label: "Our most advanced",
+                  desc: "Richer depth and nuance · 2 units",
+                },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setMode(option.key)}
+                className={`flex min-w-[180px] flex-col gap-1 rounded-xl border px-3 py-2 text-left shadow-sm transition ${
+                  mode === option.key
+                    ? "border-indigo-400 bg-indigo-500/20 text-white"
+                    : "border-white/10 bg-white/5 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                }`}
+              >
+                <span className="text-sm font-semibold">{option.label}</span>
+                <span className="text-xs text-zinc-400">{option.desc}</span>
+              </button>
+            ))}
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -348,6 +698,7 @@ export default function StoryGenerator({
               className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="30">Last 30 days</option>
+              <option value="lastWeek">Last week (Mon–Sun)</option>
               <option value="90">Last 3 months</option>
               <option value="180">Last 6 months</option>
               <option value="year">Year to date</option>
@@ -380,7 +731,7 @@ export default function StoryGenerator({
           )}
 
           {/* Length */}
-          <label className="flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
             <span className="text-sm text-zinc-400">Length</span>
             <select
               value={length}
@@ -391,6 +742,7 @@ export default function StoryGenerator({
               <option value="medium">Medium</option>
               <option value="long">Long</option>
             </select>
+            <span className="text-xs text-zinc-500">{lengthGuidance[length]}</span>
           </label>
 
           {/* Tone */}
@@ -424,15 +776,13 @@ export default function StoryGenerator({
           </label>
 
           {/* Highlights */}
-          <label className="flex items-center gap-3 pt-6">
-            <input
-              type="checkbox"
-              checked={includeHighlights}
-              onChange={(e) => setIncludeHighlights(e.target.checked)}
-              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-2 focus:ring-indigo-500"
-            />
-            <span className="text-sm text-zinc-300">Include highlights</span>
-          </label>
+          <div className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/5 px-3 py-3 text-sm text-zinc-200">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold">Highlights included automatically</span>
+            </div>
+            <span className="text-xs text-zinc-500">Your story ends with the biggest wins and low points by default.</span>
+          </div>
         </div>
 
         {/* Notes */}
@@ -454,23 +804,84 @@ export default function StoryGenerator({
           <button
             onClick={openConsent}
             disabled={loading}
-            className="rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="group relative overflow-hidden rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <span className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-500 via-sky-500 to-purple-500 opacity-0 blur transition duration-500 group-hover:opacity-60" />
             {loading ? "Generating…" : "Generate your story"}
           </button>
           {error && <span className="text-sm text-rose-400">{error}</span>}
+          {error === WEEKLY_GUARD_MESSAGE && (
+            <button
+              type="button"
+              className="rounded-lg border border-white/15 px-3 py-1 text-sm font-medium text-indigo-100 transition hover:border-white/30 hover:bg-white/5"
+              onClick={() => {
+                setAllowShortRangeOverride(true);
+                setError(null);
+                openConsent();
+              }}
+            >
+              Generate anyway
+            </button>
+          )}
+          {usageInfo && (
+            <span className="text-sm text-zinc-400">
+              Used {usageInfo.usageUnits} of {usageInfo.dailyLimit} units today ({usageInfo.remainingUnits} left) · Last run: {" "}
+              <span className="font-semibold text-indigo-100">{usageInfo.mode}</span>
+            </span>
+          )}
         </div>
       </div>
 
       {/* Resultado */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-sm">
-        {story ? (
-          <article className="prose prose-invert max-w-none">
-            {/* Simple rendering; pipe through a markdown parser if desired */}
-            <pre className="whitespace-pre-wrap break-words text-zinc-100">{story}</pre>
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-black/50 p-5 shadow-2xl shadow-indigo-950/40" aria-busy={loading}>
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5" />
+        {loading && (
+          <div className="relative space-y-3">
+            <div className="flex items-center gap-2 text-sm text-indigo-100">
+              <div className="h-2.5 w-2.5 animate-ping rounded-full bg-indigo-400" />
+              <span className="font-medium">Crafting your story…</span>
+            </div>
+            <p className="text-sm text-zinc-400">{loadingPhrase || "Holding your voice steady while we assemble this recap."}</p>
+            <div className="space-y-2">
+              <div className="h-3 w-full animate-pulse rounded-full bg-white/10" />
+              <div className="h-3 w-11/12 animate-pulse rounded-full bg-white/10" />
+              <div className="h-3 w-10/12 animate-pulse rounded-full bg-white/10" />
+            </div>
+          </div>
+        )}
+
+        {!loading && story && (
+          <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-indigo-900/20 to-purple-900/10 p-5 shadow-xl shadow-indigo-950/40">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.12),transparent_30%),radial-gradient(circle_at_80%_10%,rgba(236,72,153,0.12),transparent_26%)]" />
+            <div className="relative mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100">
+                <span className="h-[2px] w-6 rounded-full bg-indigo-400" />
+                <span>Your story</span>
+              </div>
+              <button
+                type="button"
+                onClick={exportStoryAsPdf}
+                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-indigo-50 shadow-sm transition hover:border-white/30 hover:bg-white/10"
+              >
+                Export as PDF
+              </button>
+            </div>
+
+            <div className="relative space-y-3 font-serif text-[17px] leading-relaxed text-zinc-50">
+              {formattedStory.map((block, idx) => (
+                <p
+                  key={idx}
+                  className="rounded-xl bg-white/5 px-4 py-3 text-[16px] leading-[1.6] shadow-inner shadow-black/10 ring-1 ring-white/5"
+                >
+                  <span dangerouslySetInnerHTML={{ __html: block }} />
+                </p>
+              ))}
+            </div>
           </article>
-        ) : (
-          <p className="text-zinc-400">Your story will appear here.</p>
+        )}
+
+        {!loading && !story && (
+          <p className="relative text-zinc-400">Your story will appear here.</p>
         )}
       </div>
 
@@ -515,7 +926,7 @@ export default function StoryGenerator({
                 onClick={() => {
                   setShowConsent(false);
                   setModalBusy(false);
-                  setModalPassphrase('');
+                  setModalPassphrase("");
                 }}
                 className="rounded-lg bg-neutral-800 px-4 py-2 text-sm text-zinc-200 hover:bg-neutral-700"
               >
