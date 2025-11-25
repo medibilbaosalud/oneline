@@ -26,6 +26,9 @@ export type SummaryReminder = {
   window: { start: string; end: string };
   dueSince: string | null;
   lastSummaryAt: string | null;
+  minimumMet?: boolean;
+  minimumRequired?: number;
+  entryCount?: number;
 };
 
 export const ENTRY_LIMIT_BASE = 333;
