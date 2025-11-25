@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { useVault } from "@/hooks/useVault";
 
 export type NotificationRecord = {
   id: string;
@@ -27,20 +28,22 @@ function formatDate(input: string) {
 
 export default function NotificationsBell() {
   const supabase = useMemo(() => supabaseBrowser() as SupabaseClient<any, "public", any>, []);
+  const { dataKey } = useVault();
   const [userId, setUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newAlert, setNewAlert] = useState<string | null>(null);
-  const [unreadBanner, setUnreadBanner] = useState<string | null>(null);
-  const [entryAlert, setEntryAlert] = useState<string | null>(null);
   const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
   const [overlayVisible, setOverlayVisible] = useState(false);
-  const [initialAlertShown, setInitialAlertShown] = useState(false);
+  const [lastAlertSet, setLastAlertSet] = useState<string | null>(null);
+  const pathname = usePathname();
   const router = useRouter();
   const mountedRef = useRef(true);
   const realtimeCleanup = useRef<(() => void) | null>(null);
+  const overlayTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const alertsAllowed = useMemo(() => !!dataKey && pathname?.startsWith("/today"), [dataKey, pathname]);
 
   useEffect(() => {
     return () => {
@@ -48,25 +51,15 @@ export default function NotificationsBell() {
     };
   }, []);
 
-  const triggerUnreadAlerts = (count: number, origin: "initial" | "realtime" | "open", bannerText?: string) => {
-    if (count <= 0) return;
-    const message = bannerText ?? buildUnreadMessage(count);
-    setUnreadBanner(message);
-    setEntryAlert(message);
+  const triggerUnreadAlerts = (count: number) => {
+    if (count <= 0 || !alertsAllowed) return;
+    const message = buildUnreadMessage(count);
     setOverlayMessage(message);
     setOverlayVisible(true);
-    setNewAlert(origin === "realtime" ? message : null);
-
-    // Auto-dismiss overlays and banners after a short focus period.
-    setTimeout(() => {
-      if (mountedRef.current) setUnreadBanner(null);
-    }, 5200);
-    setTimeout(() => {
-      if (mountedRef.current) setEntryAlert(null);
-    }, 5400);
-    setTimeout(() => {
+    if (overlayTimer.current) clearTimeout(overlayTimer.current);
+    overlayTimer.current = setTimeout(() => {
       if (mountedRef.current) setOverlayVisible(false);
-    }, origin === "realtime" ? 5200 : 6200);
+    }, 5200);
   };
 
   useEffect(() => {
@@ -102,6 +95,7 @@ export default function NotificationsBell() {
       active = false;
       authSubscription?.subscription.unsubscribe();
       realtimeCleanup.current?.();
+      if (overlayTimer.current) clearTimeout(overlayTimer.current);
     };
   }, [supabase]);
 
@@ -126,9 +120,13 @@ export default function NotificationsBell() {
     setLoading(false);
 
     const unread = (data ?? []).filter((n) => !n.is_read).length;
-    if (unread > 0 && !initialAlertShown) {
-      triggerUnreadAlerts(unread, "initial");
-      setInitialAlertShown(true);
+    const unreadIds = (data ?? []).filter((n) => !n.is_read).map((n) => n.id).sort();
+    const nextKey = unreadIds.join("|");
+    if (unreadIds.length === 0) {
+      setLastAlertSet(null);
+    } else if (alertsAllowed && nextKey !== lastAlertSet) {
+      setLastAlertSet(nextKey);
+      triggerUnreadAlerts(unreadIds.length);
     }
 
     // Housekeep: delete read notifications older than 24 hours to keep the list lean.
@@ -150,8 +148,6 @@ export default function NotificationsBell() {
           const fresh = payload.new as NotificationRecord;
           setNotifications((prev) => {
             const next = [fresh, ...prev].slice(0, 20);
-            const nextUnread = next.filter((n) => !n.is_read).length;
-            triggerUnreadAlerts(nextUnread, "realtime", fresh.title || "You have a new notification");
             return next;
           });
         }
@@ -169,6 +165,9 @@ export default function NotificationsBell() {
     if (!unreadIds.length) return;
 
     setNotifications((prev) => prev.map((n) => (unreadIds.includes(n.id) ? { ...n, is_read: true } : n)));
+    setLastAlertSet(null);
+    setOverlayVisible(false);
+    setOverlayMessage(null);
     await supabase
       .from("notifications")
       .update({ is_read: true, read_at: new Date().toISOString() })
@@ -182,8 +181,8 @@ export default function NotificationsBell() {
   const toggle = () => {
     const next = !open;
     setOpen(next);
-    if (next && unreadCount > 0 && !unreadBanner) {
-      triggerUnreadAlerts(unreadCount, "open");
+    if (next && unreadCount > 0) {
+      void markAllRead();
     }
   };
 
@@ -192,6 +191,9 @@ export default function NotificationsBell() {
       router.push(url);
     }
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    setLastAlertSet(null);
+    setOverlayVisible(false);
+    setOverlayMessage(null);
     void supabase
       .from("notifications")
       .update({ is_read: true, read_at: new Date().toISOString() })
@@ -219,6 +221,22 @@ export default function NotificationsBell() {
       .not("read_at", "is", null)
       .lte("read_at", cutoff);
   };
+
+  useEffect(() => {
+    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id).sort();
+    if (!unreadIds.length) {
+      setLastAlertSet(null);
+      if (overlayTimer.current) clearTimeout(overlayTimer.current);
+      setOverlayVisible(false);
+      return;
+    }
+
+    const nextKey = unreadIds.join("|");
+    if (alertsAllowed && nextKey !== lastAlertSet) {
+      setLastAlertSet(nextKey);
+      triggerUnreadAlerts(unreadIds.length);
+    }
+  }, [alertsAllowed, notifications, lastAlertSet]);
 
   if (!userId) return null;
 
@@ -334,57 +352,6 @@ export default function NotificationsBell() {
               );
             })}
           </div>
-        </div>
-      )}
-
-      {newAlert && (
-        <div className="absolute right-0 top-12 w-72 rounded-lg border border-indigo-400/40 bg-indigo-950/80 px-3 py-2 text-sm text-indigo-50 shadow-xl ring-1 ring-indigo-500/40">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold">New notification</span>
-            <button
-              type="button"
-              onClick={() => setNewAlert(null)}
-              className="rounded px-1 text-xs text-indigo-100 hover:bg-white/10"
-              aria-label="Dismiss notification alert"
-            >
-              Close
-            </button>
-          </div>
-          <div className="mt-1 text-indigo-100/90">{newAlert}</div>
-        </div>
-      )}
-
-      {entryAlert && (
-        <div className="fixed inset-x-0 top-16 z-50 mx-auto w-full max-w-lg animate-[fade-in_150ms_ease-out] rounded-2xl border border-indigo-400/40 bg-indigo-950/90 px-5 py-4 text-sm text-indigo-50 shadow-2xl ring-1 ring-indigo-500/30">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-white">You have unread notifications</div>
-              <p className="mt-1 leading-relaxed text-indigo-100">{entryAlert}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setEntryAlert(null)}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/20"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {unreadBanner && (
-        <div className="absolute right-0 top-12 w-80 rounded-lg border border-amber-400/40 bg-amber-900/90 px-4 py-3 text-sm text-amber-50 shadow-xl ring-1 ring-amber-500/30">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold">Attention</span>
-            <button
-              type="button"
-              onClick={() => setUnreadBanner(null)}
-              className="rounded px-2 py-1 text-xs text-amber-50 hover:bg-black/20"
-            >
-              Dismiss
-            </button>
-          </div>
-          <p className="mt-1 leading-relaxed">{unreadBanner}</p>
         </div>
       )}
 
