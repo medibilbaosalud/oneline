@@ -134,6 +134,33 @@ export default function NotificationsBell() {
     void cleanupOldRead(uid);
   };
 
+  const persistReadState = async (ids: string[]) => {
+    if (!userId || ids.length === 0) return true;
+
+    // First try to write both is_read and read_at; if the column is missing (older schema), fall back to is_read only.
+    const payload: Partial<NotificationRecord> = { is_read: true, read_at: new Date().toISOString() };
+    const { error } = await supabase
+      .from("notifications")
+      .update(payload)
+      .in("id", ids)
+      .eq("user_id", userId);
+
+    if (!error) return true;
+
+    const fallback = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", ids)
+      .eq("user_id", userId);
+
+    if (fallback.error) {
+      setError("Unable to update notifications");
+      return false;
+    }
+
+    return true;
+  };
+
   const subscribeToRealtime = (uid: string) => {
     const channel = supabase
       .channel(`notifications-${uid}`)
@@ -169,11 +196,10 @@ export default function NotificationsBell() {
     setLastAlertSet(null);
     setOverlayVisible(false);
     setOverlayMessage(null);
-    await supabase
-      .from("notifications")
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .in("id", unreadIds)
-      .eq("user_id", userId);
+
+    const persisted = await persistReadState(unreadIds);
+    if (!persisted) return;
+    await loadNotifications(userId);
     void cleanupOldRead(userId);
   };
 
@@ -195,14 +221,13 @@ export default function NotificationsBell() {
     setLastAlertSet(null);
     setOverlayVisible(false);
     setOverlayMessage(null);
-    void supabase
-      .from("notifications")
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .eq("id", id)
-      .eq("user_id", userId ?? "");
-    if (userId) {
-      void cleanupOldRead(userId);
-    }
+    void (async () => {
+      await persistReadState([id]);
+      if (userId) {
+        await loadNotifications(userId);
+        void cleanupOldRead(userId);
+      }
+    })();
     setOpen(false);
   };
 
