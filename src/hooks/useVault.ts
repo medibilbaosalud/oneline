@@ -23,6 +23,24 @@ const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 let autoUnlockAttemptedFor: string | null = null;
 
+async function resolveUserId(): Promise<string | null> {
+  try {
+    const supabase = supabaseBrowser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id) return user.id;
+
+    const sessionResult = await supabase.auth.getSession();
+    const sessionUser = sessionResult.data.session?.user;
+    if (sessionUser?.id) return sessionUser.id;
+
+    return await fetchServerUserId();
+  } catch {
+    return null;
+  }
+}
+
 function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
 }
@@ -91,15 +109,7 @@ async function ensureInitialized() {
     return;
   }
 
-  const supabase = supabaseBrowser();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const sessionResult = await supabase.auth.getSession();
-  const sessionUser = sessionResult.data.session?.user ?? null;
-  const directUserId = user?.id ?? sessionUser?.id ?? null;
-  const serverUserId = directUserId ? null : await fetchServerUserId();
-  const userId = directUserId ?? serverUserId;
+  const userId = await resolveUserId();
 
   const needsFreshInit = !initialized || userId !== currentUserId;
   if (!needsFreshInit) return;
@@ -218,6 +228,9 @@ export function useVault() {
   const createWithPassphrase = useCallback(async (passphrase: string, rememberDevice: boolean, rememberPassphrase?: boolean) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
+    if (!currentUserId) {
+      currentUserId = await resolveUserId();
+    }
     if (!currentUserId) throw new Error('Sign in before creating your vault');
     const key = await generateDataKey();
     sharedKey = key;
@@ -245,6 +258,9 @@ export function useVault() {
   const unlockWithPassphrase = useCallback(async (passphrase: string, opts?: { rememberPassphrase?: boolean }) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
+    if (!currentUserId) {
+      currentUserId = await resolveUserId();
+    }
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
     let bundle = cachedBundle;
     if (!bundle) {
