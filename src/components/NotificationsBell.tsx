@@ -33,6 +33,8 @@ export default function NotificationsBell() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newAlert, setNewAlert] = useState<string | null>(null);
+  const [unreadBanner, setUnreadBanner] = useState<string | null>(null);
+  const hasShownUnreadBanner = useRef(false);
   const router = useRouter();
   const mountedRef = useRef(true);
   const realtimeCleanup = useRef<(() => void) | null>(null);
@@ -98,6 +100,15 @@ export default function NotificationsBell() {
 
     setNotifications(data ?? []);
     setLoading(false);
+
+    const unread = (data ?? []).filter((n) => !n.is_read).length;
+    if (!hasShownUnreadBanner.current && unread > 0) {
+      setUnreadBanner(`You have ${unread} unread notification${unread === 1 ? "" : "s"}.`);
+      hasShownUnreadBanner.current = true;
+      setTimeout(() => {
+        if (mountedRef.current) setUnreadBanner(null);
+      }, 4000);
+    }
 
     // Housekeep: delete read notifications older than 24 hours to keep the list lean.
     void cleanupOldRead(uid);
@@ -175,6 +186,12 @@ export default function NotificationsBell() {
     setOpen(false);
   };
 
+  const handleDelete = async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (!userId) return;
+    await supabase.from("notifications").delete().eq("id", id).eq("user_id", userId);
+  };
+
   const cleanupOldRead = async (uid: string) => {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     await supabase
@@ -229,7 +246,7 @@ export default function NotificationsBell() {
       <span className="ml-2 text-xs font-medium text-neutral-200">{`${unreadCount} unread`}</span>
 
       {open && (
-        <div className="absolute right-0 top-10 w-96 max-w-lg rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur">
+        <div className="absolute right-0 top-10 w-[28rem] max-w-xl rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-white">Notifications</div>
@@ -241,35 +258,48 @@ export default function NotificationsBell() {
           {!error && notifications.length === 0 && !loading && (
             <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-4 text-sm text-neutral-200">You have no notifications yet.</div>
           )}
-          <div className="max-h-96 space-y-3 overflow-auto pr-1">
+          <div className="max-h-[28rem] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
             {notifications.map((note) => {
               const targetUrl = typeof note.data?.url === "string" ? note.data.url : undefined;
               return (
-                <button
+                <div
                   key={note.id}
-                  type="button"
-                  onClick={() => handleNavigate(targetUrl, note.id)}
-                  className={`group w-full rounded-xl border px-3 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${
+                  className={`group w-full rounded-xl border px-3 py-3 text-left transition ${
                     note.is_read
                       ? "border-white/5 bg-neutral-900/70"
                       : "border-indigo-400/30 bg-indigo-950/30 shadow-[0_10px_40px_-20px_rgba(99,102,241,0.8)]"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-neutral-300">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-300">
                       <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">{note.type}</span>
                       {!note.is_read && <span className="h-2 w-2 rounded-full bg-indigo-400" aria-hidden />}
                     </div>
-                    <span className="text-xs text-neutral-400">{formatDate(note.created_at)}</span>
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-white">{renderTitle(note)}</div>
-                  {note.body && (
-                    <div className="mt-1 text-sm leading-relaxed text-neutral-200 line-clamp-4 group-hover:line-clamp-6">
-                      {note.body}
+                    <div className="flex items-center gap-2 text-xs text-neutral-400">
+                      <span>{formatDate(note.created_at)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(note.id)}
+                        className="rounded px-2 py-1 text-[11px] font-medium text-neutral-200 transition hover:bg-white/10"
+                      >
+                        Delete
+                      </button>
                     </div>
-                  )}
-                  {targetUrl && <div className="mt-2 text-xs font-semibold text-indigo-300">Open</div>}
-                </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleNavigate(targetUrl, note.id)}
+                    className="mt-2 block w-full text-left focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                  >
+                    <div className="text-sm font-semibold text-white">{renderTitle(note)}</div>
+                    {note.body && (
+                      <div className="mt-1 whitespace-pre-line text-sm leading-relaxed text-neutral-200">
+                        {note.body}
+                      </div>
+                    )}
+                    {targetUrl && <div className="mt-2 text-xs font-semibold text-indigo-300">Open</div>}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -290,6 +320,22 @@ export default function NotificationsBell() {
             </button>
           </div>
           <div className="mt-1 text-indigo-100/90">{newAlert}</div>
+        </div>
+      )}
+
+      {unreadBanner && (
+        <div className="absolute right-0 top-12 w-80 rounded-lg border border-amber-400/40 bg-amber-900/90 px-4 py-3 text-sm text-amber-50 shadow-xl ring-1 ring-amber-500/30">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold">Attention</span>
+            <button
+              type="button"
+              onClick={() => setUnreadBanner(null)}
+              className="rounded px-2 py-1 text-xs text-amber-50 hover:bg-black/20"
+            >
+              Dismiss
+            </button>
+          </div>
+          <p className="mt-1 leading-relaxed">{unreadBanner}</p>
         </div>
       )}
     </div>
