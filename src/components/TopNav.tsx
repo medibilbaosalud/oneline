@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import SupabaseAuthButton from './SupabaseAuthButton';
+import NotificationsBell from './NotificationsBell';
 
 type NavLinkProps = {
   href: string;
@@ -64,18 +65,22 @@ export default function TopNav() {
         </div>
 
         {/* Auth (desktop) */}
-        <div className="hidden md:flex">
+        <div className="hidden md:flex items-center gap-3">
+          <NotificationsBell />
           <SupabaseAuthButton />
         </div>
 
         {/* Hamburger (mobile) */}
-        <button
-          aria-label="Open menu"
-          className="md:hidden rounded-md px-3 py-1.5 text-sm font-medium text-zinc-200 ring-1 ring-white/10 hover:bg-neutral-800/60"
-          onClick={() => setOpen(true)}
-        >
-          Menu
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <NotificationsBell />
+          <button
+            aria-label="Open menu"
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-200 ring-1 ring-white/10 hover:bg-neutral-800/60"
+            onClick={() => setOpen(true)}
+          >
+            Menu
+          </button>
+        </div>
       </nav>
 
       {/* Mobile sheet */}
