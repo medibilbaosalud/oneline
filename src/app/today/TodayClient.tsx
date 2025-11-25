@@ -10,38 +10,8 @@ import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
 import { ENTRY_LIMIT_BASE } from '@/lib/summaryPreferences';
 import { useEntryLimits } from '@/hooks/useEntryLimits';
-const QUOTES = [
-  { t: 'Simplicity is the ultimate sophistication.', a: 'Leonardo da Vinci' },
-  { t: 'Stay hungry, stay foolish.', a: 'Steve Jobs' },
-  { t: 'The only way to do great work is to love what you do.', a: 'Steve Jobs' },
-  {
-    t: 'Have the courage to follow your heart and intuition. They somehow already know what you truly want to become.',
-    a: 'Steve Jobs',
-  },
-  { t: 'Innovation distinguishes between a leader and a follower.', a: 'Steve Jobs' },
-  { t: 'Simple can be harder than complex; you have to work hard to get your thinking clean to make it simple.', a: 'Steve Jobs' },
-  { t: 'Design is not just what it looks like and feels like. Design is how it works.', a: 'Steve Jobs' },
-  { t: 'Everything around you that you call life was made up by people that were no smarter than you.', a: 'Steve Jobs' },
-  { t: 'The journey of a thousand miles begins with a single step.', a: 'Lao Tzu' },
-  { t: 'Act as if what you do makes a difference. It does.', a: 'William James' },
-  { t: 'How we spend our days is, of course, how we spend our lives.', a: 'Annie Dillard' },
-  { t: 'It is not that we have a short time to live, but that we waste much of it.', a: 'Seneca' },
-  { t: 'You have power over your mind — not outside events. Realize this, and you will find strength.', a: 'Marcus Aurelius' },
-  { t: "You can't use up creativity. The more you use, the more you have.", a: 'Maya Angelou' },
-  { t: 'Be faithful in small things because it is in them that your strength lies.', a: 'Mother Teresa' },
-  { t: 'What you seek is seeking you.', a: 'Rumi' },
-  { t: 'It does not matter how slowly you go as long as you do not stop.', a: 'Confucius' },
-  {
-    t: 'Whatever you can do or dream you can, begin it. Boldness has genius, power and magic in it.',
-    a: 'Johann Wolfgang von Goethe',
-  },
-  { t: 'We are what we repeatedly do. Excellence, then, is not an act, but a habit.', a: 'Will Durant' },
-  { t: 'You can do anything, but not everything.', a: 'David Allen' },
-  { t: 'If you are going through hell, keep going.', a: 'Winston Churchill' },
-  { t: "Whether you think you can, or you think you can't — you're right.", a: 'Henry Ford' },
-  { t: 'The best way to predict the future is to invent it.', a: 'Alan Kay' },
-  { t: 'No zero days. One line is enough.', a: 'OneLine' },
-];
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import FeedbackForm from '@/components/FeedbackForm';
 
 type StreakData = {
   current: number;
@@ -64,11 +34,6 @@ function companionForStreak(current: number) {
 
 function nextCompanion(current: number) {
   return COMPANIONS.find((c) => c.min > current) ?? null;
-}
-
-function quoteOfToday() {
-  const key = Number(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
-  return QUOTES[key % QUOTES.length];
 }
 
 function ymdUTC(date = new Date()) {
@@ -104,6 +69,9 @@ type SummaryReminder = {
   window: { start: string; end: string };
   dueSince: string | null;
   lastSummaryAt: string | null;
+  minimumMet?: boolean;
+  minimumRequired?: number;
+  entryCount?: number;
 };
 
 type TodayClientProps = {
@@ -124,6 +92,8 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
   const [pendingEntry, setPendingEntry] = useState<EntryPayload | null>(null);
   const [legacyReadOnly, setLegacyReadOnly] = useState(false);
   const [loadingEntry, setLoadingEntry] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authed, setAuthed] = useState(false);
   const todayString = useMemo(() => ymdUTC(), []);
   const [selectedDay, setSelectedDay] = useState(todayString);
   const isToday = selectedDay === todayString;
@@ -132,7 +102,6 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
     d.setUTCDate(d.getUTCDate() - 1);
     return ymdUTC(d);
   }, []);
-  const quote = useMemo(() => quoteOfToday(), []);
   const displayDate = useMemo(() => {
     try {
       const parsed = new Date(`${selectedDay}T00:00:00.000Z`);
@@ -149,6 +118,31 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
   }, [selectedDay]);
   const [summaryReminder, setSummaryReminder] = useState<SummaryReminder | null>(null);
   const [showSummaryReminder, setShowSummaryReminder] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = supabaseBrowser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (cancelled) return;
+        setAuthed(!!user);
+        setNeedLogin(!user);
+      } catch {
+        if (!cancelled) {
+          setAuthed(false);
+          setNeedLogin(true);
+        }
+      } finally {
+        if (!cancelled) setAuthChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,6 +206,13 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
   }, []);
 
   useEffect(() => {
+    if (!authed) {
+      setLoadingEntry(false);
+      setPendingEntry(null);
+      setEntryId(null);
+      setText('');
+      return () => undefined;
+    }
     let active = true;
     (async () => {
       setLoadingEntry(true);
@@ -248,7 +249,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
     return () => {
       active = false;
     };
-  }, [isToday, loadStreak, selectedDay, syncSignal]);
+  }, [authed, isToday, loadStreak, selectedDay, syncSignal]);
 
   useEffect(() => {
     if (!pendingEntry) {
@@ -320,9 +321,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
       setPendingEntry({ id: newId ?? undefined, content_cipher: enc.cipher_b64, iv: enc.iv_b64 });
       setLegacyReadOnly(false);
       setMsg(isToday ? 'Saved ✓' : `Saved for ${selectedDay} ✓`);
-      if (isToday) {
-        loadStreak();
-      }
+      loadStreak();
       setTimeout(() => setMsg(null), 1500);
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Network error';
@@ -332,7 +331,16 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
     }
   }
 
-  if (needLogin) {
+  if (!authChecked) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-neutral-950/70 p-8 text-center text-zinc-100">
+        <p className="text-lg font-semibold">Checking your session…</p>
+        <p className="mt-2 text-sm text-zinc-400">We’ll load Today once we know whether you’re signed in.</p>
+      </div>
+    );
+  }
+
+  if (needLogin || !authed) {
     return (
       <div className="rounded-3xl border border-white/10 bg-neutral-950/70 p-8 text-center text-zinc-100">
         <p className="text-lg font-semibold">Sign in to keep your streak going.</p>
@@ -358,6 +366,26 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
       <ProductTourAssistant />
       <VaultGate>
         <div className="space-y-6">
+          {summaryReminder && summaryReminder.minimumMet === false && showSummaryReminder && (
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">Keep writing to unlock weekly stories</p>
+                  <p className="mt-1 text-xs text-amber-100/80">
+                    Add at least {summaryReminder.minimumRequired ?? 4} days from the last week to generate your first story.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSummaryReminder(false)}
+                  className="rounded-xl border border-white/20 px-4 py-2 text-xs font-medium text-amber-50 transition hover:bg-amber-500/10"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {summaryReminder && summaryReminder.due && showSummaryReminder && (
             <div className="rounded-2xl border border-indigo-500/40 bg-indigo-500/15 p-4 text-sm text-indigo-100">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -388,17 +416,15 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 </div>
               </div>
             </div>
-          )}
+        )}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-            <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+          <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
                   <h2 className="mt-1 text-xl font-semibold text-white">{displayDate}</h2>
-                  {!isToday && (
-                    <p className="text-xs text-neutral-400">Use the exact same passphrase — older entries stay locked without it.</p>
-                  )}
+                  <p className="text-xs text-neutral-400">One concise line is enough. Unlock to save securely.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <input
@@ -432,9 +458,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                   </button>
                 </div>
               </div>
-              <p className="mb-4 italic text-neutral-300">
-                “{quote.t}” <span className="not-italic opacity-70">— {quote.a}</span>
-              </p>
+              <p className="mb-2 text-sm text-neutral-400">Keep it brief — you have {entryLimit} characters.</p>
 
               <textarea
                 value={text}
@@ -444,12 +468,6 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 placeholder="One line that captures your day…"
                 className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
               />
-
-              {!loadingEntry && !legacyReadOnly && !text && !pendingEntry?.content_cipher && (
-                <p className="mt-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-300">
-                  No entry saved for this date yet — write up to {entryLimit} characters to backfill it securely.
-                </p>
-              )}
 
               {legacyReadOnly && (
                 <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
@@ -536,6 +554,23 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 </div>
               </div>
             </aside>
+          </div>
+
+          <div className="mt-8">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Feedback</p>
+                <h2 className="text-lg font-semibold text-white">Help us keep improving OneLine</h2>
+                <p className="text-sm text-zinc-300">
+                  Spot a glitch or have a suggestion? Send it from here—no login required.
+                </p>
+              </div>
+              <span className="inline-flex items-center rounded-full border border-white/10 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-100">
+                Seen by the team
+              </span>
+            </div>
+
+            <FeedbackForm defaultPage="/today" className="border-white/15 bg-neutral-900/60" />
           </div>
         </div>
       </VaultGate>
