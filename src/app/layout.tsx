@@ -43,11 +43,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full bg-neutral-950">
-      <body
-        className={`${inter.className} min-h-screen bg-neutral-950 text-zinc-100`}
-        style={{ colorScheme: 'dark' }}
-      >
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} min-h-screen app-shell`}>
         <Providers>
           <PwaRegister />
           {/* Global navigation across all pages */}
