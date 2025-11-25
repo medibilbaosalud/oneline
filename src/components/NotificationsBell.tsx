@@ -42,6 +42,7 @@ export default function NotificationsBell() {
   const mountedRef = useRef(true);
   const realtimeCleanup = useRef<(() => void) | null>(null);
   const overlayTimer = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const alertsAllowed = useMemo(() => !!dataKey && pathname?.startsWith("/today"), [dataKey, pathname]);
 
@@ -238,6 +239,22 @@ export default function NotificationsBell() {
     }
   }, [alertsAllowed, notifications, lastAlertSet]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current) return;
+      const target = event.target as Node;
+      if (containerRef.current.contains(target)) return;
+      setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [open]);
+
   if (!userId) return null;
 
   const renderTitle = (note: NotificationRecord) => {
@@ -249,7 +266,7 @@ export default function NotificationsBell() {
   };
 
   return (
-    <div className="relative flex items-center">
+    <div ref={containerRef} className="relative flex items-center">
       <button
         type="button"
         onClick={toggle}
