@@ -40,7 +40,6 @@ export default function NotificationsBell() {
   const pathname = usePathname();
   const router = useRouter();
   const mountedRef = useRef(true);
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const realtimeCleanup = useRef<(() => void) | null>(null);
   const overlayTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -249,23 +248,8 @@ export default function NotificationsBell() {
     return "Untitled";
   };
 
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!containerRef.current || !target) return;
-      if (!containerRef.current.contains(target)) {
-        setOpen(false);
-      }
-    };
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, [open]);
-
   return (
-    <div ref={containerRef} className="relative flex items-center">
+    <div className="relative flex items-center">
       <button
         type="button"
         onClick={toggle}
