@@ -34,7 +34,7 @@ export default function NotificationsBell() {
   const [error, setError] = useState<string | null>(null);
   const [newAlert, setNewAlert] = useState<string | null>(null);
   const [unreadBanner, setUnreadBanner] = useState<string | null>(null);
-  const hasShownUnreadBanner = useRef(false);
+  const [entryAlert, setEntryAlert] = useState<string | null>(null);
   const router = useRouter();
   const mountedRef = useRef(true);
   const realtimeCleanup = useRef<(() => void) | null>(null);
@@ -102,12 +102,16 @@ export default function NotificationsBell() {
     setLoading(false);
 
     const unread = (data ?? []).filter((n) => !n.is_read).length;
-    if (!hasShownUnreadBanner.current && unread > 0) {
-      setUnreadBanner(`You have ${unread} unread notification${unread === 1 ? "" : "s"}.`);
-      hasShownUnreadBanner.current = true;
+    if (unread > 0) {
+      const message = `You have ${unread} unread notification${unread === 1 ? "" : "s"}.`;
+      setUnreadBanner(message);
+      setEntryAlert(message);
       setTimeout(() => {
         if (mountedRef.current) setUnreadBanner(null);
-      }, 4000);
+      }, 5000);
+      setTimeout(() => {
+        if (mountedRef.current) setEntryAlert(null);
+      }, 5500);
     }
 
     // Housekeep: delete read notifications older than 24 hours to keep the list lean.
@@ -131,11 +135,11 @@ export default function NotificationsBell() {
             const next = [fresh, ...prev];
             return next.slice(0, 20);
           });
-          setNewAlert(fresh.title || "You have a new notification");
+          const bannerText = fresh.title || "You have a new notification";
+          setNewAlert(bannerText);
+          setEntryAlert(bannerText);
           if (!open) {
-            setUnreadBanner((current) =>
-              current ?? "You have unread notifications. Open the bell to catch up."
-            );
+            setUnreadBanner((current) => current ?? "You have unread notifications. Open the bell to catch up.");
             setTimeout(() => {
               if (mountedRef.current) {
                 setUnreadBanner(null);
@@ -175,9 +179,8 @@ export default function NotificationsBell() {
   const toggle = () => {
     const next = !open;
     setOpen(next);
-    if (next && unreadCount > 0 && !unreadBanner && !hasShownUnreadBanner.current) {
+    if (next && unreadCount > 0 && !unreadBanner) {
       setUnreadBanner(`You have ${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}.`);
-      hasShownUnreadBanner.current = true;
       setTimeout(() => {
         if (mountedRef.current) setUnreadBanner(null);
       }, 5000);
@@ -257,10 +260,15 @@ export default function NotificationsBell() {
           </span>
         )}
       </button>
-      <span className="ml-2 text-xs font-medium text-neutral-200">{unreadCount > 0 ? `${unreadCount} unread` : "Notifications"}</span>
+      <span className="ml-2 text-xs font-semibold text-neutral-50">
+        Notifications
+        {unreadCount > 0 && (
+          <span className="ml-2 rounded-full bg-indigo-500/20 px-2 py-0.5 text-[11px] text-indigo-100">{unreadCount} unread</span>
+        )}
+      </span>
 
       {open && (
-        <div className="absolute right-0 top-10 w-[28rem] max-w-xl rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur">
+        <div className="absolute right-0 top-10 w-[30rem] max-w-3xl rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-white">Notifications</div>
@@ -281,13 +289,13 @@ export default function NotificationsBell() {
           {!error && notifications.length === 0 && !loading && (
             <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-4 text-sm text-neutral-200">You have no notifications yet.</div>
           )}
-          <div className="max-h-[28rem] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
+          <div className="max-h-[30rem] space-y-3 overflow-y-auto overflow-x-hidden pr-1">
             {notifications.map((note) => {
               const targetUrl = typeof note.data?.url === "string" ? note.data.url : undefined;
               return (
                 <div
                   key={note.id}
-                  className={`group w-full rounded-xl border px-4 py-3 text-left transition ${
+                  className={`group w-full rounded-2xl border px-4 py-3 text-left transition ${
                     note.is_read
                       ? "border-white/5 bg-neutral-900/80"
                       : "border-indigo-400/30 bg-indigo-950/30 shadow-[0_14px_40px_-22px_rgba(99,102,241,0.9)]"
@@ -316,7 +324,7 @@ export default function NotificationsBell() {
                   >
                     <div className="text-sm font-semibold text-white">{renderTitle(note)}</div>
                     {note.body && (
-                      <div className="mt-1 whitespace-pre-line break-words rounded-lg bg-white/5 px-3 py-2 text-sm leading-relaxed text-neutral-100">
+                      <div className="mt-1 max-h-44 whitespace-pre-line break-words rounded-xl bg-white/5 px-3 py-2 text-sm leading-relaxed text-neutral-100 shadow-inner shadow-black/20">
                         {note.body}
                       </div>
                     )}
@@ -343,6 +351,24 @@ export default function NotificationsBell() {
             </button>
           </div>
           <div className="mt-1 text-indigo-100/90">{newAlert}</div>
+        </div>
+      )}
+
+      {entryAlert && (
+        <div className="fixed inset-x-0 top-16 z-50 mx-auto w-full max-w-lg animate-[fade-in_150ms_ease-out] rounded-2xl border border-indigo-400/40 bg-indigo-950/90 px-5 py-4 text-sm text-indigo-50 shadow-2xl ring-1 ring-indigo-500/30">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-white">You have unread notifications</div>
+              <p className="mt-1 leading-relaxed text-indigo-100">{entryAlert}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEntryAlert(null)}
+              className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/20"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
