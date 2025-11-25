@@ -13,6 +13,7 @@ export type NotificationRecord = {
   body: string | null;
   data: Record<string, any> | null;
   is_read: boolean;
+  read_at: string | null;
   created_at: string;
 };
 
@@ -31,6 +32,7 @@ export default function NotificationsBell() {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newAlert, setNewAlert] = useState<string | null>(null);
   const router = useRouter();
   const mountedRef = useRef(true);
   const realtimeCleanup = useRef<(() => void) | null>(null);
@@ -96,6 +98,9 @@ export default function NotificationsBell() {
 
     setNotifications(data ?? []);
     setLoading(false);
+
+    // Housekeep: delete read notifications older than 24 hours to keep the list lean.
+    void cleanupOldRead(uid);
   };
 
   const subscribeToRealtime = (uid: string) => {
@@ -115,6 +120,12 @@ export default function NotificationsBell() {
             const next = [fresh, ...prev];
             return next.slice(0, 20);
           });
+          setNewAlert(fresh.title || "You have a new notification");
+          setTimeout(() => {
+            if (mountedRef.current) {
+              setNewAlert(null);
+            }
+          }, 5000);
         }
       )
       .subscribe();
@@ -130,7 +141,12 @@ export default function NotificationsBell() {
     if (!unreadIds.length) return;
 
     setNotifications((prev) => prev.map((n) => (unreadIds.includes(n.id) ? { ...n, is_read: true } : n)));
-    await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds).eq("user_id", userId);
+    await supabase
+      .from("notifications")
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .in("id", unreadIds)
+      .eq("user_id", userId);
+    void cleanupOldRead(userId);
   };
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -148,8 +164,26 @@ export default function NotificationsBell() {
       router.push(url);
     }
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    void supabase.from("notifications").update({ is_read: true }).eq("id", id).eq("user_id", userId ?? "");
+    void supabase
+      .from("notifications")
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", userId ?? "");
+    if (userId) {
+      void cleanupOldRead(userId);
+    }
     setOpen(false);
+  };
+
+  const cleanupOldRead = async (uid: string) => {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await supabase
+      .from("notifications")
+      .delete()
+      .eq("user_id", uid)
+      .eq("is_read", true)
+      .not("read_at", "is", null)
+      .lte("read_at", cutoff);
   };
 
   if (!userId) return null;
@@ -184,6 +218,7 @@ export default function NotificationsBell() {
           </span>
         )}
       </button>
+      <span className="ml-2 text-xs font-medium text-neutral-200">{`${unreadCount} unread`}</span>
 
       {open && (
         <div className="absolute right-0 top-10 w-80 max-w-sm rounded-xl border border-white/10 bg-neutral-950/95 p-3 shadow-2xl ring-1 ring-black/60 backdrop-blur">
@@ -220,6 +255,23 @@ export default function NotificationsBell() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {newAlert && (
+        <div className="absolute right-0 top-12 w-72 rounded-lg border border-indigo-400/40 bg-indigo-950/80 px-3 py-2 text-sm text-indigo-50 shadow-xl ring-1 ring-indigo-500/40">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-semibold">New notification</span>
+            <button
+              type="button"
+              onClick={() => setNewAlert(null)}
+              className="rounded px-1 text-xs text-indigo-100 hover:bg-white/10"
+              aria-label="Dismiss notification alert"
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-1 text-indigo-100/90">{newAlert}</div>
         </div>
       )}
     </div>
