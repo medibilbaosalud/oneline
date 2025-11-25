@@ -188,6 +188,14 @@ export default function NotificationsBell() {
 
   if (!userId) return null;
 
+  const renderTitle = (note: NotificationRecord) => {
+    if (note.title && note.title.trim().length > 0) return note.title;
+    if (note.body && note.body.trim().length > 0) {
+      return note.body.slice(0, 80) + (note.body.length > 80 ? "…" : "");
+    }
+    return "Untitled";
+  };
+
   return (
     <div className="relative flex items-center">
       <button
@@ -221,16 +229,19 @@ export default function NotificationsBell() {
       <span className="ml-2 text-xs font-medium text-neutral-200">{`${unreadCount} unread`}</span>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 max-w-sm rounded-xl border border-white/10 bg-neutral-950/95 p-3 shadow-2xl ring-1 ring-black/60 backdrop-blur">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-sm font-semibold text-white">Notifications</div>
+        <div className="absolute right-0 top-10 w-96 max-w-lg rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-white">Notifications</div>
+              <p className="text-xs text-neutral-400">Stay in sync with updates tailored to you.</p>
+            </div>
             {loading && <div className="text-xs text-neutral-400">Loading…</div>}
           </div>
-          {error && <div className="rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-100">{error}</div>}
+          {error && <div className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-100">{error}</div>}
           {!error && notifications.length === 0 && !loading && (
-            <div className="text-sm text-neutral-400">You have no notifications yet.</div>
+            <div className="rounded-lg border border-white/5 bg-white/5 px-3 py-4 text-sm text-neutral-200">You have no notifications yet.</div>
           )}
-          <div className="max-h-80 space-y-2 overflow-auto">
+          <div className="max-h-96 space-y-3 overflow-auto pr-1">
             {notifications.map((note) => {
               const targetUrl = typeof note.data?.url === "string" ? note.data.url : undefined;
               return (
@@ -238,19 +249,26 @@ export default function NotificationsBell() {
                   key={note.id}
                   type="button"
                   onClick={() => handleNavigate(targetUrl, note.id)}
-                  className={`w-full rounded-lg border border-white/5 px-3 py-2 text-left transition hover:border-white/15 hover:bg-neutral-900 ${
-                    note.is_read ? "opacity-75" : ""
+                  className={`group w-full rounded-xl border px-3 py-3 text-left transition focus:outline-none focus:ring-2 focus:ring-indigo-500/60 ${
+                    note.is_read
+                      ? "border-white/5 bg-neutral-900/70"
+                      : "border-indigo-400/30 bg-indigo-950/30 shadow-[0_10px_40px_-20px_rgba(99,102,241,0.8)]"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-xs text-neutral-400">
-                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-neutral-200">
-                      {note.type}
-                    </span>
-                    <span>{formatDate(note.created_at)}</span>
+                  <div className="flex items-center justify-between text-[11px] uppercase tracking-wide text-neutral-300">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/90">{note.type}</span>
+                      {!note.is_read && <span className="h-2 w-2 rounded-full bg-indigo-400" aria-hidden />}
+                    </div>
+                    <span className="text-xs text-neutral-400">{formatDate(note.created_at)}</span>
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-white">{note.title ?? "Notification"}</div>
-                  {note.body && <div className="mt-0.5 text-sm text-neutral-300 line-clamp-2">{note.body}</div>}
-                  {targetUrl && <div className="mt-1 text-xs text-indigo-300">Open</div>}
+                  <div className="mt-2 text-sm font-semibold text-white">{renderTitle(note)}</div>
+                  {note.body && (
+                    <div className="mt-1 text-sm leading-relaxed text-neutral-200 line-clamp-4 group-hover:line-clamp-6">
+                      {note.body}
+                    </div>
+                  )}
+                  {targetUrl && <div className="mt-2 text-xs font-semibold text-indigo-300">Open</div>}
                 </button>
               );
             })}
