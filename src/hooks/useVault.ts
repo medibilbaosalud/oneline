@@ -71,7 +71,13 @@ type RemoteVaultPayload = { bundle: WrappedBundle | null; hasVault: boolean };
 async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
-    if (!res.ok) return { bundle: null, hasVault: false };
+    if (!res.ok) {
+      // If auth is not ready yet, err on the safe side and assume a vault may exist to avoid overwriting it.
+      if (res.status === 401 || res.status === 403) {
+        return { bundle: null, hasVault: true };
+      }
+      return { bundle: null, hasVault: hasStoredBundle || expectedRemoteVault };
+    }
     const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
     const bundle = payload?.bundle ?? null;
     return { bundle, hasVault: payload?.hasVault ?? !!bundle };
@@ -232,6 +238,26 @@ export function useVault() {
       currentUserId = await resolveUserId();
     }
     if (!currentUserId) throw new Error('Sign in before creating your vault');
+
+    // Safety check: if a vault already exists remotely or locally, do not generate a new key.
+    const remote = await fetchRemoteBundle();
+    if (remote.bundle || cachedBundle || hasStoredBundle || remote.hasVault || expectedRemoteVault) {
+      const existingBundle = remote.bundle ?? cachedBundle;
+      if (existingBundle) {
+        const key = bundleKeyForUser(currentUserId);
+        cachedBundle = existingBundle;
+        hasStoredBundle = true;
+        expectedRemoteVault = true;
+        await idbSet(key, existingBundle).catch(() => {});
+        notify();
+      } else if (remote.hasVault || expectedRemoteVault) {
+        expectedRemoteVault = true;
+        notify();
+      }
+
+      throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
+    }
+
     const key = await generateDataKey();
     sharedKey = key;
     lastVaultError = null;
