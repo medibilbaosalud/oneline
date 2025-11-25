@@ -74,6 +74,17 @@ async function saveRemoteBundle(bundle: WrappedBundle | null) {
   }
 }
 
+async function fetchServerUserId(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/auth/user', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const payload = (await res.json().catch(() => null)) as { id?: string | null } | null;
+    return payload?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function ensureInitialized() {
   if (loadingPromise) {
     await loadingPromise;
@@ -86,7 +97,9 @@ async function ensureInitialized() {
   } = await supabase.auth.getUser();
   const sessionResult = await supabase.auth.getSession();
   const sessionUser = sessionResult.data.session?.user ?? null;
-  const userId = user?.id ?? sessionUser?.id ?? null;
+  const directUserId = user?.id ?? sessionUser?.id ?? null;
+  const serverUserId = directUserId ? null : await fetchServerUserId();
+  const userId = directUserId ?? serverUserId;
 
   const needsFreshInit = !initialized || userId !== currentUserId;
   if (!needsFreshInit) return;
