@@ -13,6 +13,7 @@ const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
+let expectedRemoteVault = false;
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
@@ -47,14 +48,17 @@ async function persistPassphrase(passphrase: string | null) {
   notify();
 }
 
-async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
+type RemoteVaultPayload = { bundle: WrappedBundle | null; hasVault: boolean };
+
+async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
-    if (!res.ok) return null;
-    const payload = (await res.json()) as { bundle?: WrappedBundle | null };
-    return payload?.bundle ?? null;
+    if (!res.ok) return { bundle: null, hasVault: false };
+    const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
+    const bundle = payload?.bundle ?? null;
+    return { bundle, hasVault: payload?.hasVault ?? !!bundle };
   } catch {
-    return null;
+    return { bundle: null, hasVault: false };
   }
 }
 
@@ -80,7 +84,9 @@ async function ensureInitialized() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const userId = user?.id ?? null;
+  const sessionResult = await supabase.auth.getSession();
+  const sessionUser = sessionResult.data.session?.user ?? null;
+  const userId = user?.id ?? sessionUser?.id ?? null;
 
   const needsFreshInit = !initialized || userId !== currentUserId;
   if (!needsFreshInit) return;
@@ -94,6 +100,7 @@ async function ensureInitialized() {
         currentUserId = userId;
         cachedBundle = null;
         hasStoredBundle = false;
+        expectedRemoteVault = false;
         lastVaultError = null;
         sharedKey = null;
         cachedPassphrase = null;
@@ -114,15 +121,16 @@ async function ensureInitialized() {
         lastVaultError = null;
       }
 
-      const remoteBundle = await fetchRemoteBundle();
-      if (remoteBundle) {
-        cachedBundle = remoteBundle;
+      const remote = await fetchRemoteBundle();
+      expectedRemoteVault = remote.hasVault;
+      if (remote.bundle) {
+        cachedBundle = remote.bundle;
         hasStoredBundle = true;
-        await idbSet(key, remoteBundle).catch(() => {});
+        await idbSet(key, remote.bundle).catch(() => {});
         lastVaultError = null;
       } else if (!localBundle) {
         cachedBundle = null;
-        hasStoredBundle = false;
+        hasStoredBundle = remote.hasVault;
         lastVaultError = null;
       }
 
@@ -158,11 +166,13 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
+    expectedRemoteVault = true;
     lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
+    expectedRemoteVault = false;
     lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
@@ -206,6 +216,7 @@ export function useVault() {
       // Keep the remote copy for recovery, but wipe local storage on this device.
       cachedBundle = bundle;
       hasStoredBundle = true;
+      expectedRemoteVault = true;
       lastVaultError = null;
       await saveRemoteBundle(bundle);
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
@@ -227,7 +238,9 @@ export function useVault() {
       const key = bundleKeyForUser(currentUserId);
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
-        bundle = await fetchRemoteBundle();
+        const remote = await fetchRemoteBundle();
+        expectedRemoteVault = remote.hasVault;
+        bundle = remote.bundle;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
         }
@@ -269,7 +282,7 @@ export function useVault() {
 
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle,
+    hasBundle: hasStoredBundle || expectedRemoteVault,
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
