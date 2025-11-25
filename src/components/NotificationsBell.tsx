@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 export type NotificationRecord = {
@@ -24,7 +25,7 @@ function formatDate(input: string) {
 }
 
 export default function NotificationsBell() {
-  const supabase = useMemo(() => supabaseBrowser(), []);
+  const supabase = useMemo(() => supabaseBrowser() as SupabaseClient<any, "public", any>, []);
   const [userId, setUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
