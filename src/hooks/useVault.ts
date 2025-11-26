@@ -154,6 +154,24 @@ async function hasVaultRecord(userId: string): Promise<boolean> {
   }
 }
 
+async function hasJournalEntries(userId: string): Promise<boolean> {
+  try {
+    const supabase = supabaseBrowser();
+    const { count, error } = await supabase
+      .from('journal')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error) return true;
+
+    if (count === null) return true;
+
+    return (count ?? 0) > 0;
+  } catch {
+    return true;
+  }
+}
+
 async function hydrateFromVaultRecord(userId: string) {
   const key = bundleKeyForUser(userId);
   const directBundle = await fetchDirectBundle(userId);
@@ -187,6 +205,16 @@ async function hydrateFromVaultRecord(userId: string) {
     return true;
   }
 
+  const journalHistory = await hasJournalEntries(userId);
+  if (journalHistory) {
+    expectedRemoteVault = true;
+    markVaultSeen(userId);
+    lastVaultError =
+      lastVaultError ??
+      'Your prior journal activity indicates a vault already exists. Unlock it from a trusted device or contact support for assistance.';
+    return true;
+  }
+
   return false;
 }
 
@@ -199,6 +227,7 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
 
   const directBundle = await fetchDirectBundle(userId);
   const certaintyRecordExists = directBundle.certainty ? await hasVaultRecord(userId) : true;
+  const journalHistory = await hasJournalEntries(userId);
   const localMarker = hasLocalVaultMarker(userId);
   const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(userId);
   const existingBundle = remote.bundle ?? cachedBundle;
@@ -210,6 +239,7 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
     hydratedFromRecord ||
     localMarker ||
     certaintyRecordExists ||
+    journalHistory ||
     !directBundle.certainty;
 
   if (anyVaultPresence) {
@@ -220,6 +250,13 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
       expectedRemoteVault = true;
       markVaultSeen(userId);
       await idbSet(key, existingBundle).catch(() => {});
+      notify();
+    } else if (journalHistory) {
+      expectedRemoteVault = true;
+      markVaultSeen(userId);
+      lastVaultError =
+        lastVaultError ??
+        'Your prior journal activity indicates a vault already exists. Unlock it from a trusted device or contact support for assistance.';
       notify();
     } else {
       expectedRemoteVault = true;
@@ -316,6 +353,17 @@ async function ensureInitialized() {
           expectedRemoteVault = expectedRemoteVault || recordExists;
           if (recordExists) {
             markVaultSeen(currentUserId);
+          }
+
+          if (!recordExists) {
+            const journalHistory = await hasJournalEntries(currentUserId);
+            expectedRemoteVault = expectedRemoteVault || journalHistory;
+            if (journalHistory) {
+              markVaultSeen(currentUserId);
+              lastVaultError =
+                lastVaultError ??
+                'Journal activity shows a vault already exists for this account. Unlock from a trusted device or contact support if you cannot access it.';
+            }
           }
         }
       } else if (!localBundle) {
@@ -450,11 +498,31 @@ export function useVault() {
           const hydrated = await hydrateFromVaultRecord(currentUserId);
           if (hydrated) {
             bundle = cachedBundle;
+          } else {
+            const journalHistory = await hasJournalEntries(currentUserId);
+            expectedRemoteVault = expectedRemoteVault || journalHistory;
+            if (journalHistory) {
+              markVaultSeen(currentUserId);
+              lastVaultError =
+                lastVaultError ??
+                'Journal activity shows a vault already exists for this account. Unlock from a trusted device or contact support if you cannot access it.';
+            }
           }
         }
       }
     }
-    if (!bundle) throw new Error('No encrypted vault found. Create one first.');
+    if (!bundle) {
+      expectedRemoteVault = expectedRemoteVault || hasLocalVaultMarker(currentUserId);
+      if (expectedRemoteVault) {
+        lastVaultError =
+          lastVaultError ??
+          'A vault is expected for this account based on your existing data. Retrieve it from a trusted device or contact support for help unlocking it.';
+        notify();
+        throw new Error('Encrypted vault expected. Unlock it from a trusted device or contact support for help.');
+      }
+
+      throw new Error('No encrypted vault found. Create one first.');
+    }
     try {
       sharedKey = await unwrapDataKey(bundle, passphrase);
       cachedBundle = bundle;
