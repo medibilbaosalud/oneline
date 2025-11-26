@@ -17,6 +17,7 @@ let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
 let lastVaultError: string | null = null;
 let hasRemoteVaultRecord = false;
+let authResolved = false;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 
@@ -64,6 +65,7 @@ async function ensureInitialized() {
   }
 
   initialized = false;
+  authResolved = false;
   notify();
 
   loadingPromise = (async () => {
@@ -72,6 +74,7 @@ async function ensureInitialized() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      authResolved = true;
       const userId = user?.id ?? null;
 
       if (userId !== currentUserId) {
@@ -84,7 +87,6 @@ async function ensureInitialized() {
       }
 
       if (!currentUserId) {
-        initialized = true;
         hasRemoteVaultRecord = false;
         lastVaultError = null;
         return;
@@ -146,6 +148,12 @@ export function useVault() {
 
   useEffect(() => {
     let active = true;
+    const supabase = supabaseBrowser();
+    const authListener = supabase.auth.onAuthStateChange(() => {
+      ensureInitialized().catch(() => {
+        // swallow errors; user can still create a new bundle
+      });
+    });
     ensureInitialized().catch(() => {
       // swallow errors; user can still create a new bundle
     });
@@ -156,6 +164,7 @@ export function useVault() {
     return () => {
       active = false;
       listeners.delete(listener);
+      authListener?.data.subscription.unsubscribe();
     };
   }, []);
 
@@ -205,7 +214,7 @@ export function useVault() {
       hasStoredBundle = true;
       lastVaultError = null;
       notify();
-    } catch (error) {
+    } catch {
       sharedKey = null;
       lastVaultError =
         'Decryption error: the passphrase you entered is different from the one you used when you created your vault. Enter the exact original code to recover access.';
@@ -228,7 +237,8 @@ export function useVault() {
   return {
     dataKey: sharedKey,
     hasBundle: hasStoredBundle || hasRemoteVaultRecord,
-    loading: !initialized,
+    loading: !initialized || !authResolved || !currentUserId,
+    signedIn: Boolean(currentUserId),
     createWithPassphrase,
     unlockWithPassphrase,
     lock,
