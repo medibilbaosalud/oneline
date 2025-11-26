@@ -10,6 +10,7 @@ import { clearStoredPassphrase, getStoredPassphrase, setStoredPassphrase } from 
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
+const VAULT_SEEN_PREFIX = 'oneline.v1.vault-seen';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
@@ -22,6 +23,26 @@ let cachedPassphrase: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 let autoUnlockAttemptedFor: string | null = null;
+
+function vaultSeenKey(userId: string) {
+  return `${VAULT_SEEN_PREFIX}.${userId}`;
+}
+
+function markVaultSeen(userId: string) {
+  try {
+    localStorage.setItem(vaultSeenKey(userId), '1');
+  } catch {
+    // Non-blocking cache to reinforce duplicate-creation protection.
+  }
+}
+
+function hasLocalVaultMarker(userId: string) {
+  try {
+    return localStorage.getItem(vaultSeenKey(userId)) === '1';
+  } catch {
+    return false;
+  }
+}
 
 async function resolveUserId(): Promise<string | null> {
   try {
@@ -141,6 +162,7 @@ async function hydrateFromVaultRecord(userId: string) {
     cachedBundle = directBundle.bundle;
     hasStoredBundle = true;
     expectedRemoteVault = true;
+    markVaultSeen(userId);
     await idbSet(key, directBundle.bundle).catch(() => {});
     lastVaultError = null;
     return true;
@@ -148,6 +170,7 @@ async function hydrateFromVaultRecord(userId: string) {
 
   if (!directBundle.certainty) {
     expectedRemoteVault = true;
+    markVaultSeen(userId);
     lastVaultError =
       lastVaultError ??
       'A vault exists for this account, but it could not be read securely right now. Please unlock from a trusted device.';
@@ -157,6 +180,7 @@ async function hydrateFromVaultRecord(userId: string) {
   const recordExists = await hasVaultRecord(userId);
   if (recordExists) {
     expectedRemoteVault = true;
+    markVaultSeen(userId);
     lastVaultError =
       lastVaultError ??
       'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
@@ -164,6 +188,47 @@ async function hydrateFromVaultRecord(userId: string) {
   }
 
   return false;
+}
+
+async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload): Promise<void> {
+  if (remote.status !== 'ok') {
+    expectedRemoteVault = true;
+    markVaultSeen(userId);
+    throw new Error('Unable to confirm your existing vault. Ensure you are signed in and try again.');
+  }
+
+  const directBundle = await fetchDirectBundle(userId);
+  const certaintyRecordExists = directBundle.certainty ? await hasVaultRecord(userId) : true;
+  const localMarker = hasLocalVaultMarker(userId);
+  const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(userId);
+  const existingBundle = remote.bundle ?? cachedBundle;
+  const anyVaultPresence =
+    !!existingBundle ||
+    hasStoredBundle ||
+    remote.hasVault ||
+    expectedRemoteVault ||
+    hydratedFromRecord ||
+    localMarker ||
+    certaintyRecordExists ||
+    !directBundle.certainty;
+
+  if (anyVaultPresence) {
+    if (existingBundle) {
+      const key = bundleKeyForUser(userId);
+      cachedBundle = existingBundle;
+      hasStoredBundle = true;
+      expectedRemoteVault = true;
+      markVaultSeen(userId);
+      await idbSet(key, existingBundle).catch(() => {});
+      notify();
+    } else {
+      expectedRemoteVault = true;
+      markVaultSeen(userId);
+      notify();
+    }
+
+    throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
+  }
 }
 
 async function saveRemoteBundle(bundle: WrappedBundle | null) {
@@ -223,24 +288,35 @@ async function ensureInitialized() {
       }
 
       const key = bundleKeyForUser(currentUserId);
+      if (hasLocalVaultMarker(currentUserId)) {
+        expectedRemoteVault = true;
+      }
+
       const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
+        expectedRemoteVault = true;
         lastVaultError = null;
+        markVaultSeen(currentUserId);
       }
 
       const remote = await fetchRemoteBundle();
-      expectedRemoteVault = remote.hasVault || remote.status !== 'ok';
+      expectedRemoteVault = expectedRemoteVault || remote.hasVault || remote.status !== 'ok';
       if (remote.bundle) {
         cachedBundle = remote.bundle;
         hasStoredBundle = true;
         await idbSet(key, remote.bundle).catch(() => {});
         lastVaultError = null;
+        markVaultSeen(currentUserId);
       } else if (!localBundle && !remote.hasVault) {
         const hydrated = await hydrateFromVaultRecord(currentUserId);
         if (!hydrated) {
-          expectedRemoteVault = expectedRemoteVault || (await hasVaultRecord(currentUserId));
+          const recordExists = await hasVaultRecord(currentUserId);
+          expectedRemoteVault = expectedRemoteVault || recordExists;
+          if (recordExists) {
+            markVaultSeen(currentUserId);
+          }
         }
       } else if (!localBundle) {
         cachedBundle = null;
@@ -281,6 +357,7 @@ async function persistBundle(bundle: WrappedBundle | null) {
     cachedBundle = bundle;
     hasStoredBundle = true;
     expectedRemoteVault = true;
+    markVaultSeen(currentUserId);
     lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
@@ -326,30 +403,7 @@ export function useVault() {
 
     // Safety check: if a vault already exists remotely or locally, do not generate a new key.
     const remote = await fetchRemoteBundle();
-    if (remote.status !== 'ok') {
-      throw new Error('Unable to confirm your existing vault. Ensure you are signed in and try again.');
-    }
-
-    const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(currentUserId);
-    const existingBundle = remote.bundle ?? cachedBundle;
-    const vaultAlreadyExists =
-      !!existingBundle || hasStoredBundle || remote.hasVault || expectedRemoteVault || hydratedFromRecord;
-
-    if (vaultAlreadyExists) {
-      if (existingBundle) {
-        const key = bundleKeyForUser(currentUserId);
-        cachedBundle = existingBundle;
-        hasStoredBundle = true;
-        expectedRemoteVault = true;
-        await idbSet(key, existingBundle).catch(() => {});
-        notify();
-      } else {
-        expectedRemoteVault = true;
-        notify();
-      }
-
-      throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
-    }
+    await enforceNoExistingVault(currentUserId, remote);
 
     const key = await generateDataKey();
     sharedKey = key;
@@ -387,10 +441,11 @@ export function useVault() {
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
         const remote = await fetchRemoteBundle();
-        expectedRemoteVault = remote.hasVault || remote.status !== 'ok';
+        expectedRemoteVault = remote.hasVault || remote.status !== 'ok' || hasLocalVaultMarker(currentUserId);
         bundle = remote.bundle;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
+          markVaultSeen(currentUserId);
         } else if (!remote.hasVault) {
           const hydrated = await hydrateFromVaultRecord(currentUserId);
           if (hydrated) {
@@ -404,6 +459,7 @@ export function useVault() {
       sharedKey = await unwrapDataKey(bundle, passphrase);
       cachedBundle = bundle;
       hasStoredBundle = true;
+      markVaultSeen(currentUserId);
       lastVaultError = null;
       if (opts?.rememberPassphrase) {
         await persistPassphrase(passphrase);
@@ -435,7 +491,6 @@ export function useVault() {
 
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle || expectedRemoteVault,
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
@@ -445,6 +500,7 @@ export function useVault() {
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,
+    hasBundle: hasStoredBundle || expectedRemoteVault || (currentUserId ? hasLocalVaultMarker(currentUserId) : false),
   };
 }
 
