@@ -16,6 +16,7 @@ let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
 let lastVaultError: string | null = null;
+let hasRemoteVaultRecord = false;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 
@@ -33,14 +34,14 @@ function notify() {
   });
 }
 
-async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
+async function fetchRemoteBundle(): Promise<{ bundle: WrappedBundle | null; hasVault: boolean }> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
-    if (!res.ok) return null;
-    const payload = (await res.json()) as { bundle?: WrappedBundle | null };
-    return payload?.bundle ?? null;
+    if (!res.ok) return { bundle: null, hasVault: false };
+    const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
+    return { bundle: payload?.bundle ?? null, hasVault: Boolean(payload?.hasVault) };
   } catch {
-    return null;
+    return { bundle: null, hasVault: false };
   }
 }
 
@@ -77,12 +78,14 @@ async function ensureInitialized() {
         currentUserId = userId;
         cachedBundle = null;
         hasStoredBundle = false;
+        hasRemoteVaultRecord = false;
         lastVaultError = null;
         sharedKey = null;
       }
 
       if (!currentUserId) {
         initialized = true;
+        hasRemoteVaultRecord = false;
         lastVaultError = null;
         return;
       }
@@ -92,15 +95,17 @@ async function ensureInitialized() {
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
+        hasRemoteVaultRecord = true;
         lastVaultError = null;
         return;
       }
 
       const remoteBundle = await fetchRemoteBundle();
-      if (remoteBundle) {
-        cachedBundle = remoteBundle;
+      hasRemoteVaultRecord = remoteBundle.hasVault;
+      if (remoteBundle.bundle) {
+        cachedBundle = remoteBundle.bundle;
         hasStoredBundle = true;
-        await idbSet(key, remoteBundle).catch(() => {});
+        await idbSet(key, remoteBundle.bundle).catch(() => {});
         lastVaultError = null;
       } else {
         cachedBundle = null;
@@ -123,11 +128,13 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
+    hasRemoteVaultRecord = true;
     lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
+    hasRemoteVaultRecord = false;
     lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
@@ -166,6 +173,7 @@ export function useVault() {
       // Keep the remote copy for recovery, but wipe local storage on this device.
       cachedBundle = bundle;
       hasStoredBundle = true;
+      hasRemoteVaultRecord = true;
       lastVaultError = null;
       await saveRemoteBundle(bundle);
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
@@ -182,7 +190,9 @@ export function useVault() {
       const key = bundleKeyForUser(currentUserId);
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
-        bundle = await fetchRemoteBundle();
+        const remote = await fetchRemoteBundle();
+        hasRemoteVaultRecord = remote.hasVault;
+        bundle = remote.bundle;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
         }
@@ -210,14 +220,14 @@ export function useVault() {
     sharedKey = null;
     if (wipeLocal && currentUserId) {
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
-      hasStoredBundle = !!cachedBundle;
+      hasStoredBundle = false;
     }
     notify();
   }, []);
 
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle,
+    hasBundle: hasStoredBundle || hasRemoteVaultRecord,
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
