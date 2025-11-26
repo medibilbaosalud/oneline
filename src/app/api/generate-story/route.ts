@@ -6,6 +6,16 @@ import { DEFAULT_SUMMARY_PREFERENCES, isSummaryLanguage } from '@/lib/summaryPre
 import { supabaseServer } from '@/lib/supabaseServer';
 import { incrementMonthlySummaryUsage } from '@/lib/summaryUsage';
 import {
+  DAILY_LIMIT_UNITS,
+  ensureDailyUsage,
+  ensureMinuteUsage,
+  remainingUnits,
+  type SummaryMode,
+  updateDailyUsage,
+  usageUnits,
+  bumpMinuteUsage,
+} from '@/lib/summaryUsageDaily';
+import {
   coercePov,
   coerceTone,
   generateYearStory,
@@ -51,6 +61,8 @@ export async function POST(req: NextRequest) {
       ? body.to
       : entries[entries.length - 1].day ?? entries[entries.length - 1].created_at?.slice(0, 10) ?? '';
 
+  const mode: SummaryMode = body?.mode === 'advanced' ? 'advanced' : 'standard';
+
   const options: YearStoryOptions = {
     length: ['short', 'medium', 'long'].includes(body?.options?.length) ? body.options.length : 'medium',
     tone: coerceTone(body?.options?.tone ?? null),
@@ -64,8 +76,53 @@ export async function POST(req: NextRequest) {
       : DEFAULT_SUMMARY_PREFERENCES.language,
   };
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   try {
-    const { story, wordCount } = await generateYearStory(entries, from, to, options);
+    const dailyUsage = await ensureDailyUsage(supabase, user.id, todayIso);
+    const usedUnits = usageUnits(dailyUsage);
+    const cost = mode === 'advanced' ? 2 : 1;
+
+    if (usedUnits + cost > DAILY_LIMIT_UNITS) {
+      return NextResponse.json(
+        {
+          error: 'daily_limit_reached',
+          message: 'You have reached today’s summary limit. Please try again tomorrow.',
+          usageUnits: usedUnits,
+          remainingUnits: 0,
+          dailyLimit: DAILY_LIMIT_UNITS,
+        },
+        { status: 429 },
+      );
+    }
+
+    const modelName = mode === 'advanced' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+
+    // Soft TPM guard to avoid spikes; falls back to a gentle 429 if exceeded.
+    const minuteStart = new Date();
+    minuteStart.setSeconds(0, 0);
+    const minuteIso = minuteStart.toISOString();
+    const minuteUsage = await ensureMinuteUsage(supabase, modelName, minuteIso);
+    const tpmSoftLimit = mode === 'advanced' ? 80000 : 160000;
+    const estimatedTokens = mode === 'advanced' ? 3500 : 2200;
+    if (minuteUsage.tokens_used + estimatedTokens > tpmSoftLimit) {
+      return NextResponse.json(
+        {
+          error: 'rate_limited_minute',
+          message: 'We are processing too many summaries this minute. Please retry in a moment.',
+        },
+        { status: 429 },
+      );
+    }
+
+    const { story, wordCount, tokenUsage } = await generateYearStory(entries, from, to, options, {
+      mode,
+      modelName,
+    });
+    const consumedTokens = tokenUsage?.totalTokenCount ?? 0;
+
+    const updated = await updateDailyUsage(supabase, dailyUsage, mode, consumedTokens);
+    await bumpMinuteUsage(supabase, minuteUsage, consumedTokens);
 
     await recordSummaryRun({
       supabase,
@@ -76,16 +133,28 @@ export async function POST(req: NextRequest) {
       entries,
     });
 
+    const usedAfter = usageUnits(updated);
+
     return NextResponse.json(
       {
         story,
         words: wordCount,
+        mode,
+        usageUnits: usedAfter,
+        remainingUnits: remainingUnits(updated),
+        dailyLimit: DAILY_LIMIT_UNITS,
       },
       { headers: { 'cache-control': 'no-store' } },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'generation_failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const lowered = typeof message === 'string' ? message.toLowerCase() : '';
+    const status = lowered.includes('blocked')
+      ? 502
+      : lowered.includes('max_tokens') || lowered.includes('empty story')
+        ? 422
+        : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
