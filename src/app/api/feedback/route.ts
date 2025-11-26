@@ -1,5 +1,6 @@
 // src/app/api/feedback/route.ts
 import { NextResponse } from "next/server";
+import { Buffer } from "buffer";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 
@@ -9,12 +10,92 @@ const FeedbackPayload = z.object({
   page: z.string().trim().optional(),
 });
 
+const MAX_ATTACHMENTS = 3;
+const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB per file
+
+type Attachment = {
+  name: string;
+  size: number;
+  type: string;
+  dataUrl: string;
+};
+
+async function buildAttachments(files: File[]): Promise<Attachment[]> {
+  if (files.length > MAX_ATTACHMENTS) {
+    throw new Error(`Up to ${MAX_ATTACHMENTS} attachments are allowed.`);
+  }
+
+  const attachments: Attachment[] = [];
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      throw new Error(`Each attachment must be ${Math.floor(MAX_ATTACHMENT_SIZE / (1024 * 1024))}MB or smaller.`);
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const base64 = buffer.toString("base64");
+    const contentType = file.type || "application/octet-stream";
+
+    attachments.push({
+      name: file.name || "attachment",
+      size: file.size,
+      type: contentType,
+      dataUrl: `data:${contentType};base64,${base64}`,
+    });
+  }
+
+  return attachments;
+}
+
+async function parsePayload(req: Request) {
+  const contentType = req.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await req.formData();
+    const type = formData.get("type");
+    const message = formData.get("message");
+    const page = formData.get("page");
+    const attachments = formData
+      .getAll("attachments")
+      .filter((item): item is File => item instanceof File && item.size > 0);
+
+    const parsed = FeedbackPayload.safeParse({ type, message, page });
+    if (!parsed.success) {
+      return { error: parsed.error } as const;
+    }
+
+    try {
+      const builtAttachments = await buildAttachments(attachments);
+      return { data: parsed.data, attachments: builtAttachments } as const;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid attachment.";
+      return { attachmentError: message } as const;
+    }
+  }
+
+  const body = await req.json().catch(() => null);
+  const parsed = FeedbackPayload.safeParse(body);
+  if (!parsed.success) {
+    return { error: parsed.error } as const;
+  }
+
+  return { data: parsed.data, attachments: [] } as const;
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const parsed = FeedbackPayload.safeParse(body);
+    const parsed = await parsePayload(req);
 
-    if (!parsed.success) {
+    if ("attachmentError" in parsed) {
+      return NextResponse.json(
+        {
+          error: "invalid_attachment",
+          message: parsed.attachmentError,
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!("data" in parsed)) {
       return NextResponse.json(
         {
           error: "invalid_payload",
@@ -31,11 +112,14 @@ export async function POST(req: Request) {
 
     const { type, message, page } = parsed.data;
 
+    const metadata = parsed.attachments.length > 0 ? { attachments: parsed.attachments } : null;
+
     const { error } = await supabase.from("user_feedback").insert({
       user_id: user?.id ?? null,
       type,
       message: message.trim(),
       page: page?.trim() || null,
+      metadata,
     });
 
     if (error) {

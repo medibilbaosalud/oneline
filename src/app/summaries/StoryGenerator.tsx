@@ -481,7 +481,13 @@ export default function StoryGenerator({
       const fromDate = new Date(`${from}T00:00:00Z`);
       const toDate = new Date(`${to}T00:00:00Z`);
       const diffDays = Math.max(1, Math.round((toDate.valueOf() - fromDate.valueOf()) / (1000 * 60 * 60 * 24)) + 1);
-      if (diffDays <= 8 && decrypted.length < 4 && !allowShortRangeOverride) {
+      const uniqueDays = new Set<string>();
+      for (const entry of decrypted) {
+        const dayKey = entry.day ?? entry.created_at.slice(0, 10);
+        if (dayKey) uniqueDays.add(dayKey);
+      }
+
+      if (diffDays <= 8 && uniqueDays.size < 4 && !allowShortRangeOverride) {
         throw new Error(WEEKLY_GUARD_MESSAGE);
       }
 

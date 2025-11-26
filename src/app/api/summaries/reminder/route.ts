@@ -49,19 +49,27 @@ export async function GET() {
   let reminder = reminderBase;
   if (frequency === "weekly") {
     const { start, end } = reminderBase.window;
-    const { count, error: countError } = await supabase
+    const { data: rows, error: countError } = await supabase
       .from("journal")
-      .select("id", { count: "exact", head: true })
+      .select("day, created_at")
       .eq("user_id", session.user.id)
       .gte("day", start)
-      .lte("day", end);
+      .lte("day", end)
+      .limit(50);
 
-    if (!countError) {
-      const minimumMet = (count ?? 0) >= MIN_WEEKLY_ENTRIES;
+    if (!countError && rows) {
+      const uniqueDays = new Set<string>();
+      for (const row of rows) {
+        const day = row.day ?? row.created_at?.slice(0, 10);
+        if (day) uniqueDays.add(day);
+      }
+
+      const dayCount = uniqueDays.size;
+      const minimumMet = dayCount >= MIN_WEEKLY_ENTRIES;
       reminder = {
         ...reminderBase,
         due: reminderBase.due && minimumMet,
-        entryCount: count ?? 0,
+        entryCount: dayCount,
         minimumRequired: MIN_WEEKLY_ENTRIES,
         minimumMet,
       };
