@@ -375,12 +375,17 @@ export function useVault() {
           await idbSet(key, bundle).catch(() => {});
         } else if (!remote.hasVault) {
           const directBundle = await fetchDirectBundle(currentUserId);
-          if (directBundle) {
-            bundle = directBundle;
-            cachedBundle = directBundle;
+          if (directBundle.bundle) {
+            bundle = directBundle.bundle;
+            cachedBundle = directBundle.bundle;
             hasStoredBundle = true;
             expectedRemoteVault = true;
-            await idbSet(key, directBundle).catch(() => {});
+            await idbSet(key, directBundle.bundle).catch(() => {});
+          } else if (!directBundle.certainty || (await hasVaultRecord(currentUserId))) {
+            expectedRemoteVault = true;
+            lastVaultError =
+              lastVaultError ??
+              'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
           }
         }
       }
