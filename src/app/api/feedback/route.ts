@@ -60,7 +60,8 @@ async function uploadAttachments(
       });
 
     if (uploadError || !uploadData?.path) {
-      throw new Error("We couldn’t save an attachment. Please try again.");
+      const detail = uploadError?.message ? ` Upload error: ${uploadError.message}` : "";
+      throw new Error(`We couldn’t save an attachment.${detail}`);
     }
 
     const { data: publicUrlData } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(uploadData.path);
@@ -76,6 +77,32 @@ async function uploadAttachments(
   }
 
   return uploads;
+}
+
+async function inlineAttachments(files: File[]): Promise<StoredAttachment[]> {
+  const fallbacks: StoredAttachment[] = [];
+
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      throw new Error(`Each attachment must be ${Math.floor(MAX_ATTACHMENT_SIZE / (1024 * 1024))}MB or smaller.`);
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const base64 = buffer.toString("base64");
+    const contentType = file.type || "application/octet-stream";
+    const filename = sanitizeFilename(file.name || "attachment");
+    const path = `inline/${Date.now()}-${randomUUID()}-${filename}`;
+
+    fallbacks.push({
+      name: filename,
+      size: file.size,
+      type: contentType,
+      path,
+      publicUrl: `data:${contentType};base64,${base64}`,
+    });
+  }
+
+  return fallbacks;
 }
 
 type ParsedPayload =
@@ -159,8 +186,20 @@ export async function POST(req: Request) {
     const { data, attachments } = parsed;
     const { type, message, page } = data;
 
-    const storedAttachments = attachments.length > 0 ? await uploadAttachments(supabase, attachments, user?.id ?? null) : [];
-    const metadata = storedAttachments.length > 0 ? { attachments: storedAttachments } : null;
+    let storedAttachments: StoredAttachment[] = [];
+    let metadata: Record<string, unknown> | null = null;
+
+    if (attachments.length > 0) {
+      try {
+        storedAttachments = await uploadAttachments(supabase, attachments, user?.id ?? null);
+        metadata = { attachments: storedAttachments };
+      } catch (uploadError) {
+        console.error("Feedback attachment upload failed; falling back to inline storage", uploadError);
+        const fallbackAttachments = await inlineAttachments(attachments);
+        storedAttachments = fallbackAttachments;
+        metadata = { attachments: fallbackAttachments, storedInline: true };
+      }
+    }
 
     const { error } = await supabase.from("user_feedback").insert({
       user_id: user?.id ?? null,
