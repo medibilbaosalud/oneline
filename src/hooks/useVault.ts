@@ -100,6 +100,20 @@ async function fetchDirectBundle(userId: string): Promise<WrappedBundle | null> 
   }
 }
 
+async function hasVaultRecord(userId: string): Promise<boolean> {
+  try {
+    const supabase = supabaseBrowser();
+    const { count } = await supabase
+      .from('user_vaults')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    return (count ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function saveRemoteBundle(bundle: WrappedBundle | null) {
   try {
     await fetch('/api/vault', {
@@ -179,6 +193,11 @@ async function ensureInitialized() {
           expectedRemoteVault = true;
           await idbSet(key, directBundle).catch(() => {});
           lastVaultError = null;
+        } else if (await hasVaultRecord(currentUserId)) {
+          expectedRemoteVault = true;
+          lastVaultError =
+            lastVaultError ??
+            'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
         }
       } else if (!localBundle) {
         cachedBundle = null;
@@ -292,6 +311,12 @@ export function useVault() {
         expectedRemoteVault = true;
         const key = bundleKeyForUser(currentUserId);
         await idbSet(key, directBundle).catch(() => {});
+        notify();
+        throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
+      }
+
+      if (await hasVaultRecord(currentUserId)) {
+        expectedRemoteVault = true;
         notify();
         throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
       }
