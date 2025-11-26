@@ -1,8 +1,11 @@
 // src/app/api/feedback/route.ts
 import { NextResponse } from "next/server";
 import { Buffer } from "buffer";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
+
+const ATTACHMENT_BUCKET = "feedback-attachments";
 
 const FeedbackPayload = z.object({
   type: z.enum(["bug", "suggestion", "other"]),
@@ -13,41 +16,70 @@ const FeedbackPayload = z.object({
 const MAX_ATTACHMENTS = 3;
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024; // 5MB per file
 
-type Attachment = {
+type StoredAttachment = {
   name: string;
   size: number;
   type: string;
-  dataUrl: string;
+  path: string;
+  publicUrl: string;
 };
 
-async function buildAttachments(files: File[]): Promise<Attachment[]> {
+function sanitizeFilename(name: string): string {
+  const fallback = "attachment";
+  const trimmed = name?.trim() || fallback;
+  const safe = trimmed.replace(/[^a-zA-Z0-9_.-]+/g, "-").slice(0, 80);
+  return safe.length > 0 ? safe : fallback;
+}
+
+async function uploadAttachments(
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  files: File[],
+  userId: string | null,
+): Promise<StoredAttachment[]> {
   if (files.length > MAX_ATTACHMENTS) {
     throw new Error(`Up to ${MAX_ATTACHMENTS} attachments are allowed.`);
   }
 
-  const attachments: Attachment[] = [];
+  const uploads: StoredAttachment[] = [];
+
   for (const file of files) {
     if (file.size > MAX_ATTACHMENT_SIZE) {
       throw new Error(`Each attachment must be ${Math.floor(MAX_ATTACHMENT_SIZE / (1024 * 1024))}MB or smaller.`);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const base64 = buffer.toString("base64");
     const contentType = file.type || "application/octet-stream";
+    const filename = sanitizeFilename(file.name || "attachment");
+    const path = `${userId ?? "anonymous"}/${Date.now()}-${randomUUID()}-${filename}`;
 
-    attachments.push({
-      name: file.name || "attachment",
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(ATTACHMENT_BUCKET)
+      .upload(path, buffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (uploadError || !uploadData?.path) {
+      throw new Error("We couldn’t save an attachment. Please try again.");
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(uploadData.path);
+    const publicUrl = publicUrlData?.publicUrl;
+
+    uploads.push({
+      name: filename,
       size: file.size,
       type: contentType,
-      dataUrl: `data:${contentType};base64,${base64}`,
+      path: uploadData.path,
+      publicUrl: publicUrl ?? "",
     });
   }
 
-  return attachments;
+  return uploads;
 }
 
 type ParsedPayload =
-  | { status: "ok"; data: z.infer<typeof FeedbackPayload>; attachments: Attachment[] }
+  | { status: "ok"; data: z.infer<typeof FeedbackPayload>; attachments: File[] }
   | { status: "validation_error"; error: z.ZodError }
   | { status: "attachment_error"; attachmentError: string };
 
@@ -69,8 +101,17 @@ async function parsePayload(req: Request): Promise<ParsedPayload> {
     }
 
     try {
-      const builtAttachments = await buildAttachments(attachments);
-      return { status: "ok", data: parsed.data, attachments: builtAttachments } as const;
+      if (attachments.length > MAX_ATTACHMENTS) {
+        throw new Error(`Up to ${MAX_ATTACHMENTS} attachments are allowed.`);
+      }
+
+      for (const file of attachments) {
+        if (file.size > MAX_ATTACHMENT_SIZE) {
+          throw new Error(`Each attachment must be ${Math.floor(MAX_ATTACHMENT_SIZE / (1024 * 1024))}MB or smaller.`);
+        }
+      }
+
+      return { status: "ok", data: parsed.data, attachments } as const;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid attachment.";
       return { status: "attachment_error", attachmentError: message } as const;
@@ -118,7 +159,8 @@ export async function POST(req: Request) {
     const { data, attachments } = parsed;
     const { type, message, page } = data;
 
-    const metadata = attachments.length > 0 ? { attachments } : null;
+    const storedAttachments = attachments.length > 0 ? await uploadAttachments(supabase, attachments, user?.id ?? null) : [];
+    const metadata = storedAttachments.length > 0 ? { attachments: storedAttachments } : null;
 
     const { error } = await supabase.from("user_feedback").insert({
       user_id: user?.id ?? null,
