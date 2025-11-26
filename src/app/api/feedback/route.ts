@@ -110,9 +110,10 @@ export async function POST(req: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { type, message, page } = parsed.data;
+    const { data, attachments } = parsed;
+    const { type, message, page } = data;
 
-    const metadata = parsed.attachments.length > 0 ? { attachments: parsed.attachments } : null;
+    const metadata = attachments.length > 0 ? { attachments } : null;
 
     const { error } = await supabase.from("user_feedback").insert({
       user_id: user?.id ?? null,
