@@ -86,31 +86,40 @@ async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   }
 }
 
-async function fetchDirectBundle(userId: string): Promise<WrappedBundle | null> {
+type DirectBundleResult = { bundle: WrappedBundle | null; certainty: boolean };
+
+async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
   try {
     const supabase = supabaseBrowser();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('user_vaults')
       .select('wrapped_b64, iv_b64, salt_b64, version')
       .eq('user_id', userId)
       .maybeSingle();
-    return data ?? null;
+
+    if (error) {
+      return { bundle: null, certainty: false };
+    }
+
+    return { bundle: data ?? null, certainty: true };
   } catch {
-    return null;
+    return { bundle: null, certainty: false };
   }
 }
 
 async function hasVaultRecord(userId: string): Promise<boolean> {
   try {
     const supabase = supabaseBrowser();
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('user_vaults')
       .select('user_id', { count: 'exact', head: true })
       .eq('user_id', userId);
 
+    if (error) return true;
+
     return (count ?? 0) > 0;
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -187,13 +196,13 @@ async function ensureInitialized() {
         lastVaultError = null;
       } else if (!localBundle && !remote.hasVault) {
         const directBundle = await fetchDirectBundle(currentUserId);
-        if (directBundle) {
-          cachedBundle = directBundle;
+        if (directBundle.bundle) {
+          cachedBundle = directBundle.bundle;
           hasStoredBundle = true;
           expectedRemoteVault = true;
-          await idbSet(key, directBundle).catch(() => {});
+          await idbSet(key, directBundle.bundle).catch(() => {});
           lastVaultError = null;
-        } else if (await hasVaultRecord(currentUserId)) {
+        } else if (!directBundle.certainty || (await hasVaultRecord(currentUserId))) {
           expectedRemoteVault = true;
           lastVaultError =
             lastVaultError ??
@@ -305,20 +314,22 @@ export function useVault() {
 
     if (!cachedBundle && !remote.hasVault) {
       const directBundle = await fetchDirectBundle(currentUserId);
-      if (directBundle) {
-        cachedBundle = directBundle;
+      if (directBundle.bundle) {
+        cachedBundle = directBundle.bundle;
         hasStoredBundle = true;
         expectedRemoteVault = true;
         const key = bundleKeyForUser(currentUserId);
-        await idbSet(key, directBundle).catch(() => {});
+        await idbSet(key, directBundle.bundle).catch(() => {});
         notify();
         throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
       }
 
-      if (await hasVaultRecord(currentUserId)) {
+      if (!directBundle.certainty || (await hasVaultRecord(currentUserId))) {
         expectedRemoteVault = true;
         notify();
-        throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
+        throw new Error(
+          'We could not verify your vault status. Unlock from a trusted device or try again after confirming your session.',
+        );
       }
     }
 
