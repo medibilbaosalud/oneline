@@ -41,7 +41,12 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ bundle: data ?? null }, { headers: { 'cache-control': 'no-store' } });
+  const hasVault = !!data;
+
+  return NextResponse.json(
+    { bundle: data ?? null, hasVault },
+    { headers: { 'cache-control': 'no-store' } },
+  );
 }
 
 export async function PUT(request: NextRequest) {
