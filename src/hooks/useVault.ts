@@ -101,7 +101,13 @@ async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
       return { bundle: null, certainty: false };
     }
 
-    return { bundle: data ?? null, certainty: true };
+    // If no row is visible, we cannot be sure whether it is absent or hidden by
+    // RLS; treat that as uncertainty to avoid suggesting vault creation.
+    if (!data) {
+      return { bundle: null, certainty: false };
+    }
+
+    return { bundle: data, certainty: true };
   } catch {
     return { bundle: null, certainty: false };
   }
@@ -116,6 +122,10 @@ async function hasVaultRecord(userId: string): Promise<boolean> {
       .eq('user_id', userId);
 
     if (error) return true;
+
+    // If the count is unavailable (null) treat it as uncertainty and assume a
+    // vault exists to avoid overwriting a hidden record.
+    if (count === null) return true;
 
     return (count ?? 0) > 0;
   } catch {
@@ -133,6 +143,14 @@ async function hydrateFromVaultRecord(userId: string) {
     expectedRemoteVault = true;
     await idbSet(key, directBundle.bundle).catch(() => {});
     lastVaultError = null;
+    return true;
+  }
+
+  if (!directBundle.certainty) {
+    expectedRemoteVault = true;
+    lastVaultError =
+      lastVaultError ??
+      'A vault exists for this account, but it could not be read securely right now. Please unlock from a trusted device.';
     return true;
   }
 
