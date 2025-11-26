@@ -119,6 +119,13 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
   const [summaryReminder, setSummaryReminder] = useState<SummaryReminder | null>(null);
   const [showSummaryReminder, setShowSummaryReminder] = useState(true);
 
+  const reminderMinimum = summaryReminder?.minimumRequired ?? 4;
+  const reminderEntryCount = summaryReminder?.entryCount ?? 0;
+  const reminderRemaining = Math.max(0, reminderMinimum - reminderEntryCount);
+  const hasReminderCount = typeof summaryReminder?.entryCount === 'number';
+  const reminderEntryLabel = reminderEntryCount === 1 ? 'day' : 'days';
+  const reminderRemainingLabel = reminderRemaining === 1 ? 'day' : 'days';
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -372,8 +379,13 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 <div>
                   <p className="text-sm font-semibold text-white">Keep writing to unlock weekly stories</p>
                   <p className="mt-1 text-xs text-amber-100/80">
-                    Add at least {summaryReminder.minimumRequired ?? 4} days from the last week to generate your first story.
+                    Add at least {reminderMinimum} days from the last week to generate your first story.
                   </p>
+                  {hasReminderCount && (
+                    <p className="mt-1 text-xs text-amber-100/80">
+                      You&apos;re at {reminderEntryCount}/{reminderMinimum} {reminderEntryLabel} — {reminderRemaining} more {reminderRemainingLabel} to go.
+                    </p>
+                  )}
                 </div>
                 <button
                   type="button"
