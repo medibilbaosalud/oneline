@@ -55,10 +55,13 @@ export async function GET() {
   const daySet = new Set(days);
   const todayKey = ymd(today);
 
-  // Current streak — count consecutive days ending today.
+  // Current streak — count consecutive days ending today if present, otherwise carry yesterday's streak
+  // so users keep seeing their progress until the day fully passes without an entry.
   let current = 0;
-  let cursor = todayKey;
-  while (daySet.has(cursor)) {
+  const yesterdayKey = ymd(addDays(today, -1));
+  const anchor = daySet.has(todayKey) ? todayKey : daySet.has(yesterdayKey) ? yesterdayKey : null;
+  let cursor = anchor;
+  while (cursor && daySet.has(cursor)) {
     current += 1;
     cursor = ymd(addDays(new Date(`${cursor}T00:00:00Z`), -1));
   }
