@@ -155,7 +155,9 @@ async function hasVaultRecord(userId: string): Promise<boolean> {
   }
 }
 
-async function hasJournalEntries(userId: string): Promise<boolean> {
+type JournalPresence = { present: boolean; certain: boolean };
+
+async function queryJournalPresence(userId: string): Promise<JournalPresence> {
   try {
     const supabase = supabaseBrowser();
     const { count, error } = await supabase
@@ -163,24 +165,52 @@ async function hasJournalEntries(userId: string): Promise<boolean> {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId);
 
-    if (error) return true;
+    if (error) return { present: true, certain: false };
 
-    if (count === null) return true;
+    if (count === null) return { present: true, certain: false };
 
-    return (count ?? 0) > 0;
+    return { present: (count ?? 0) > 0, certain: true };
   } catch {
-    return true;
+    return { present: true, certain: false };
   }
 }
 
+async function fetchServerJournalPresence(): Promise<JournalPresence> {
+  try {
+    const res = await fetch('/api/journal/presence', { cache: 'no-store' });
+    if (!res.ok) {
+      return { present: true, certain: false };
+    }
+    const payload = (await res.json().catch(() => null)) as { present?: boolean } | null;
+    return { present: !!payload?.present, certain: true };
+  } catch {
+    return { present: true, certain: false };
+  }
+}
+
+async function detectJournalPresence(userId: string): Promise<JournalPresence> {
+  const clientPresence = await queryJournalPresence(userId);
+  if (clientPresence.present) return clientPresence;
+
+  const serverPresence = await fetchServerJournalPresence();
+  if (serverPresence.present) return serverPresence;
+
+  return { present: false, certain: clientPresence.certain && serverPresence.certain };
+}
+
 async function enforceJournalExpectation(userId: string) {
-  const journalHistory = await hasJournalEntries(userId);
-  journalPresence = journalHistory;
-  if (journalHistory) {
+  const presence = await detectJournalPresence(userId);
+  journalPresence = presence.present || !presence.certain;
+  if (journalPresence) {
     expectedRemoteVault = true;
     markVaultSeen(userId);
-    lastVaultError = null;
+    lastVaultError = presence.certain
+      ? null
+      :
+          lastVaultError ??
+          'Journal activity suggests a vault already exists, but we could not verify it right now. Unlock from a trusted device or contact support for help.';
   }
+  return journalPresence;
 }
 
 async function hydrateFromVaultRecord(userId: string) {
@@ -230,7 +260,7 @@ async function hydrateFromVaultRecord(userId: string) {
 }
 
 async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload): Promise<void> {
-  await enforceJournalExpectation(userId);
+  const initialJournalPresence = await enforceJournalExpectation(userId);
   if (remote.status !== 'ok') {
     expectedRemoteVault = true;
     markVaultSeen(userId);
@@ -239,8 +269,7 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
 
   const directBundle = await fetchDirectBundle(userId);
   const certaintyRecordExists = directBundle.certainty ? await hasVaultRecord(userId) : true;
-  const journalHistory = journalPresence || (await hasJournalEntries(userId));
-  journalPresence = journalHistory;
+  const journalHistory = journalPresence || initialJournalPresence;
   const localMarker = hasLocalVaultMarker(userId);
   const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(userId);
   const existingBundle = remote.bundle ?? cachedBundle;
@@ -516,7 +545,7 @@ export function useVault() {
           if (hydrated) {
             bundle = cachedBundle;
           } else {
-            const journalHistory = await hasJournalEntries(currentUserId);
+            const journalHistory = await enforceJournalExpectation(currentUserId);
             expectedRemoteVault = expectedRemoteVault || journalHistory;
             if (journalHistory) {
               markVaultSeen(currentUserId);
