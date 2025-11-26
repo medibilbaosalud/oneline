@@ -46,7 +46,12 @@ async function buildAttachments(files: File[]): Promise<Attachment[]> {
   return attachments;
 }
 
-async function parsePayload(req: Request) {
+type ParsedPayload =
+  | { status: "ok"; data: z.infer<typeof FeedbackPayload>; attachments: Attachment[] }
+  | { status: "validation_error"; error: z.ZodError }
+  | { status: "attachment_error"; attachmentError: string };
+
+async function parsePayload(req: Request): Promise<ParsedPayload> {
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("multipart/form-data")) {
@@ -60,32 +65,32 @@ async function parsePayload(req: Request) {
 
     const parsed = FeedbackPayload.safeParse({ type, message, page });
     if (!parsed.success) {
-      return { error: parsed.error } as const;
+      return { status: "validation_error", error: parsed.error } as const;
     }
 
     try {
       const builtAttachments = await buildAttachments(attachments);
-      return { data: parsed.data, attachments: builtAttachments } as const;
+      return { status: "ok", data: parsed.data, attachments: builtAttachments } as const;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Invalid attachment.";
-      return { attachmentError: message } as const;
+      return { status: "attachment_error", attachmentError: message } as const;
     }
   }
 
   const body = await req.json().catch(() => null);
   const parsed = FeedbackPayload.safeParse(body);
   if (!parsed.success) {
-    return { error: parsed.error } as const;
+    return { status: "validation_error", error: parsed.error } as const;
   }
 
-  return { data: parsed.data, attachments: [] } as const;
+  return { status: "ok", data: parsed.data, attachments: [] } as const;
 }
 
 export async function POST(req: Request) {
   try {
     const parsed = await parsePayload(req);
 
-    if ("attachmentError" in parsed) {
+    if (parsed.status === "attachment_error") {
       return NextResponse.json(
         {
           error: "invalid_attachment",
@@ -95,7 +100,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!("data" in parsed)) {
+    if (parsed.status === "validation_error") {
       return NextResponse.json(
         {
           error: "invalid_payload",
