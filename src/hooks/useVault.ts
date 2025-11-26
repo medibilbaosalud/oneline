@@ -15,6 +15,7 @@ const VAULT_SEEN_PREFIX = 'oneline.v1.vault-seen';
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
 let expectedRemoteVault = false;
+let journalPresence = false;
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
@@ -172,6 +173,16 @@ async function hasJournalEntries(userId: string): Promise<boolean> {
   }
 }
 
+async function enforceJournalExpectation(userId: string) {
+  const journalHistory = await hasJournalEntries(userId);
+  journalPresence = journalHistory;
+  if (journalHistory) {
+    expectedRemoteVault = true;
+    markVaultSeen(userId);
+    lastVaultError = null;
+  }
+}
+
 async function hydrateFromVaultRecord(userId: string) {
   const key = bundleKeyForUser(userId);
   const directBundle = await fetchDirectBundle(userId);
@@ -205,8 +216,8 @@ async function hydrateFromVaultRecord(userId: string) {
     return true;
   }
 
-  const journalHistory = await hasJournalEntries(userId);
-  if (journalHistory) {
+  await enforceJournalExpectation(userId);
+  if (journalPresence) {
     expectedRemoteVault = true;
     markVaultSeen(userId);
     lastVaultError =
@@ -219,6 +230,7 @@ async function hydrateFromVaultRecord(userId: string) {
 }
 
 async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload): Promise<void> {
+  await enforceJournalExpectation(userId);
   if (remote.status !== 'ok') {
     expectedRemoteVault = true;
     markVaultSeen(userId);
@@ -227,7 +239,8 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
 
   const directBundle = await fetchDirectBundle(userId);
   const certaintyRecordExists = directBundle.certainty ? await hasVaultRecord(userId) : true;
-  const journalHistory = await hasJournalEntries(userId);
+  const journalHistory = journalPresence || (await hasJournalEntries(userId));
+  journalPresence = journalHistory;
   const localMarker = hasLocalVaultMarker(userId);
   const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(userId);
   const existingBundle = remote.bundle ?? cachedBundle;
@@ -312,6 +325,7 @@ async function ensureInitialized() {
         cachedBundle = null;
         hasStoredBundle = false;
         expectedRemoteVault = false;
+        journalPresence = false;
         lastVaultError = null;
         sharedKey = null;
         cachedPassphrase = null;
@@ -323,6 +337,8 @@ async function ensureInitialized() {
         lastVaultError = null;
         return;
       }
+
+      await enforceJournalExpectation(currentUserId);
 
       const key = bundleKeyForUser(currentUserId);
       if (hasLocalVaultMarker(currentUserId)) {
@@ -356,10 +372,8 @@ async function ensureInitialized() {
           }
 
           if (!recordExists) {
-            const journalHistory = await hasJournalEntries(currentUserId);
-            expectedRemoteVault = expectedRemoteVault || journalHistory;
-            if (journalHistory) {
-              markVaultSeen(currentUserId);
+            await enforceJournalExpectation(currentUserId);
+            if (journalPresence) {
               lastVaultError =
                 lastVaultError ??
                 'Journal activity shows a vault already exists for this account. Unlock from a trusted device or contact support if you cannot access it.';
@@ -449,6 +463,8 @@ export function useVault() {
     }
     if (!currentUserId) throw new Error('Sign in before creating your vault');
 
+    await enforceJournalExpectation(currentUserId);
+
     // Safety check: if a vault already exists remotely or locally, do not generate a new key.
     const remote = await fetchRemoteBundle();
     await enforceNoExistingVault(currentUserId, remote);
@@ -483,6 +499,7 @@ export function useVault() {
       currentUserId = await resolveUserId();
     }
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
+    await enforceJournalExpectation(currentUserId);
     let bundle = cachedBundle;
     if (!bundle) {
       const key = bundleKeyForUser(currentUserId);
@@ -568,7 +585,11 @@ export function useVault() {
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,
-    hasBundle: hasStoredBundle || expectedRemoteVault || (currentUserId ? hasLocalVaultMarker(currentUserId) : false),
+    hasBundle:
+      hasStoredBundle ||
+      expectedRemoteVault ||
+      journalPresence ||
+      (currentUserId ? hasLocalVaultMarker(currentUserId) : false),
   };
 }
 
