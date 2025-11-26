@@ -16,6 +16,9 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     unlockWithPassphrase,
     vaultError,
     hasStoredPassphrase,
+    requestNoVaultOverride,
+    clearNoVaultOverride,
+    manualCreationOverride,
   } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
@@ -23,6 +26,10 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
   const [rememberPassphrase, setRememberPassphrase] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [manualCreate, setManualCreate] = useState(false);
+  const [manualCheckError, setManualCheckError] = useState<string | null>(null);
+  const [checkingManual, setCheckingManual] = useState(false);
+  const effectiveHasBundle = hasBundle && !manualCreate;
 
   useEffect(() => {
     setRememberPassphrase(hasStoredPassphrase);
@@ -36,6 +43,10 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       setRememberPassphrase(true);
     }
   }, []);
+
+  useEffect(() => {
+    setManualCreate(manualCreationOverride);
+  }, [manualCreationOverride]);
 
   if (loading) {
     return (
@@ -55,7 +66,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       setFormError('Enter a passphrase.');
       return;
     }
-    if (!hasBundle) {
+    if (!effectiveHasBundle) {
       const confirmTrimmed = confirmPassphrase.trim();
       if (!confirmTrimmed) {
         setFormError('Confirm your passphrase.');
@@ -69,7 +80,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     setFormError(null);
     try {
-      if (hasBundle) {
+      if (effectiveHasBundle) {
         await unlockWithPassphrase(trimmed, { rememberPassphrase });
       } else {
         await createWithPassphrase(trimmed, remember, rememberPassphrase);
@@ -83,10 +94,39 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       const fallback =
         'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.';
       const message = err instanceof Error && err.message ? err.message : fallback;
-      setFormError(hasBundle ? fallback : message);
+      setFormError(effectiveHasBundle ? fallback : message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleManualOverride() {
+    setCheckingManual(true);
+    setManualCheckError(null);
+    try {
+      const allowed = await requestNoVaultOverride();
+      if (allowed) {
+        setManualCreate(true);
+      } else {
+        setManualCreate(false);
+        setManualCheckError(
+          vaultError ??
+            'We detected previous activity for this account. Unlock with your existing passphrase instead of creating a new one.',
+        );
+      }
+    } catch (error) {
+      const fallback = 'We could not verify your vault status right now. Try again or unlock with your existing passphrase.';
+      const message = error instanceof Error && error.message ? error.message : fallback;
+      setManualCheckError(message);
+      setManualCreate(false);
+    } finally {
+      setCheckingManual(false);
+    }
+  }
+
+  function handleReturnToUnlock() {
+    setManualCreate(false);
+    clearNoVaultOverride();
   }
 
   return (
@@ -94,24 +134,24 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       <div className="space-y-4 text-sm text-neutral-300">
         <header className="space-y-1">
           <h2 className="text-xl font-semibold text-white">
-            {hasBundle ? 'Unlock your encrypted journal' : 'Create your encrypted vault'}
+            {effectiveHasBundle ? 'Unlock your encrypted journal' : 'Create your encrypted vault'}
           </h2>
           <p className="text-neutral-400">
-            {hasBundle
+            {effectiveHasBundle
               ? 'Enter the exact passphrase you created before. A different phrase will fail and your encrypted entries will remain unreadable.'
               : 'Choose a strong passphrase and type it twice to confirm. You must reuse this exact code every time you unlock OneLine.'}
           </p>
-          {!hasBundle && (
+          {!effectiveHasBundle && (
             <p className="text-xs text-amber-300">
               Set it once and never change it — losing or altering this passphrase permanently locks all existing entries.
             </p>
           )}
-          {!hasBundle && (
+          {!effectiveHasBundle && (
             <p className="text-xs text-neutral-400">
               Choose numbers that are easy to remember — something like your own phone number keeps the code memorable without sharing it.
             </p>
           )}
-          {hasBundle && (
+          {effectiveHasBundle && (
             <p className="text-xs text-amber-300">
               We never store your passphrase. If you forget it, we cannot recover or reset your data.
             </p>
@@ -122,6 +162,35 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
           <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
             {vaultError}
           </p>
+        )}
+
+        {effectiveHasBundle && (
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3 text-xs text-neutral-300">
+            <p className="font-semibold text-white">Not seeing a passphrase prompt you expect?</p>
+            <p className="mt-1 text-neutral-400">
+              We default to unlocking to protect existing data. If you have truly never created a passphrase for this account, we will double-check and then let you create one.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleManualOverride}
+                disabled={checkingManual}
+                className="inline-flex items-center gap-2 rounded-lg bg-neutral-800 px-3 py-2 font-semibold text-white transition hover:bg-neutral-700 disabled:opacity-60"
+              >
+                {checkingManual ? 'Checking…' : "I haven't created one"}
+              </button>
+              {manualCreate && (
+                <button
+                  type="button"
+                  onClick={handleReturnToUnlock}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 font-semibold text-white transition hover:border-white/20"
+                >
+                  Go back to unlock
+                </button>
+              )}
+            </div>
+            {manualCheckError && <p className="mt-2 text-rose-300">{manualCheckError}</p>}
+          </div>
         )}
 
         <div className="space-y-3">
@@ -139,7 +208,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             />
           </label>
 
-          {!hasBundle && (
+          {!effectiveHasBundle && (
             <label className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-wider text-neutral-500">Confirm passphrase</span>
               <input
@@ -153,7 +222,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             </label>
           )}
 
-          {!hasBundle && (
+          {!effectiveHasBundle && (
             <label className="flex items-center gap-2 text-xs text-neutral-400">
               <input
                 type="checkbox"
@@ -184,7 +253,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
           disabled={busy}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
         >
-          {busy ? 'Working…' : hasBundle ? 'Unlock vault' : 'Create & continue'}
+          {busy ? 'Working…' : effectiveHasBundle ? 'Unlock vault' : 'Create & continue'}
         </button>
         <p className="text-xs text-neutral-500">
           Tip: Prefer a long passphrase you can remember. Store it in a password manager — if it changes or is lost, the encrypted data stays locked forever.

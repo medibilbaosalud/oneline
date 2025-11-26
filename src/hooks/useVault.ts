@@ -23,6 +23,7 @@ let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
 let lastVaultError: string | null = null;
 let cachedPassphrase: string | null = null;
+let userConfirmedNoVault: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 let autoUnlockAttemptedFor: string | null = null;
@@ -157,6 +158,26 @@ async function hasVaultRecord(userId: string): Promise<boolean> {
   }
 }
 
+type VaultPresence = { present: boolean; certain: boolean };
+
+async function detectVaultRecordPresence(userId: string): Promise<VaultPresence> {
+  try {
+    const supabase = supabaseBrowser();
+    const { count, error } = await supabase
+      .from('user_vaults')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (error || count === null) {
+      return { present: false, certain: false };
+    }
+
+    return { present: (count ?? 0) > 0, certain: true };
+  } catch {
+    return { present: false, certain: false };
+  }
+}
+
 type JournalPresence = { present: boolean; certain: boolean };
 
 async function queryJournalPresence(userId: string): Promise<JournalPresence> {
@@ -219,6 +240,12 @@ async function enforceJournalExpectation(userId: string) {
   return journalPresence;
 }
 
+function clearManualNoVaultFlagIfDifferent(userId: string | null) {
+  if (userConfirmedNoVault && userConfirmedNoVault !== userId) {
+    userConfirmedNoVault = null;
+  }
+}
+
 async function hydrateFromVaultRecord(userId: string) {
   const key = bundleKeyForUser(userId);
   const directBundle = await fetchDirectBundle(userId);
@@ -274,24 +301,30 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
   }
 
   const directBundle = await fetchDirectBundle(userId);
-  const certaintyRecordExists = directBundle.certainty ? await hasVaultRecord(userId) : true;
+  const certaintyRecordExists = directBundle.certainty
+    ? await hasVaultRecord(userId)
+    : userConfirmedNoVault !== userId;
   const journalHistory = journalPresence || initialJournalPresence;
   const localMarker = hasLocalVaultMarker(userId);
-  const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(userId);
+  const hydratedFromRecord = userConfirmedNoVault === userId ? false : remote.bundle ? false : await hydrateFromVaultRecord(userId);
   const existingBundle = remote.bundle ?? cachedBundle;
-  const anyVaultPresence =
-    !journalAbsenceConfirmed ||
+  const confirmedVaultEvidence =
     !!existingBundle ||
     hasStoredBundle ||
-    remote.hasVault ||
-    expectedRemoteVault ||
-    hydratedFromRecord ||
-    localMarker ||
+    directBundle.bundle !== null ||
     certaintyRecordExists ||
     journalHistory ||
-    !directBundle.certainty;
+    (remote.status === 'ok' && remote.hasVault) ||
+    localMarker;
 
-  if (anyVaultPresence) {
+  const protectiveUncertainSignals =
+    expectedRemoteVault || hydratedFromRecord || !journalAbsenceConfirmed || !directBundle.certainty || remote.hasVault;
+
+  const shouldBlockCreation =
+    confirmedVaultEvidence ||
+    (userConfirmedNoVault === userId ? false : protectiveUncertainSignals);
+
+  if (shouldBlockCreation) {
     if (existingBundle) {
       const key = bundleKeyForUser(userId);
       cachedBundle = existingBundle;
@@ -317,6 +350,59 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
   }
 
   expectedRemoteVault = false;
+}
+
+async function confirmNoVaultClaim(): Promise<boolean> {
+  await ensureInitialized();
+  if (!currentUserId) {
+    currentUserId = await resolveUserId();
+  }
+  if (!currentUserId) throw new Error('Sign in before continuing.');
+
+  const journal = await detectJournalPresence(currentUserId);
+  if (journal.present) {
+    lastVaultError =
+      'We found activity for this account already. Use your original passphrase to unlock the existing vault.';
+    notify();
+    return false;
+  }
+
+  const directBundle = await fetchDirectBundle(currentUserId);
+  if (directBundle.bundle) {
+    lastVaultError =
+      'An encrypted vault already exists for this account. Unlock it with the passphrase you used when you created it.';
+    notify();
+    return false;
+  }
+
+  const recordPresence = await detectVaultRecordPresence(currentUserId);
+  if (recordPresence.present) {
+    lastVaultError = 'A secure vault record already exists. Unlock it with your original passphrase.';
+    notify();
+    return false;
+  }
+
+  const remote = await fetchRemoteBundle();
+  if (remote.status === 'ok' && (remote.hasVault || remote.bundle)) {
+    lastVaultError =
+      'We can see an existing encrypted vault for this account. Unlock with your original passphrase instead of creating a new one.';
+    notify();
+    return false;
+  }
+
+  userConfirmedNoVault = currentUserId;
+  journalAbsenceConfirmed = journal.certain && !journal.present;
+  journalPresence = false;
+  expectedRemoteVault = false;
+  notify();
+  return true;
+}
+
+function clearManualNoVaultClaim() {
+  if (currentUserId && userConfirmedNoVault === currentUserId) {
+    userConfirmedNoVault = null;
+    notify();
+  }
 }
 
 async function saveRemoteBundle(bundle: WrappedBundle | null) {
@@ -349,6 +435,8 @@ async function ensureInitialized() {
   }
 
   const userId = await resolveUserId();
+
+  clearManualNoVaultFlagIfDifferent(userId);
 
   const needsFreshInit = !initialized || userId !== currentUserId;
   if (!needsFreshInit) return;
@@ -396,6 +484,7 @@ async function ensureInitialized() {
         expectedRemoteVault = true;
         lastVaultError = null;
         markVaultSeen(currentUserId);
+        userConfirmedNoVault = null;
       }
 
       const remote = await fetchRemoteBundle();
@@ -406,6 +495,7 @@ async function ensureInitialized() {
         await idbSet(key, remote.bundle).catch(() => {});
         lastVaultError = null;
         markVaultSeen(currentUserId);
+        userConfirmedNoVault = null;
       } else if (!localBundle && !remote.hasVault) {
         const hydrated = await hydrateFromVaultRecord(currentUserId);
         if (!hydrated) {
@@ -413,6 +503,7 @@ async function ensureInitialized() {
           expectedRemoteVault = expectedRemoteVault || recordExists;
           if (recordExists) {
             markVaultSeen(currentUserId);
+            userConfirmedNoVault = null;
           }
 
           if (!recordExists) {
@@ -478,6 +569,7 @@ async function persistBundle(bundle: WrappedBundle | null) {
 
 export function useVault() {
   const [, forceUpdate] = useState(0);
+  const manualOverrideActive = currentUserId ? userConfirmedNoVault === currentUserId : false;
 
   useEffect(() => {
     let active = true;
@@ -626,15 +718,19 @@ export function useVault() {
     lock,
     vaultError: lastVaultError,
     hasStoredPassphrase: !!cachedPassphrase,
+    requestNoVaultOverride: confirmNoVaultClaim,
+    clearNoVaultOverride: clearManualNoVaultClaim,
+    manualCreationOverride: manualOverrideActive,
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,
     hasBundle:
-      hasStoredBundle ||
-      expectedRemoteVault ||
-      journalPresence ||
-      !journalAbsenceConfirmed ||
-      (currentUserId ? hasLocalVaultMarker(currentUserId) : false),
+      !manualOverrideActive &&
+      (hasStoredBundle ||
+        expectedRemoteVault ||
+        journalPresence ||
+        !journalAbsenceConfirmed ||
+        (currentUserId ? hasLocalVaultMarker(currentUserId) : false)),
   };
 }
 
