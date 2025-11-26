@@ -110,6 +110,17 @@ type ParsedPayload =
   | { status: "validation_error"; error: z.ZodError }
   | { status: "attachment_error"; attachmentError: string };
 
+type AttachmentRow = {
+  feedback_id: number;
+  user_id: string | null;
+  name: string;
+  size: number;
+  type: string;
+  path: string;
+  public_url: string;
+  stored_inline: boolean;
+};
+
 async function parsePayload(req: Request): Promise<ParsedPayload> {
   const contentType = req.headers.get("content-type") ?? "";
 
@@ -188,26 +199,31 @@ export async function POST(req: Request) {
 
     let storedAttachments: StoredAttachment[] = [];
     let metadata: Record<string, unknown> | null = null;
+    let storedInline = false;
 
     if (attachments.length > 0) {
       try {
         storedAttachments = await uploadAttachments(supabase, attachments, user?.id ?? null);
-        metadata = { attachments: storedAttachments };
       } catch (uploadError) {
         console.error("Feedback attachment upload failed; falling back to inline storage", uploadError);
         const fallbackAttachments = await inlineAttachments(attachments);
         storedAttachments = fallbackAttachments;
-        metadata = { attachments: fallbackAttachments, storedInline: true };
+        storedInline = true;
+        metadata = { storedInline: true };
       }
     }
 
-    const { error } = await supabase.from("user_feedback").insert({
-      user_id: user?.id ?? null,
-      type,
-      message: message.trim(),
-      page: page?.trim() || null,
-      metadata,
-    });
+    const { data: feedbackRow, error } = await supabase
+      .from("user_feedback")
+      .insert({
+        user_id: user?.id ?? null,
+        type,
+        message: message.trim(),
+        page: page?.trim() || null,
+        metadata,
+      })
+      .select("id, user_id")
+      .single();
 
     if (error) {
       return NextResponse.json(
@@ -217,6 +233,31 @@ export async function POST(req: Request) {
         },
         { status: 500 },
       );
+    }
+
+    if (storedAttachments.length > 0 && feedbackRow?.id) {
+      const attachmentRows: AttachmentRow[] = storedAttachments.map((attachment) => ({
+        feedback_id: feedbackRow.id,
+        user_id: feedbackRow.user_id ?? null,
+        name: attachment.name,
+        size: attachment.size,
+        type: attachment.type,
+        path: attachment.path,
+        public_url: attachment.publicUrl,
+        stored_inline: storedInline,
+      }));
+
+      const { error: attachmentsError } = await supabase
+        .from("user_feedback_attachments")
+        .insert(attachmentRows);
+
+      if (attachmentsError) {
+        console.error("Feedback attachments insert failed; storing metadata fallback", attachmentsError);
+        await supabase
+          .from("user_feedback")
+          .update({ metadata: { storedInline, attachments: storedAttachments, attachmentInsertError: true } })
+          .eq("id", feedbackRow.id);
+      }
     }
 
     return NextResponse.json({ success: true });
