@@ -16,6 +16,8 @@ let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
 let expectedRemoteVault = false;
 let journalPresence = false;
+let journalPresenceCertain = false;
+let journalAbsenceConfirmed = false;
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
@@ -200,8 +202,10 @@ async function detectJournalPresence(userId: string): Promise<JournalPresence> {
 
 async function enforceJournalExpectation(userId: string) {
   const presence = await detectJournalPresence(userId);
+  journalPresenceCertain = presence.certain;
+  journalAbsenceConfirmed = presence.certain && !presence.present;
   journalPresence = presence.present || !presence.certain;
-  if (journalPresence) {
+  if (!journalAbsenceConfirmed) {
     expectedRemoteVault = true;
     markVaultSeen(userId);
     lastVaultError = presence.certain
@@ -209,6 +213,8 @@ async function enforceJournalExpectation(userId: string) {
       :
           lastVaultError ??
           'Journal activity suggests a vault already exists, but we could not verify it right now. Unlock from a trusted device or contact support for help.';
+  } else {
+    expectedRemoteVault = false;
   }
   return journalPresence;
 }
@@ -274,6 +280,7 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
   const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(userId);
   const existingBundle = remote.bundle ?? cachedBundle;
   const anyVaultPresence =
+    !journalAbsenceConfirmed ||
     !!existingBundle ||
     hasStoredBundle ||
     remote.hasVault ||
@@ -308,6 +315,8 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
 
     throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
   }
+
+  expectedRemoteVault = false;
 }
 
 async function saveRemoteBundle(bundle: WrappedBundle | null) {
@@ -355,6 +364,8 @@ async function ensureInitialized() {
         hasStoredBundle = false;
         expectedRemoteVault = false;
         journalPresence = false;
+        journalPresenceCertain = false;
+        journalAbsenceConfirmed = false;
         lastVaultError = null;
         sharedKey = null;
         cachedPassphrase = null;
@@ -368,6 +379,10 @@ async function ensureInitialized() {
       }
 
       await enforceJournalExpectation(currentUserId);
+
+      if (!journalAbsenceConfirmed) {
+        expectedRemoteVault = true;
+      }
 
       const key = bundleKeyForUser(currentUserId);
       if (hasLocalVaultMarker(currentUserId)) {
@@ -618,6 +633,7 @@ export function useVault() {
       hasStoredBundle ||
       expectedRemoteVault ||
       journalPresence ||
+      !journalAbsenceConfirmed ||
       (currentUserId ? hasLocalVaultMarker(currentUserId) : false),
   };
 }
