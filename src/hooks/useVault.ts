@@ -97,17 +97,17 @@ async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
     if (!res.ok) {
-      // If auth is not ready yet, err on the safe side and assume a vault may exist to avoid overwriting it.
+      // If auth is not ready yet, treat it as uncertainty instead of assuming a vault exists.
       if (res.status === 401 || res.status === 403) {
-        return { bundle: null, hasVault: true, status: 'auth' };
+        return { bundle: null, hasVault: false, status: 'auth' };
       }
-      return { bundle: null, hasVault: true, status: 'error' };
+      return { bundle: null, hasVault: false, status: 'error' };
     }
     const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
     const bundle = payload?.bundle ?? null;
     return { bundle, hasVault: payload?.hasVault ?? !!bundle, status: 'ok' };
   } catch {
-    return { bundle: null, hasVault: true, status: 'error' };
+    return { bundle: null, hasVault: false, status: 'error' };
   }
 }
 
@@ -127,9 +127,10 @@ async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
     }
 
     // If no row is visible, we cannot be sure whether it is absent or hidden by
-    // RLS; treat that as uncertainty to avoid suggesting vault creation.
+    // RLS; treat successful empties as an observed absence so new users are
+    // not incorrectly blocked from creating a vault.
     if (!data) {
-      return { bundle: null, certainty: false };
+      return { bundle: null, certainty: true };
     }
 
     return { bundle: data, certainty: true };
@@ -139,23 +140,8 @@ async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
 }
 
 async function hasVaultRecord(userId: string): Promise<boolean> {
-  try {
-    const supabase = supabaseBrowser();
-    const { count, error } = await supabase
-      .from('user_vaults')
-      .select('user_id', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    if (error) return true;
-
-    // If the count is unavailable (null) treat it as uncertainty and assume a
-    // vault exists to avoid overwriting a hidden record.
-    if (count === null) return true;
-
-    return (count ?? 0) > 0;
-  } catch {
-    return true;
-  }
+  const presence = await detectVaultRecordPresence(userId);
+  return presence.present && presence.certain;
 }
 
 type VaultPresence = { present: boolean; certain: boolean };
@@ -261,12 +247,10 @@ async function hydrateFromVaultRecord(userId: string) {
   }
 
   if (!directBundle.certainty) {
-    expectedRemoteVault = true;
-    markVaultSeen(userId);
     lastVaultError =
       lastVaultError ??
-      'A vault exists for this account, but it could not be read securely right now. Please unlock from a trusted device.';
-    return true;
+      'We could not check your encrypted vault right now. If you already created one, unlock from a trusted device.';
+    return false;
   }
 
   const recordExists = await hasVaultRecord(userId);
@@ -295,15 +279,13 @@ async function hydrateFromVaultRecord(userId: string) {
 async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload): Promise<void> {
   const initialJournalPresence = await enforceJournalExpectation(userId);
   if (remote.status !== 'ok') {
-    expectedRemoteVault = true;
-    markVaultSeen(userId);
-    throw new Error('Unable to confirm your existing vault. Ensure you are signed in and try again.');
+    expectedRemoteVault = expectedRemoteVault || remote.hasVault;
+    throw new Error('Unable to confirm your vault status right now. Try again in a moment.');
   }
 
   const directBundle = await fetchDirectBundle(userId);
-  const certaintyRecordExists = directBundle.certainty
-    ? await hasVaultRecord(userId)
-    : userConfirmedNoVault !== userId;
+  const recordPresence = directBundle.certainty ? await detectVaultRecordPresence(userId) : null;
+  const certaintyRecordExists = recordPresence?.present && recordPresence.certain;
   const journalHistory = journalPresence || initialJournalPresence;
   const localMarker = hasLocalVaultMarker(userId);
   const hydratedFromRecord = userConfirmedNoVault === userId ? false : remote.bundle ? false : await hydrateFromVaultRecord(userId);
@@ -318,11 +300,10 @@ async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload
     localMarker;
 
   const protectiveUncertainSignals =
-    expectedRemoteVault || hydratedFromRecord || !journalAbsenceConfirmed || !directBundle.certainty || remote.hasVault;
+    expectedRemoteVault || hydratedFromRecord || remote.hasVault;
 
   const shouldBlockCreation =
-    confirmedVaultEvidence ||
-    (userConfirmedNoVault === userId ? false : protectiveUncertainSignals);
+    confirmedVaultEvidence || (userConfirmedNoVault === userId ? false : protectiveUncertainSignals);
 
   if (shouldBlockCreation) {
     if (existingBundle) {
@@ -488,7 +469,7 @@ async function ensureInitialized() {
       }
 
       const remote = await fetchRemoteBundle();
-      expectedRemoteVault = expectedRemoteVault || remote.hasVault || remote.status !== 'ok';
+      expectedRemoteVault = expectedRemoteVault || remote.hasVault;
       if (remote.bundle) {
         cachedBundle = remote.bundle;
         hasStoredBundle = true;
