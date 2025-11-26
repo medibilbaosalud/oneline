@@ -123,6 +123,31 @@ async function hasVaultRecord(userId: string): Promise<boolean> {
   }
 }
 
+async function hydrateFromVaultRecord(userId: string) {
+  const key = bundleKeyForUser(userId);
+  const directBundle = await fetchDirectBundle(userId);
+
+  if (directBundle.bundle) {
+    cachedBundle = directBundle.bundle;
+    hasStoredBundle = true;
+    expectedRemoteVault = true;
+    await idbSet(key, directBundle.bundle).catch(() => {});
+    lastVaultError = null;
+    return true;
+  }
+
+  const recordExists = await hasVaultRecord(userId);
+  if (recordExists) {
+    expectedRemoteVault = true;
+    lastVaultError =
+      lastVaultError ??
+      'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
+    return true;
+  }
+
+  return false;
+}
+
 async function saveRemoteBundle(bundle: WrappedBundle | null) {
   try {
     await fetch('/api/vault', {
@@ -195,18 +220,9 @@ async function ensureInitialized() {
         await idbSet(key, remote.bundle).catch(() => {});
         lastVaultError = null;
       } else if (!localBundle && !remote.hasVault) {
-        const directBundle = await fetchDirectBundle(currentUserId);
-        if (directBundle.bundle) {
-          cachedBundle = directBundle.bundle;
-          hasStoredBundle = true;
-          expectedRemoteVault = true;
-          await idbSet(key, directBundle.bundle).catch(() => {});
-          lastVaultError = null;
-        } else if (!directBundle.certainty || (await hasVaultRecord(currentUserId))) {
-          expectedRemoteVault = true;
-          lastVaultError =
-            lastVaultError ??
-            'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
+        const hydrated = await hydrateFromVaultRecord(currentUserId);
+        if (!hydrated) {
+          expectedRemoteVault = expectedRemoteVault || (await hasVaultRecord(currentUserId));
         }
       } else if (!localBundle) {
         cachedBundle = null;
@@ -295,8 +311,13 @@ export function useVault() {
     if (remote.status !== 'ok') {
       throw new Error('Unable to confirm your existing vault. Ensure you are signed in and try again.');
     }
-    if (remote.bundle || cachedBundle || hasStoredBundle || remote.hasVault || expectedRemoteVault) {
-      const existingBundle = remote.bundle ?? cachedBundle;
+
+    const hydratedFromRecord = remote.bundle ? false : await hydrateFromVaultRecord(currentUserId);
+    const existingBundle = remote.bundle ?? cachedBundle;
+    const vaultAlreadyExists =
+      !!existingBundle || hasStoredBundle || remote.hasVault || expectedRemoteVault || hydratedFromRecord;
+
+    if (vaultAlreadyExists) {
       if (existingBundle) {
         const key = bundleKeyForUser(currentUserId);
         cachedBundle = existingBundle;
@@ -304,33 +325,12 @@ export function useVault() {
         expectedRemoteVault = true;
         await idbSet(key, existingBundle).catch(() => {});
         notify();
-      } else if (remote.hasVault || expectedRemoteVault) {
+      } else {
         expectedRemoteVault = true;
         notify();
       }
 
       throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
-    }
-
-    if (!cachedBundle && !remote.hasVault) {
-      const directBundle = await fetchDirectBundle(currentUserId);
-      if (directBundle.bundle) {
-        cachedBundle = directBundle.bundle;
-        hasStoredBundle = true;
-        expectedRemoteVault = true;
-        const key = bundleKeyForUser(currentUserId);
-        await idbSet(key, directBundle.bundle).catch(() => {});
-        notify();
-        throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
-      }
-
-      if (!directBundle.certainty || (await hasVaultRecord(currentUserId))) {
-        expectedRemoteVault = true;
-        notify();
-        throw new Error(
-          'We could not verify your vault status. Unlock from a trusted device or try again after confirming your session.',
-        );
-      }
     }
 
     const key = await generateDataKey();
@@ -374,18 +374,9 @@ export function useVault() {
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
         } else if (!remote.hasVault) {
-          const directBundle = await fetchDirectBundle(currentUserId);
-          if (directBundle.bundle) {
-            bundle = directBundle.bundle;
-            cachedBundle = directBundle.bundle;
-            hasStoredBundle = true;
-            expectedRemoteVault = true;
-            await idbSet(key, directBundle.bundle).catch(() => {});
-          } else if (!directBundle.certainty || (await hasVaultRecord(currentUserId))) {
-            expectedRemoteVault = true;
-            lastVaultError =
-              lastVaultError ??
-              'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
+          const hydrated = await hydrateFromVaultRecord(currentUserId);
+          if (hydrated) {
+            bundle = cachedBundle;
           }
         }
       }
