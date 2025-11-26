@@ -65,16 +65,12 @@ export default function LoginClient() {
         });
         if (error) throw error;
 
-        // When email confirmation is disabled Supabase returns an active session.
-        if (data.session) {
-          router.replace(next);
-          return;
+        if (!data.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) throw signInError;
         }
 
-        // Otherwise the user must confirm the email address before signing in.
-        setMode("signin");
-        setPassword("");
-        setInfo("We sent a confirmation email. Check your inbox and complete the sign-up to continue.");
+        router.replace(next);
       }
     } catch (err: any) {
       setError(err?.message || "Something went wrong");

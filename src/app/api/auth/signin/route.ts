@@ -25,6 +25,14 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  let user = data.user ?? null;
+
+  if (mode === "signup" && !data.session) {
+    const { data: signInData, error: signInError } = await sb.auth.signInWithPassword({ email, password });
+    if (signInError) return NextResponse.json({ error: signInError.message }, { status: 400 });
+    user = signInData.user ?? user;
+  }
+
   // On success the Supabase auth helpers set the session cookie for us.
-  return NextResponse.json({ ok: true, user: data.user ?? null });
+  return NextResponse.json({ ok: true, user });
 }

@@ -71,16 +71,14 @@ function AuthPageInner() {
       });
       if (error) throw error;
 
-      if (data.session) {
-        router.refresh();
-        router.push(nextPath);
-        return;
+      if (!data.session) {
+        const { error: signInError } = await sb.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
       }
 
-      setMode('signin');
-      setPassword('');
-      setConfirmPassword('');
-      setInfo('We sent a confirmation email. Open your inbox to finish creating your account.');
+      router.refresh();
+      router.push(nextPath);
+      return;
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Authentication failed';
       setErr(message);
