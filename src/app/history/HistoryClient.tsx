@@ -39,6 +39,36 @@ export default function HistoryClient({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showEncryptedOnly, setShowEncryptedOnly] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dataKey) return;
+    let active = true;
+    setReloading(true);
+    setLoadError(null);
+    fetch('/api/history', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json: { entries?: EntryPayload[]; error?: string }) => {
+        if (!active) return;
+        if (json.error) {
+          setLoadError(json.error);
+          return;
+        }
+        if (json.entries) setRawEntries(json.entries);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setLoadError(err instanceof Error ? err.message : 'Unable to load history.');
+      })
+      .finally(() => {
+        if (active) setReloading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [dataKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -113,6 +143,14 @@ export default function HistoryClient({
         .reverse(),
     [rawEntries],
   );
+
+  if (loadError) {
+    return (
+      <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-6 text-rose-100">
+        {loadError}
+      </div>
+    );
+  }
 
   if (showEncryptedOnly) {
     return (
@@ -302,6 +340,13 @@ export default function HistoryClient({
           View encrypted list
         </button>
       </div>
+
+      {reloading && (
+        <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-950/60 px-4 py-2 text-xs text-neutral-300">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-300" aria-hidden />
+          Refreshing your entries…
+        </div>
+      )}
 
       {sortedItems.map((entry) => {
         const isEditing = editingId === entry.id;
