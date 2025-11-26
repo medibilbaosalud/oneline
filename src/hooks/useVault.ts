@@ -188,13 +188,13 @@ async function queryJournalPresence(userId: string): Promise<JournalPresence> {
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId);
 
-    if (error) return { present: true, certain: false };
+    if (error) return { present: false, certain: false };
 
-    if (count === null) return { present: true, certain: false };
+    if (count === null) return { present: false, certain: false };
 
     return { present: (count ?? 0) > 0, certain: true };
   } catch {
-    return { present: true, certain: false };
+    return { present: false, certain: false };
   }
 }
 
@@ -202,12 +202,12 @@ async function fetchServerJournalPresence(): Promise<JournalPresence> {
   try {
     const res = await fetch('/api/journal/presence', { cache: 'no-store' });
     if (!res.ok) {
-      return { present: true, certain: false };
+      return { present: false, certain: false };
     }
     const payload = (await res.json().catch(() => null)) as { present?: boolean } | null;
     return { present: !!payload?.present, certain: true };
   } catch {
-    return { present: true, certain: false };
+    return { present: false, certain: false };
   }
 }
 
@@ -225,8 +225,8 @@ async function enforceJournalExpectation(userId: string) {
   const presence = await detectJournalPresence(userId);
   journalPresenceCertain = presence.certain;
   journalAbsenceConfirmed = presence.certain && !presence.present;
-  journalPresence = presence.present || !presence.certain;
-  if (!journalAbsenceConfirmed) {
+  journalPresence = presence.present;
+  if (journalPresence) {
     expectedRemoteVault = true;
     markVaultSeen(userId);
     lastVaultError = presence.certain
@@ -468,7 +468,7 @@ async function ensureInitialized() {
 
       await enforceJournalExpectation(currentUserId);
 
-      if (!journalAbsenceConfirmed) {
+      if (journalPresence) {
         expectedRemoteVault = true;
       }
 
@@ -726,11 +726,7 @@ export function useVault() {
     getCurrentKey: () => sharedKey,
     hasBundle:
       !manualOverrideActive &&
-      (hasStoredBundle ||
-        expectedRemoteVault ||
-        journalPresence ||
-        !journalAbsenceConfirmed ||
-        (currentUserId ? hasLocalVaultMarker(currentUserId) : false)),
+      (hasStoredBundle || expectedRemoteVault || journalPresence || (currentUserId ? hasLocalVaultMarker(currentUserId) : false)),
   };
 }
 
