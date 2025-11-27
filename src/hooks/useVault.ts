@@ -14,7 +14,7 @@ const VAULT_SEEN_PREFIX = 'oneline.v1.vault-seen';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
-let expectedRemoteVault = false;
+let hasExistingVault = false;
 let journalPresence = false;
 let journalPresenceCertain = false;
 let journalAbsenceConfirmed = false;
@@ -24,6 +24,7 @@ let cachedBundle: WrappedBundle | null = null;
 let lastVaultError: string | null = null;
 let cachedPassphrase: string | null = null;
 let userConfirmedNoVault: string | null = null;
+let confirmedAbsence = false;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 let autoUnlockAttemptedFor: string | null = null;
@@ -93,11 +94,12 @@ async function persistPassphrase(passphrase: string | null) {
 
 type RemoteVaultPayload = { bundle: WrappedBundle | null; hasVault: boolean; status: 'ok' | 'auth' | 'error' };
 
+type DirectBundleResult = { bundle: WrappedBundle | null; certainty: boolean };
+
 async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
     if (!res.ok) {
-      // If auth is not ready yet, treat it as uncertainty instead of assuming a vault exists.
       if (res.status === 401 || res.status === 403) {
         return { bundle: null, hasVault: false, status: 'auth' };
       }
@@ -111,7 +113,17 @@ async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
   }
 }
 
-type DirectBundleResult = { bundle: WrappedBundle | null; certainty: boolean };
+async function saveRemoteBundle(bundle: WrappedBundle | null) {
+  try {
+    await fetch('/api/vault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bundle }),
+    });
+  } catch {
+    // Ignore remote persistence errors; local state will continue to reflect the latest bundle.
+  }
+}
 
 async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
   try {
@@ -126,9 +138,6 @@ async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
       return { bundle: null, certainty: false };
     }
 
-    // If no row is visible, we cannot be sure whether it is absent or hidden by
-    // RLS; treat successful empties as an observed absence so new users are
-    // not incorrectly blocked from creating a vault.
     if (!data) {
       return { bundle: null, certainty: true };
     }
@@ -137,11 +146,6 @@ async function fetchDirectBundle(userId: string): Promise<DirectBundleResult> {
   } catch {
     return { bundle: null, certainty: false };
   }
-}
-
-async function hasVaultRecord(userId: string): Promise<boolean> {
-  const presence = await detectVaultRecordPresence(userId);
-  return presence.present && presence.certain;
 }
 
 type VaultPresence = { present: boolean; certain: boolean };
@@ -175,7 +179,6 @@ async function queryJournalPresence(userId: string): Promise<JournalPresence> {
       .eq('user_id', userId);
 
     if (error) return { present: false, certain: false };
-
     if (count === null) return { present: false, certain: false };
 
     return { present: (count ?? 0) > 0, certain: true };
@@ -207,195 +210,89 @@ async function detectJournalPresence(userId: string): Promise<JournalPresence> {
   return { present: false, certain: clientPresence.certain && serverPresence.certain };
 }
 
-async function enforceJournalExpectation(userId: string) {
-  const presence = await detectJournalPresence(userId);
-  journalPresenceCertain = presence.certain;
-  journalAbsenceConfirmed = presence.certain && !presence.present;
-  journalPresence = presence.present;
-  if (journalPresence) {
-    expectedRemoteVault = true;
-    markVaultSeen(userId);
-    lastVaultError = presence.certain
-      ? null
-      :
-          lastVaultError ??
-          'Journal activity suggests a vault already exists, but we could not verify it right now. Unlock from a trusted device or contact support for help.';
-  } else {
-    expectedRemoteVault = false;
-  }
-  return journalPresence;
-}
-
 function clearManualNoVaultFlagIfDifferent(userId: string | null) {
   if (userConfirmedNoVault && userConfirmedNoVault !== userId) {
     userConfirmedNoVault = null;
   }
 }
 
-async function hydrateFromVaultRecord(userId: string) {
+type VaultSignals = {
+  localBundle: WrappedBundle | null;
+  remote: RemoteVaultPayload;
+  direct: DirectBundleResult;
+  presence: VaultPresence;
+  journal: JournalPresence;
+  localMarker: boolean;
+  resolvedBundle: WrappedBundle | null;
+  existingVault: boolean;
+  absenceConfirmed: boolean;
+};
+
+async function evaluateVaultState(userId: string, applyState = true): Promise<VaultSignals> {
   const key = bundleKeyForUser(userId);
-  const directBundle = await fetchDirectBundle(userId);
+  const [localBundle, remote, direct, presence, journal] = await Promise.all([
+    idbGet<WrappedBundle>(key).catch(() => null),
+    fetchRemoteBundle(),
+    fetchDirectBundle(userId),
+    detectVaultRecordPresence(userId),
+    detectJournalPresence(userId),
+  ]);
 
-  if (directBundle.bundle) {
-    cachedBundle = directBundle.bundle;
-    hasStoredBundle = true;
-    expectedRemoteVault = true;
-    markVaultSeen(userId);
-    await idbSet(key, directBundle.bundle).catch(() => {});
-    lastVaultError = null;
-    return true;
-  }
-
-  if (!directBundle.certainty) {
-    lastVaultError =
-      lastVaultError ??
-      'We could not check your encrypted vault right now. If you already created one, unlock from a trusted device.';
-    return false;
-  }
-
-  const recordExists = await hasVaultRecord(userId);
-  if (recordExists) {
-    expectedRemoteVault = true;
-    markVaultSeen(userId);
-    lastVaultError =
-      lastVaultError ??
-      'A vault already exists for this account, but its encrypted key could not be loaded. Unlock from a trusted device or contact support for help.';
-    return true;
-  }
-
-  await enforceJournalExpectation(userId);
-  if (journalPresence) {
-    expectedRemoteVault = true;
-    markVaultSeen(userId);
-    lastVaultError =
-      lastVaultError ??
-      'Your prior journal activity indicates a vault already exists. Unlock it from a trusted device or contact support for assistance.';
-    return true;
-  }
-
-  return false;
-}
-
-async function enforceNoExistingVault(userId: string, remote: RemoteVaultPayload): Promise<void> {
-  const initialJournalPresence = await enforceJournalExpectation(userId);
-  if (remote.status !== 'ok') {
-    expectedRemoteVault = expectedRemoteVault || remote.hasVault;
-    throw new Error('Unable to confirm your vault status right now. Try again in a moment.');
-  }
-
-  const directBundle = await fetchDirectBundle(userId);
-  const recordPresence = directBundle.certainty ? await detectVaultRecordPresence(userId) : null;
-  const certaintyRecordExists = recordPresence?.present && recordPresence.certain;
-  const journalHistory = journalPresence || initialJournalPresence;
   const localMarker = hasLocalVaultMarker(userId);
-  const hydratedFromRecord = userConfirmedNoVault === userId ? false : remote.bundle ? false : await hydrateFromVaultRecord(userId);
-  const existingBundle = remote.bundle ?? cachedBundle;
-  const confirmedVaultEvidence =
-    !!existingBundle ||
-    hasStoredBundle ||
-    directBundle.bundle !== null ||
-    certaintyRecordExists ||
-    journalHistory ||
-    (remote.status === 'ok' && remote.hasVault) ||
-    localMarker;
+  const resolvedBundle = remote.bundle ?? localBundle ?? (direct.certainty ? direct.bundle : null);
 
-  const protectiveUncertainSignals =
-    expectedRemoteVault || hydratedFromRecord || remote.hasVault;
+  const existingVault = Boolean(
+    resolvedBundle ||
+      (remote.status === 'ok' && remote.hasVault) ||
+      (direct.certainty && !!direct.bundle) ||
+      (presence.present && presence.certain) ||
+      (journal.present && journal.certain) ||
+      localMarker,
+  );
 
-  const shouldBlockCreation =
-    confirmedVaultEvidence || (userConfirmedNoVault === userId ? false : protectiveUncertainSignals);
+  const absenceConfirmed =
+    !existingVault &&
+    remote.status === 'ok' &&
+    !remote.hasVault &&
+    !remote.bundle &&
+    direct.certainty &&
+    !direct.bundle &&
+    presence.certain &&
+    !presence.present &&
+    journal.certain &&
+    !journal.present &&
+    !localMarker;
 
-  if (shouldBlockCreation) {
-    if (existingBundle) {
-      const key = bundleKeyForUser(userId);
-      cachedBundle = existingBundle;
-      hasStoredBundle = true;
-      expectedRemoteVault = true;
+  if (applyState) {
+    journalPresence = journal.present;
+    journalPresenceCertain = journal.certain;
+    journalAbsenceConfirmed = journal.certain && !journal.present;
+    hasStoredBundle = !!resolvedBundle;
+    hasExistingVault = existingVault;
+    confirmedAbsence = absenceConfirmed;
+
+    if (resolvedBundle) {
+      cachedBundle = resolvedBundle;
+      lastVaultError = null;
       markVaultSeen(userId);
-      await idbSet(key, existingBundle).catch(() => {});
-      notify();
-    } else if (journalHistory) {
-      expectedRemoteVault = true;
-      markVaultSeen(userId);
-      lastVaultError =
-        lastVaultError ??
-        'Your prior journal activity indicates a vault already exists. Unlock it from a trusted device or contact support for assistance.';
-      notify();
+      await idbSet(key, resolvedBundle).catch(() => {});
+      userConfirmedNoVault = null;
     } else {
-      expectedRemoteVault = true;
-      markVaultSeen(userId);
-      notify();
+      cachedBundle = null;
+      if (existingVault) {
+        lastVaultError =
+          lastVaultError ?? 'We detected an existing vault for this account. Unlock it with your original passphrase.';
+        markVaultSeen(userId);
+        userConfirmedNoVault = null;
+      } else if (!absenceConfirmed && remote.status !== 'ok') {
+        lastVaultError = lastVaultError ?? 'Unable to confirm your vault status right now. Try again in a moment.';
+      } else {
+        lastVaultError = null;
+      }
     }
-
-    throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
   }
 
-  expectedRemoteVault = false;
-}
-
-async function confirmNoVaultClaim(): Promise<boolean> {
-  await ensureInitialized();
-  if (!currentUserId) {
-    currentUserId = await resolveUserId();
-  }
-  if (!currentUserId) throw new Error('Sign in before continuing.');
-
-  const journal = await detectJournalPresence(currentUserId);
-  if (journal.present) {
-    lastVaultError =
-      'We found activity for this account already. Use your original passphrase to unlock the existing vault.';
-    notify();
-    return false;
-  }
-
-  const directBundle = await fetchDirectBundle(currentUserId);
-  if (directBundle.bundle) {
-    lastVaultError =
-      'An encrypted vault already exists for this account. Unlock it with the passphrase you used when you created it.';
-    notify();
-    return false;
-  }
-
-  const recordPresence = await detectVaultRecordPresence(currentUserId);
-  if (recordPresence.present) {
-    lastVaultError = 'A secure vault record already exists. Unlock it with your original passphrase.';
-    notify();
-    return false;
-  }
-
-  const remote = await fetchRemoteBundle();
-  if (remote.status === 'ok' && (remote.hasVault || remote.bundle)) {
-    lastVaultError =
-      'We can see an existing encrypted vault for this account. Unlock with your original passphrase instead of creating a new one.';
-    notify();
-    return false;
-  }
-
-  userConfirmedNoVault = currentUserId;
-  journalAbsenceConfirmed = journal.certain && !journal.present;
-  journalPresence = false;
-  expectedRemoteVault = false;
-  notify();
-  return true;
-}
-
-function clearManualNoVaultClaim() {
-  if (currentUserId && userConfirmedNoVault === currentUserId) {
-    userConfirmedNoVault = null;
-    notify();
-  }
-}
-
-async function saveRemoteBundle(bundle: WrappedBundle | null) {
-  try {
-    await fetch('/api/vault', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ bundle }),
-    });
-  } catch {
-    // best-effort persistence; if offline, the local copy still exists.
-  }
+  return { localBundle, remote, direct, presence, journal, localMarker, resolvedBundle, existingVault, absenceConfirmed };
 }
 
 async function fetchServerUserId(): Promise<string | null> {
@@ -416,9 +313,7 @@ async function ensureInitialized() {
   }
 
   const userId = await resolveUserId();
-
   clearManualNoVaultFlagIfDifferent(userId);
-
   const needsFreshInit = !initialized || userId !== currentUserId;
   if (!needsFreshInit) return;
 
@@ -431,13 +326,14 @@ async function ensureInitialized() {
         currentUserId = userId;
         cachedBundle = null;
         hasStoredBundle = false;
-        expectedRemoteVault = false;
+        hasExistingVault = false;
         journalPresence = false;
         journalPresenceCertain = false;
         journalAbsenceConfirmed = false;
         lastVaultError = null;
         sharedKey = null;
         cachedPassphrase = null;
+        confirmedAbsence = false;
         autoUnlockAttemptedFor = null;
       }
 
@@ -447,68 +343,14 @@ async function ensureInitialized() {
         return;
       }
 
-      await enforceJournalExpectation(currentUserId);
-
-      if (journalPresence) {
-        expectedRemoteVault = true;
-      }
-
-      const key = bundleKeyForUser(currentUserId);
-      if (hasLocalVaultMarker(currentUserId)) {
-        expectedRemoteVault = true;
-      }
-
-      const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
-      if (localBundle) {
-        cachedBundle = localBundle;
-        hasStoredBundle = true;
-        expectedRemoteVault = true;
-        lastVaultError = null;
-        markVaultSeen(currentUserId);
-        userConfirmedNoVault = null;
-      }
-
-      const remote = await fetchRemoteBundle();
-      expectedRemoteVault = expectedRemoteVault || remote.hasVault;
-      if (remote.bundle) {
-        cachedBundle = remote.bundle;
-        hasStoredBundle = true;
-        await idbSet(key, remote.bundle).catch(() => {});
-        lastVaultError = null;
-        markVaultSeen(currentUserId);
-        userConfirmedNoVault = null;
-      } else if (!localBundle && !remote.hasVault) {
-        const hydrated = await hydrateFromVaultRecord(currentUserId);
-        if (!hydrated) {
-          const recordExists = await hasVaultRecord(currentUserId);
-          expectedRemoteVault = expectedRemoteVault || recordExists;
-          if (recordExists) {
-            markVaultSeen(currentUserId);
-            userConfirmedNoVault = null;
-          }
-
-          if (!recordExists) {
-            await enforceJournalExpectation(currentUserId);
-            if (journalPresence) {
-              lastVaultError =
-                lastVaultError ??
-                'Journal activity shows a vault already exists for this account. Unlock from a trusted device or contact support if you cannot access it.';
-            }
-          }
-        }
-      } else if (!localBundle) {
-        cachedBundle = null;
-        hasStoredBundle = remote.hasVault;
-        lastVaultError = null;
-      }
-
+      const signals = await evaluateVaultState(currentUserId);
       const savedPassphrase = getStoredPassphrase();
       cachedPassphrase = savedPassphrase;
 
-      if (cachedBundle && cachedPassphrase && autoUnlockAttemptedFor !== currentUserId && !sharedKey) {
+      if (signals.resolvedBundle && cachedPassphrase && autoUnlockAttemptedFor !== currentUserId && !sharedKey) {
         autoUnlockAttemptedFor = currentUserId;
         try {
-          sharedKey = await unwrapDataKey(cachedBundle, cachedPassphrase);
+          sharedKey = await unwrapDataKey(signals.resolvedBundle, cachedPassphrase);
           lastVaultError = null;
         } catch {
           sharedKey = null;
@@ -534,14 +376,16 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
-    expectedRemoteVault = true;
-    markVaultSeen(currentUserId);
+    hasExistingVault = true;
+    confirmedAbsence = false;
     lastVaultError = null;
+    markVaultSeen(currentUserId);
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
-    expectedRemoteVault = false;
+    hasExistingVault = false;
+    confirmedAbsence = false;
     lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
@@ -580,11 +424,10 @@ export function useVault() {
     }
     if (!currentUserId) throw new Error('Sign in before creating your vault');
 
-    await enforceJournalExpectation(currentUserId);
-
-    // Safety check: if a vault already exists remotely or locally, do not generate a new key.
-    const remote = await fetchRemoteBundle();
-    await enforceNoExistingVault(currentUserId, remote);
+    const signals = await evaluateVaultState(currentUserId);
+    if (signals.existingVault && userConfirmedNoVault !== currentUserId) {
+      throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
+    }
 
     const key = await generateDataKey();
     sharedKey = key;
@@ -593,10 +436,10 @@ export function useVault() {
     if (rememberDevice) {
       await persistBundle(bundle);
     } else {
-      // Keep the remote copy for recovery, but wipe local storage on this device.
       cachedBundle = bundle;
       hasStoredBundle = true;
-      expectedRemoteVault = true;
+      hasExistingVault = true;
+      confirmedAbsence = false;
       lastVaultError = null;
       await saveRemoteBundle(bundle);
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
@@ -616,43 +459,29 @@ export function useVault() {
       currentUserId = await resolveUserId();
     }
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
-    await enforceJournalExpectation(currentUserId);
-    let bundle = cachedBundle;
-    if (!bundle) {
-      const key = bundleKeyForUser(currentUserId);
-      bundle = (await idbGet<WrappedBundle>(key)) ?? null;
-      if (!bundle) {
-        const remote = await fetchRemoteBundle();
-        expectedRemoteVault = remote.hasVault || remote.status !== 'ok' || hasLocalVaultMarker(currentUserId);
-        bundle = remote.bundle;
-        if (bundle) {
-          await idbSet(key, bundle).catch(() => {});
-          markVaultSeen(currentUserId);
-        } else if (!remote.hasVault) {
-          const hydrated = await hydrateFromVaultRecord(currentUserId);
-          if (hydrated) {
-            bundle = cachedBundle;
-          } else {
-            const journalHistory = await enforceJournalExpectation(currentUserId);
-            expectedRemoteVault = expectedRemoteVault || journalHistory;
-            if (journalHistory) {
-              markVaultSeen(currentUserId);
-              lastVaultError =
-                lastVaultError ??
-                'Journal activity shows a vault already exists for this account. Unlock from a trusted device or contact support if you cannot access it.';
-            }
-          }
-        }
+
+    const signals = await evaluateVaultState(currentUserId);
+    let bundle = cachedBundle ?? signals.resolvedBundle;
+    if (!bundle && signals.remote.status === 'ok' && signals.remote.hasVault) {
+      const refreshed = await fetchRemoteBundle();
+      bundle = refreshed.bundle ?? null;
+      if (bundle) {
+        await idbSet(bundleKeyForUser(currentUserId), bundle).catch(() => {});
+        cachedBundle = bundle;
+        hasStoredBundle = true;
+        hasExistingVault = true;
+        confirmedAbsence = false;
+        lastVaultError = null;
       }
     }
+
     if (!bundle) {
-      expectedRemoteVault = expectedRemoteVault || hasLocalVaultMarker(currentUserId);
-      if (expectedRemoteVault) {
+      if (signals.existingVault || hasExistingVault) {
         lastVaultError =
           lastVaultError ??
-          'A vault is expected for this account based on your existing data. Retrieve it from a trusted device or contact support for help unlocking it.';
+          'We found evidence of an existing vault for this account. Unlock it with your original passphrase from a trusted device.';
         notify();
-        throw new Error('Encrypted vault expected. Unlock it from a trusted device or contact support for help.');
+        throw new Error('Encrypted vault expected. Unlock it with your original passphrase.');
       }
 
       throw new Error('No encrypted vault found. Create one first.');
@@ -661,6 +490,8 @@ export function useVault() {
       sharedKey = await unwrapDataKey(bundle, passphrase);
       cachedBundle = bundle;
       hasStoredBundle = true;
+      hasExistingVault = true;
+      confirmedAbsence = false;
       markVaultSeen(currentUserId);
       lastVaultError = null;
       if (opts?.rememberPassphrase) {
@@ -674,9 +505,7 @@ export function useVault() {
       lastVaultError =
         'Decryption error: the passphrase you entered is different from the one you used when you created your vault. Enter the exact original code to recover access.';
       notify();
-      throw new Error(
-        'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.',
-      );
+      throw new Error('Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.');
     }
   }, []);
 
@@ -691,6 +520,32 @@ export function useVault() {
     notify();
   }, []);
 
+  const requestNoVaultOverride = useCallback(async () => {
+    await ensureInitialized();
+    if (!currentUserId) {
+      currentUserId = await resolveUserId();
+    }
+    if (!currentUserId) throw new Error('Sign in before continuing.');
+
+    const signals = await evaluateVaultState(currentUserId);
+    if (signals.existingVault) {
+      lastVaultError = 'We detected previous activity for this account. Unlock with your existing passphrase instead of creating a new one.';
+      notify();
+      return false;
+    }
+
+    userConfirmedNoVault = currentUserId;
+    confirmedAbsence = confirmedAbsence || signals.absenceConfirmed;
+    lastVaultError = null;
+    notify();
+    return true;
+  }, []);
+
+  const clearNoVaultOverride = useCallback(() => {
+    userConfirmedNoVault = null;
+    notify();
+  }, []);
+
   return {
     dataKey: sharedKey,
     loading: !initialized,
@@ -699,15 +554,14 @@ export function useVault() {
     lock,
     vaultError: lastVaultError,
     hasStoredPassphrase: !!cachedPassphrase,
-    requestNoVaultOverride: confirmNoVaultClaim,
-    clearNoVaultOverride: clearManualNoVaultClaim,
+    requestNoVaultOverride,
+    clearNoVaultOverride,
     manualCreationOverride: manualOverrideActive,
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,
-    hasBundle:
-      !manualOverrideActive &&
-      (hasStoredBundle || expectedRemoteVault || journalPresence || (currentUserId ? hasLocalVaultMarker(currentUserId) : false)),
+    hasBundle: !manualOverrideActive && hasExistingVault,
+    confirmedNoVault: confirmedAbsence,
   };
 }
 
