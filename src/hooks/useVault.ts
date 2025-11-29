@@ -60,7 +60,7 @@ async function fetchVaultStatus(userId: string): Promise<RemoteStatus> {
       .from('user_vault_status')
       .select('has_passphrase')
       .eq('user_id', userId)
-      .maybeSingle();
+      .maybeSingle<{ has_passphrase: boolean }>();
 
     if (error) return 'unknown';
     if (!data) return 'absent';
