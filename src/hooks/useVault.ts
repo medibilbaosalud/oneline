@@ -53,6 +53,23 @@ async function fetchRemoteBundle(): Promise<{ bundle: WrappedBundle | null; hasV
   }
 }
 
+async function fetchVaultStatus(userId: string): Promise<RemoteStatus> {
+  try {
+    const supabase = supabaseBrowser();
+    const { data, error } = await supabase
+      .from('user_vault_status')
+      .select('has_passphrase')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) return 'unknown';
+    if (!data) return 'absent';
+    return data.has_passphrase ? 'present' : 'absent';
+  } catch {
+    return 'unknown';
+  }
+}
+
 function readStoredPassphrase(userId: string): string | null {
   try {
     const key = passphraseKeyForUser(userId);
@@ -140,9 +157,15 @@ async function ensureInitialized(force = false) {
           remoteVaultStatus = remote.hasVault ? 'present' : 'absent';
         }
 
-        if (!remote && !hasStoredBundle) {
-          remoteVaultStatus = hasStoredBundle ? 'present' : 'unknown';
-          return;
+        if (!remote) {
+          const statusFallback = await fetchVaultStatus(currentUserId);
+          if (statusFallback !== 'unknown') {
+            remoteVaultStatus = statusFallback;
+          } else {
+            lastVaultError =
+              lastVaultError ??
+              'Unable to verify your vault status right now. Please try again to continue unlocking your journal.';
+          }
         }
 
         if (remote?.bundle) {
@@ -153,7 +176,11 @@ async function ensureInitialized(force = false) {
         } else {
           cachedBundle = null;
           hasStoredBundle = false;
-          lastVaultError = null;
+          if (remoteVaultStatus === 'present') {
+            lastVaultError =
+              lastVaultError ??
+              'Your vault exists but the encrypted key could not be loaded. Refresh or try again before creating a new passphrase.';
+          }
         }
       }
 
@@ -281,10 +308,23 @@ export function useVault() {
       }
     }
     if (!bundle) {
-      if (remoteVaultStatus !== 'absent') {
-        throw new Error('Your vault already exists, but the encrypted key could not be loaded. Refresh and try again.');
+      if (remoteVaultStatus === 'unknown') {
+        const statusFallback = await fetchVaultStatus(currentUserId);
+        if (statusFallback !== 'unknown') {
+          remoteVaultStatus = statusFallback;
+        }
       }
-      throw new Error('No encrypted vault found. Create one first.');
+
+      if (remoteVaultStatus !== 'absent') {
+        throw new Error(
+          lastVaultError ??
+            'Your vault already exists, but the encrypted key could not be loaded. Refresh and try again or retry unlocking.',
+        );
+      }
+
+      throw new Error(
+        lastVaultError ?? 'No encrypted vault found. Please try again or create a new passphrase after status is confirmed.',
+      );
     }
     try {
       sharedKey = await unwrapDataKey(bundle, passphrase);
@@ -316,9 +356,11 @@ export function useVault() {
     notify();
   }, []);
 
+  const fallbackUnlock = remoteVaultStatus === 'unknown' && !!lastVaultError;
+
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle || remoteVaultStatus === 'present',
+    hasBundle: hasStoredBundle || remoteVaultStatus === 'present' || fallbackUnlock,
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
