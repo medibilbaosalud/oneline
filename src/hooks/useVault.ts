@@ -9,18 +9,24 @@ import { idbDel, idbGet, idbSet } from '@/lib/localVault';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
+const PASSPHRASE_KEY_PREFIX = 'oneline.v1.passphrase';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
+let cachedPassphrase: string | null = null;
 let lastVaultError: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
 
 function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
+}
+
+function passphraseKeyForUser(userId: string) {
+  return `${PASSPHRASE_KEY_PREFIX}.${userId}`;
 }
 
 function notify() {
@@ -41,6 +47,29 @@ async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
     return payload?.bundle ?? null;
   } catch {
     return null;
+  }
+}
+
+function readStoredPassphrase(userId: string): string | null {
+  try {
+    const key = passphraseKeyForUser(userId);
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistStoredPassphrase(userId: string, passphrase: string | null) {
+  try {
+    const key = passphraseKeyForUser(userId);
+    if (typeof localStorage === 'undefined') return;
+    if (passphrase) {
+      localStorage.setItem(key, passphrase);
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // best-effort only
   }
 }
 
@@ -77,35 +106,50 @@ async function ensureInitialized() {
         currentUserId = userId;
         cachedBundle = null;
         hasStoredBundle = false;
+        cachedPassphrase = null;
         lastVaultError = null;
         sharedKey = null;
       }
 
       if (!currentUserId) {
         initialized = true;
+        cachedPassphrase = null;
         lastVaultError = null;
         return;
       }
 
+      cachedPassphrase = readStoredPassphrase(currentUserId);
       const key = bundleKeyForUser(currentUserId);
       const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
         lastVaultError = null;
-        return;
+      } else {
+        const remoteBundle = await fetchRemoteBundle();
+        if (remoteBundle) {
+          cachedBundle = remoteBundle;
+          hasStoredBundle = true;
+          await idbSet(key, remoteBundle).catch(() => {});
+          lastVaultError = null;
+        } else {
+          cachedBundle = null;
+          hasStoredBundle = false;
+          lastVaultError = null;
+        }
       }
 
-      const remoteBundle = await fetchRemoteBundle();
-      if (remoteBundle) {
-        cachedBundle = remoteBundle;
-        hasStoredBundle = true;
-        await idbSet(key, remoteBundle).catch(() => {});
-        lastVaultError = null;
-      } else {
-        cachedBundle = null;
-        hasStoredBundle = false;
-        lastVaultError = null;
+      if (cachedBundle && cachedPassphrase && !sharedKey) {
+        try {
+          sharedKey = await unwrapDataKey(cachedBundle, cachedPassphrase);
+          lastVaultError = null;
+        } catch {
+          sharedKey = null;
+          cachedPassphrase = null;
+          persistStoredPassphrase(currentUserId, null);
+          lastVaultError =
+            'The saved passphrase on this device could not unlock the vault. Enter your passphrase again to continue.';
+        }
       }
     } finally {
       initialized = true;
@@ -152,28 +196,33 @@ export function useVault() {
     };
   }, []);
 
-  const createWithPassphrase = useCallback(async (passphrase: string, rememberDevice: boolean) => {
-    if (!passphrase) throw new Error('Passphrase required');
-    await ensureInitialized();
-    if (!currentUserId) throw new Error('Sign in before creating your vault');
-    const key = await generateDataKey();
-    sharedKey = key;
-    lastVaultError = null;
-    const bundle = await wrapDataKey(key, passphrase);
-    if (rememberDevice) {
-      await persistBundle(bundle);
-    } else {
-      // Keep the remote copy for recovery, but wipe local storage on this device.
-      cachedBundle = bundle;
-      hasStoredBundle = true;
+  const createWithPassphrase = useCallback(
+    async (passphrase: string, rememberDevice: boolean, rememberPassphrase: boolean) => {
+      if (!passphrase) throw new Error('Passphrase required');
+      await ensureInitialized();
+      if (!currentUserId) throw new Error('Sign in before creating your vault');
+      const key = await generateDataKey();
+      sharedKey = key;
       lastVaultError = null;
-      await saveRemoteBundle(bundle);
-      await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
-    }
-    notify();
-  }, []);
+      const bundle = await wrapDataKey(key, passphrase);
+      persistStoredPassphrase(currentUserId, rememberPassphrase ? passphrase : null);
+      cachedPassphrase = rememberPassphrase ? passphrase : null;
+      if (rememberDevice) {
+        await persistBundle(bundle);
+      } else {
+        // Keep the remote copy for recovery, but wipe local storage on this device.
+        cachedBundle = bundle;
+        hasStoredBundle = true;
+        lastVaultError = null;
+        await saveRemoteBundle(bundle);
+        await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
+      }
+      notify();
+    },
+    [],
+  );
 
-  const unlockWithPassphrase = useCallback(async (passphrase: string) => {
+  const unlockWithPassphrase = useCallback(async (passphrase: string, rememberPassphrase: boolean) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
@@ -194,6 +243,8 @@ export function useVault() {
       cachedBundle = bundle;
       hasStoredBundle = true;
       lastVaultError = null;
+      persistStoredPassphrase(currentUserId, rememberPassphrase ? passphrase : null);
+      cachedPassphrase = rememberPassphrase ? passphrase : null;
       notify();
     } catch (error) {
       sharedKey = null;
@@ -211,6 +262,8 @@ export function useVault() {
     if (wipeLocal && currentUserId) {
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
       hasStoredBundle = !!cachedBundle;
+      persistStoredPassphrase(currentUserId, null);
+      cachedPassphrase = null;
     }
     notify();
   }, []);
@@ -222,6 +275,7 @@ export function useVault() {
     createWithPassphrase,
     unlockWithPassphrase,
     lock,
+    passphraseStored: !!cachedPassphrase,
     vaultError: lastVaultError,
     encryptText,
     decryptText,

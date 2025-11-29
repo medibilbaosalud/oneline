@@ -3,14 +3,18 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useVault } from '@/hooks/useVault';
 
 export default function VaultGate({ children }: { children: React.ReactNode }) {
-  const { dataKey, hasBundle, loading, createWithPassphrase, unlockWithPassphrase, vaultError } = useVault();
+  const { dataKey, hasBundle, loading, createWithPassphrase, unlockWithPassphrase, vaultError, passphraseStored } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
+  const [rememberPassphrase, setRememberPassphrase] = useState(false);
+  useEffect(() => {
+    setRememberPassphrase(passphraseStored);
+  }, [passphraseStored]);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -47,9 +51,9 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     setFormError(null);
     try {
       if (hasBundle) {
-        await unlockWithPassphrase(trimmed);
+        await unlockWithPassphrase(trimmed, rememberPassphrase);
       } else {
-        await createWithPassphrase(trimmed, remember);
+        await createWithPassphrase(trimmed, remember, rememberPassphrase);
       }
       setPassphrase('');
       setConfirmPassphrase('');
@@ -135,6 +139,21 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
               />
               Remember this device (stores an encrypted key in your browser)
             </label>
+          )}
+
+          <label className="flex items-center gap-2 text-xs text-neutral-400">
+            <input
+              type="checkbox"
+              checked={rememberPassphrase}
+              onChange={(event) => setRememberPassphrase(event.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-neutral-900"
+            />
+            Auto-unlock on this device (stores your passphrase locally)
+          </label>
+          {rememberPassphrase && (
+            <p className="text-xs text-amber-300">
+              Only enable this on a trusted device. The passphrase stays on this browser to auto-unlock your vault.
+            </p>
           )}
 
           {formError && <p className="text-sm text-rose-400">{formError}</p>}
