@@ -221,43 +221,61 @@ async function ensureInitialized(force = false) {
       const key = bundleKeyForUser(currentUserId);
       const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
 
-      if (localBundle) {
-        cachedBundle = localBundle;
-        vaultStatus = 'present';
-        lastVaultError = null;
-      } else {
-        // No local bundle, check remote
-        const remote = await fetchRemoteBundle();
+      // Always check remote to ensure we respect the server's truth (e.g. if user wiped vault in DB)
+      const remote = await fetchRemoteBundle();
+      let remoteStatus: 'present' | 'absent' | 'unknown' = 'unknown';
 
-        if (remote) {
-          if (remote.bundle) {
-            cachedBundle = remote.bundle;
-            vaultStatus = 'present';
-            await idbSet(key, remote.bundle).catch(() => { });
-            lastVaultError = null;
-          } else if (remote.hasVault) {
-            cachedBundle = null;
-            vaultStatus = 'present'; // Vault exists but we don't have the key yet (shouldn't happen if API returns bundle, but handling 'hasVault' flag)
-            lastVaultError = 'Your vault exists but the encrypted key could not be loaded. Refresh or try again.';
-          } else {
-            cachedBundle = null;
-            vaultStatus = 'absent';
-            lastVaultError = null;
-          }
+      if (remote) {
+        if (remote.bundle) {
+          remoteStatus = 'present';
+        } else if (remote.hasVault) {
+          remoteStatus = 'present';
         } else {
-          // Network error or API failure, try fallback status check
-          const statusFallback = await fetchVaultStatus(currentUserId);
-          if (statusFallback === 'present') {
-            vaultStatus = 'present';
-            lastVaultError = 'Unable to load your vault data. Please check your connection and try again.';
-          } else if (statusFallback === 'absent') {
-            vaultStatus = 'absent';
-            lastVaultError = null;
-          } else {
-            // Truly unknown state
-            vaultStatus = 'error';
-            lastVaultError = 'Unable to verify your vault status. Please check your connection and try again.';
-          }
+          remoteStatus = 'absent';
+        }
+      } else {
+        // If fetchRemoteBundle failed (e.g. 404 or network), try specific status check
+        remoteStatus = await fetchVaultStatus(currentUserId);
+      }
+
+      // Reconciliation Logic
+      if (remoteStatus === 'absent') {
+        // Server says NO vault.
+        // We treat status as absent to allow creation, but we do NOT delete local data automatically
+        // per user request (safety measure).
+        cachedBundle = null;
+        vaultStatus = 'absent';
+        lastVaultError = null;
+      } else if (remoteStatus === 'present') {
+        // Server says YES vault.
+        if (remote?.bundle) {
+          // We got a fresh bundle from server
+          cachedBundle = remote.bundle;
+          vaultStatus = 'present';
+          await idbSet(key, remote.bundle).catch(() => { });
+          lastVaultError = null;
+        } else if (localBundle) {
+          // We have local bundle, and server confirms vault exists. Use local.
+          cachedBundle = localBundle;
+          vaultStatus = 'present';
+          lastVaultError = null;
+        } else {
+          // Server says present, but we have no bundle (neither local nor remote payload).
+          cachedBundle = null;
+          vaultStatus = 'present'; // Will show Unlock, but unlock will fail/refetch if no bundle.
+          lastVaultError = 'Your vault exists but the encrypted key could not be loaded. Refresh or try again.';
+        }
+      } else {
+        // Remote status is UNKNOWN (offline/error).
+        // Fallback to local if available.
+        if (localBundle) {
+          cachedBundle = localBundle;
+          vaultStatus = 'present';
+          lastVaultError = null;
+        } else {
+          // No local, no remote info.
+          vaultStatus = 'error';
+          lastVaultError = 'Unable to verify your vault status. Please check your connection and try again.';
         }
       }
 
@@ -273,6 +291,10 @@ async function ensureInitialized(force = false) {
             'The saved passphrase on this device could not unlock the vault. Enter your passphrase again to continue.';
         }
       }
+    } catch (err) {
+      console.error('Vault initialization error:', err);
+      vaultStatus = 'error';
+      lastVaultError = 'An unexpected error occurred while loading your vault.';
     } finally {
       initialized = true;
       notify();
