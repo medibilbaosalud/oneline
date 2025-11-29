@@ -74,7 +74,15 @@ export default function LoginClient() {
         router.replace(next);
       }
     } catch (err: any) {
-      setError(err?.message || "Something went wrong");
+      const msg = err?.message || "Something went wrong";
+      if (msg.includes("Email not confirmed")) {
+        setInfo("Please check your email to confirm your account.");
+        setError(null);
+      } else if (msg.includes("User already registered")) {
+        setError("This email is already registered. Please sign in.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setPending(false);
     }
@@ -90,8 +98,8 @@ export default function LoginClient() {
             type="button"
             onClick={() => setMode("signin")}
             className={`rounded-md px-3 py-1.5 text-sm ${mode === "signin"
-                ? "bg-neutral-800 text-white"
-                : "text-neutral-300 hover:bg-neutral-800/60"
+              ? "bg-neutral-800 text-white"
+              : "text-neutral-300 hover:bg-neutral-800/60"
               }`}
           >
             Sign in
@@ -100,8 +108,8 @@ export default function LoginClient() {
             type="button"
             onClick={() => setMode("signup")}
             className={`rounded-md px-3 py-1.5 text-sm ${mode === "signup"
-                ? "bg-neutral-800 text-white"
-                : "text-neutral-300 hover:bg-neutral-800/60"
+              ? "bg-neutral-800 text-white"
+              : "text-neutral-300 hover:bg-neutral-800/60"
               }`}
           >
             Sign up
