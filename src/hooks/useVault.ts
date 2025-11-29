@@ -222,7 +222,7 @@ export function useVault() {
     [],
   );
 
-  const unlockWithPassphrase = useCallback(async (passphrase: string, rememberPassphrase: boolean) => {
+  const unlockWithPassphrase = useCallback(async (passphrase: string, rememberPassphrase = false) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
