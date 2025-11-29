@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #050915;
+  --app-surface: #0f172a;
+  --app-panel: #0c1224;
+  --app-border: rgba(255, 255, 255, 0.12);
+  --app-text: #e2e8f0;
+  --app-muted: #94a3b8;
+  --app-accent: #7cc0ff;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.app-shell {
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+.app-panel {
+  background: var(--app-surface);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+.app-muted {
+  color: var(--app-muted);
+}
+
+.app-accent {
+  color: var(--app-accent);
+}
+
+/* ---- OneLine Landing Animations (server-safe) ---- */
+
+.aurora {
+  position: absolute;
+  filter: blur(50px);
+  opacity: 0.9;
+  animation: floaty 22s ease-in-out infinite alternate, hue 24s linear infinite;
+}
+
+@keyframes floaty {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(0, -30px, 0) scale(1.05); }
+}
+
+@keyframes hue {
+  0%   { filter: blur(50px) hue-rotate(0deg); }
+  100% { filter: blur(50px) hue-rotate(20deg); }
+}
+
+/* Shiny CTA sweep */
+.shiny-cta { position: relative; overflow: hidden; }
+.shiny-cta .sweep::after {
+  content: "";
+  position: absolute;
+  left: -150%;
+  top: 0;
+  height: 100%;
+  width: 150%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.35),
+    transparent
+  );
+  opacity: 0;
+  filter: blur(6px);
+}
+.shiny-cta:hover .sweep::after {
+  animation: shine 1.2s ease-in-out forwards;
+}
+@keyframes shine {
+  0%   { transform: translateX(0);    opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateX(250%); opacity: 0; }
+}
+
+/* --- Mobile polish --- */
+
+/* Usa dvh para evitar el "salto" del 100vh en iOS */
+.min-h-dvh { min-height: 100dvh; }
+
+/* Safe areas (notch) */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* Tweak aurora on mobile (less blur => better perf/readability) */
+@media (max-width: 640px) {
+  .aurora { filter: blur(38px); opacity: .95; }
+}
+
+/* Comfortable inputs on touch devices */
+textarea, input, button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Respeto a reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .aurora { animation: none !important; }
+  .shiny-cta .sweep::after { animation: none !important; }
+}
+
