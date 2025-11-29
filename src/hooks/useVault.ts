@@ -423,11 +423,9 @@ export function useVault() {
     notify();
   }, []);
 
-  const fallbackUnlock = remoteVaultStatus === 'unknown' && !!lastVaultError;
-
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle || remoteVaultStatus === 'present' || fallbackUnlock,
+    hasBundle: hasStoredBundle || remoteVaultStatus === 'present',
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
