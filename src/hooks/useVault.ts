@@ -115,7 +115,12 @@ async function ensureInitialized(force = false) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const userId = user?.id ?? null;
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const userId = (user ?? session?.user)?.id ?? null;
   const userChanged = userId !== currentUserId;
 
   if (userChanged) {
