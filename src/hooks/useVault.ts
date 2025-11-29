@@ -85,34 +85,37 @@ async function saveRemoteBundle(bundle: WrappedBundle | null) {
   }
 }
 
-async function ensureInitialized() {
+async function ensureInitialized(force = false) {
   if (loadingPromise) {
     await loadingPromise;
     return;
   }
 
-  initialized = false;
-  notify();
+  const supabase = supabaseBrowser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
+  const userChanged = userId !== currentUserId;
+
+  if (userChanged) {
+    currentUserId = userId;
+    cachedBundle = null;
+    hasStoredBundle = false;
+    cachedPassphrase = null;
+    lastVaultError = null;
+    sharedKey = null;
+  }
+
+  const shouldResetLoading = force || !initialized || userChanged;
+  if (shouldResetLoading) {
+    initialized = false;
+    notify();
+  }
 
   loadingPromise = (async () => {
     try {
-      const supabase = supabaseBrowser();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      const userId = user?.id ?? null;
-
-      if (userId !== currentUserId) {
-        currentUserId = userId;
-        cachedBundle = null;
-        hasStoredBundle = false;
-        cachedPassphrase = null;
-        lastVaultError = null;
-        sharedKey = null;
-      }
-
       if (!currentUserId) {
-        initialized = true;
         cachedPassphrase = null;
         lastVaultError = null;
         return;
