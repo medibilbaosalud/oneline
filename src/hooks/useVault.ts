@@ -230,13 +230,15 @@ type VaultSignals = {
 
 async function evaluateVaultState(userId: string, applyState = true): Promise<VaultSignals> {
   const key = bundleKeyForUser(userId);
-  const [localBundle, remote, direct, presence, journal] = await Promise.all([
+  const [localBundleResult, remote, direct, presence, journal] = await Promise.all([
     idbGet<WrappedBundle>(key).catch(() => null),
     fetchRemoteBundle(),
     fetchDirectBundle(userId),
     detectVaultRecordPresence(userId),
     detectJournalPresence(userId),
   ]);
+
+  const localBundle = localBundleResult ?? null;
 
   const localMarker = hasLocalVaultMarker(userId);
   const resolvedBundle = remote.bundle ?? localBundle ?? (direct.certainty ? direct.bundle : null);
