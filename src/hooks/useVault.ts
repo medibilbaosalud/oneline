@@ -183,16 +183,28 @@ export function useVault() {
 
   useEffect(() => {
     let active = true;
+    const supabase = supabaseBrowser();
+
     ensureInitialized().catch(() => {
       // swallow errors; user can still create a new bundle
     });
+
     const listener = () => {
       if (active) forceUpdate((v) => v + 1);
     };
+
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      ensureInitialized().catch(() => {
+        // swallow errors triggered by transient auth states
+      });
+    });
+
     listeners.add(listener);
+
     return () => {
       active = false;
       listeners.delete(listener);
+      data.subscription.unsubscribe();
     };
   }, []);
 
