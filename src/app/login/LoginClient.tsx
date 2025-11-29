@@ -65,9 +65,10 @@ export default function LoginClient() {
         });
         if (error) throw error;
 
-        if (!data.session) {
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          if (signInError) throw signInError;
+        if (data.user && !data.session) {
+          setInfo("Account created! Please check your email to confirm your account.");
+          setPending(false);
+          return;
         }
 
         router.replace(next);
@@ -88,22 +89,20 @@ export default function LoginClient() {
           <button
             type="button"
             onClick={() => setMode("signin")}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              mode === "signin"
+            className={`rounded-md px-3 py-1.5 text-sm ${mode === "signin"
                 ? "bg-neutral-800 text-white"
                 : "text-neutral-300 hover:bg-neutral-800/60"
-            }`}
+              }`}
           >
             Sign in
           </button>
           <button
             type="button"
             onClick={() => setMode("signup")}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              mode === "signup"
+            className={`rounded-md px-3 py-1.5 text-sm ${mode === "signup"
                 ? "bg-neutral-800 text-white"
                 : "text-neutral-300 hover:bg-neutral-800/60"
-            }`}
+              }`}
           >
             Sign up
           </button>
