@@ -9,7 +9,8 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { persistSummary } from "@/lib/summaryHistory";
 import type { SummaryMode } from "@/lib/summaryUsageDaily";
 
-const WEEKLY_GUARD_MESSAGE = "Write at least four days to unlock your first weekly story.";
+const WEEKLY_MINIMUM_DAYS = 4;
+const WEEKLY_GUARD_BASE = "Write at least four days to unlock your first weekly story.";
 
 type Length = "short" | "medium" | "long";
 type Tone = "auto" | "warm" | "neutral" | "poetic" | "direct";
@@ -481,8 +482,18 @@ export default function StoryGenerator({
       const fromDate = new Date(`${from}T00:00:00Z`);
       const toDate = new Date(`${to}T00:00:00Z`);
       const diffDays = Math.max(1, Math.round((toDate.valueOf() - fromDate.valueOf()) / (1000 * 60 * 60 * 24)) + 1);
-      if (diffDays <= 8 && decrypted.length < 4 && !allowShortRangeOverride) {
-        throw new Error(WEEKLY_GUARD_MESSAGE);
+      const uniqueDays = new Set<string>();
+      for (const entry of decrypted) {
+        const dayKey = entry.day ?? entry.created_at.slice(0, 10);
+        if (dayKey) uniqueDays.add(dayKey);
+      }
+
+      if (diffDays <= 8 && uniqueDays.size < WEEKLY_MINIMUM_DAYS && !allowShortRangeOverride) {
+        const remainingDays = Math.max(1, WEEKLY_MINIMUM_DAYS - uniqueDays.size);
+        const plural = remainingDays === 1 ? "day" : "days";
+        throw new Error(
+          `${WEEKLY_GUARD_BASE} You have ${uniqueDays.size}/${WEEKLY_MINIMUM_DAYS} days — ${remainingDays} more ${plural} to go.`,
+        );
       }
 
       const payload = {
@@ -810,7 +821,7 @@ export default function StoryGenerator({
             {loading ? "Generating…" : "Generate your story"}
           </button>
           {error && <span className="text-sm text-rose-400">{error}</span>}
-          {error === WEEKLY_GUARD_MESSAGE && (
+          {error?.startsWith(WEEKLY_GUARD_BASE) && (
             <button
               type="button"
               className="rounded-lg border border-white/15 px-3 py-1 text-sm font-medium text-indigo-100 transition hover:border-white/30 hover:bg-white/5"

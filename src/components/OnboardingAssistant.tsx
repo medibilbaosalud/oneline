@@ -22,16 +22,14 @@ const STEP_SETS: Record<AssistantVariant, AssistantStep[]> = {
     {
       title: "Step 1 · Open the entry point",
       description:
-        "Tap “Start now — go to Today” or explore visitor mode. From either option you can choose to create your account.",
-      helper:
-        "All you need is a valid email address. We send a magic link — no long forms or passwords to invent.",
+        "Tap “Start now — go to Today” or explore visitor mode. From either option you can create your account with email and password.",
+      helper: "No confirmation emails — just pick credentials and you’re set.",
     },
     {
-      title: "Step 2 · Confirm the magic link",
+      title: "Step 2 · You’re signed in immediately",
       description:
-        "Check your inbox and click the confirmation button. It takes you back to OneLine with your session verified.",
-      helper:
-        "Didn’t see it? Wait a few seconds or check spam. The sender appears as support@oneline.day.",
+        "We keep you logged in right after sign-up — no inbox trips or confirmation steps needed.",
+      helper: "If anything fails, just sign in again with the password you chose to continue.",
     },
     {
       title: "Step 3 · Create your passphrase",

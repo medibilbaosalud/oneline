@@ -31,8 +31,8 @@ export function SignupFeedbackBanner({ status }: Props) {
 
   const message = useMemo(() => {
     if (status === "ok") return "Account created.";
-    if (status === "error") return "We couldn’t verify your email. Try signing in again.";
-    if (status === "missing") return "Email confirmation link is missing or expired.";
+    if (status === "error") return "We couldn’t finish creating your account. Please sign in and try again.";
+    if (status === "missing") return "The sign-up link is missing or expired. Please sign in again.";
     return null;
   }, [status]);
 

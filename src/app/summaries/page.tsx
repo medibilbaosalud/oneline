@@ -21,6 +21,7 @@ import {
 } from "@/lib/summaryPreferences";
 
 const TABLE = "user_vaults";
+const MIN_WEEKLY_ENTRIES = 4;
 
 type SearchParams = {
   from?: string;
@@ -80,6 +81,34 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
     reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
   }
 
+  if (reminder.period === "weekly" && reminder.window) {
+    const { data: rows, error: journalError } = await supabase
+      .from("journal")
+      .select("day, created_at")
+      .eq("user_id", user.id)
+      .gte("day", reminder.window.start)
+      .lte("day", reminder.window.end)
+      .limit(50);
+
+    if (!journalError && rows) {
+      const uniqueDays = new Set<string>();
+      for (const row of rows) {
+        const day = row.day ?? row.created_at?.slice(0, 10);
+        if (day) uniqueDays.add(day);
+      }
+
+      const dayCount = uniqueDays.size;
+      const minimumMet = dayCount >= MIN_WEEKLY_ENTRIES;
+      reminder = {
+        ...reminder,
+        due: reminder.due && minimumMet,
+        entryCount: dayCount,
+        minimumRequired: MIN_WEEKLY_ENTRIES,
+        minimumMet,
+      };
+    }
+  }
+
   const fromParam = searchParams?.from;
   const toParam = searchParams?.to;
   const hasCustomRange = isIsoDate(fromParam) && isIsoDate(toParam);
@@ -90,6 +119,12 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
     : undefined;
 
   const initialPreset = initialRange ? "custom" : undefined;
+
+  const minimumRequired = reminder.minimumRequired ?? MIN_WEEKLY_ENTRIES;
+  const entryCount = reminder.entryCount ?? 0;
+  const daysRemaining = Math.max(0, minimumRequired - entryCount);
+  const entryLabel = entryCount === 1 ? "day" : "days";
+  const remainingLabel = daysRemaining === 1 ? "day" : "days";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black">
@@ -163,8 +198,13 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
           <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-50 shadow-lg shadow-amber-900/30">
             <p className="text-sm font-semibold text-white">Write a few more days first</p>
             <p className="mt-1 text-xs text-amber-100/80">
-              Add at least {reminder.minimumRequired ?? 4} days in the last week to unlock your next weekly story.
+              Add at least {minimumRequired} days in the last week to unlock your next weekly story.
             </p>
+            {reminder.entryCount !== undefined && (
+              <p className="mt-1 text-xs text-amber-100/80">
+                You&apos;re at {entryCount}/{minimumRequired} {entryLabel} — {daysRemaining} more {remainingLabel} to go.
+              </p>
+            )}
           </div>
         )}
 

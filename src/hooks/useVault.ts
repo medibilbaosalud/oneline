@@ -6,43 +6,31 @@
 import { useCallback, useEffect, useState } from 'react';
 import { decryptText, encryptText, generateDataKey, unwrapDataKey, wrapDataKey, type WrappedBundle } from '@/lib/crypto';
 import { idbDel, idbGet, idbSet } from '@/lib/localVault';
-import { clearStoredPassphrase, getStoredPassphrase, setStoredPassphrase } from '@/lib/passphraseStorage';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
+const PASSPHRASE_KEY_PREFIX = 'oneline.v1.passphrase';
+
+type RemoteStatus = 'unknown' | 'absent' | 'present';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
-let expectedRemoteVault = false;
+let remoteVaultStatus: RemoteStatus = 'unknown';
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
-let lastVaultError: string | null = null;
 let cachedPassphrase: string | null = null;
+let lastVaultError: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
-let autoUnlockAttemptedFor: string | null = null;
-
-async function resolveUserId(): Promise<string | null> {
-  try {
-    const supabase = supabaseBrowser();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user?.id) return user.id;
-
-    const sessionResult = await supabase.auth.getSession();
-    const sessionUser = sessionResult.data.session?.user;
-    if (sessionUser?.id) return sessionUser.id;
-
-    return await fetchServerUserId();
-  } catch {
-    return null;
-  }
-}
+let pendingAuthRetry: NodeJS.Timeout | null = null;
 
 function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
+}
+
+function passphraseKeyForUser(userId: string) {
+  return `${PASSPHRASE_KEY_PREFIX}.${userId}`;
 }
 
 function notify() {
@@ -55,48 +43,54 @@ function notify() {
   });
 }
 
-async function persistPassphrase(passphrase: string | null) {
-  if (passphrase) {
-    cachedPassphrase = passphrase;
-    setStoredPassphrase(passphrase);
-  } else {
-    cachedPassphrase = null;
-    clearStoredPassphrase();
-  }
-  notify();
-}
-
-type RemoteVaultPayload = { bundle: WrappedBundle | null; hasVault: boolean; status: 'ok' | 'auth' | 'error' };
-
-async function fetchRemoteBundle(): Promise<RemoteVaultPayload> {
+async function fetchRemoteBundle(): Promise<{ bundle: WrappedBundle | null; hasVault: boolean } | null> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
-    if (!res.ok) {
-      // If auth is not ready yet, err on the safe side and assume a vault may exist to avoid overwriting it.
-      if (res.status === 401 || res.status === 403) {
-        return { bundle: null, hasVault: true, status: 'auth' };
-      }
-      return { bundle: null, hasVault: true, status: 'error' };
-    }
+    if (!res.ok) return null;
     const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
-    const bundle = payload?.bundle ?? null;
-    return { bundle, hasVault: payload?.hasVault ?? !!bundle, status: 'ok' };
+    return { bundle: payload?.bundle ?? null, hasVault: !!payload?.hasVault };
   } catch {
-    return { bundle: null, hasVault: true, status: 'error' };
+    return null;
   }
 }
 
-async function fetchDirectBundle(userId: string): Promise<WrappedBundle | null> {
+async function fetchVaultStatus(userId: string): Promise<RemoteStatus> {
   try {
     const supabase = supabaseBrowser();
-    const { data } = await supabase
-      .from('user_vaults')
-      .select('wrapped_b64, iv_b64, salt_b64, version')
+    const { data, error } = await supabase
+      .from('user_vault_status')
+      .select('has_passphrase')
       .eq('user_id', userId)
-      .maybeSingle();
-    return data ?? null;
+      .maybeSingle<{ has_passphrase: boolean }>();
+
+    if (error) return 'unknown';
+    if (!data) return 'absent';
+    return data.has_passphrase ? 'present' : 'absent';
+  } catch {
+    return 'unknown';
+  }
+}
+
+function readStoredPassphrase(userId: string): string | null {
+  try {
+    const key = passphraseKeyForUser(userId);
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
   } catch {
     return null;
+  }
+}
+
+function persistStoredPassphrase(userId: string, passphrase: string | null) {
+  try {
+    const key = passphraseKeyForUser(userId);
+    if (typeof localStorage === 'undefined') return;
+    if (passphrase) {
+      localStorage.setItem(key, passphrase);
+    } else {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // best-effort only
   }
 }
 
@@ -112,94 +106,161 @@ async function saveRemoteBundle(bundle: WrappedBundle | null) {
   }
 }
 
-async function fetchServerUserId(): Promise<string | null> {
-  try {
-    const res = await fetch('/api/auth/user', { cache: 'no-store' });
-    if (!res.ok) return null;
-    const payload = (await res.json().catch(() => null)) as { id?: string | null } | null;
-    return payload?.id ?? null;
-  } catch {
-    return null;
+async function resolveUserWithRetry(): Promise<{ userId: string | null; sessionResolved: boolean }> {
+  const supabase = supabaseBrowser();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const [{ data: sessionData }, { data: userData }] = await Promise.all([
+      supabase.auth.getSession(),
+      supabase.auth.getUser(),
+    ]);
+
+    const session = sessionData.session;
+    const user = userData.user;
+    const userId = (user ?? session?.user)?.id ?? null;
+
+    if (userId) {
+      return { userId, sessionResolved: true };
+    }
+
+    // If Supabase reports no session at all, stop retrying and treat it as resolved.
+    if (!session) {
+      return { userId: null, sessionResolved: true };
+    }
+
+    // Otherwise, give the client a moment to finish hydrating the session before re-checking.
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
+
+  return { userId: null, sessionResolved: true };
 }
 
-async function ensureInitialized() {
+async function ensureInitialized(force = false) {
   if (loadingPromise) {
     await loadingPromise;
     return;
   }
 
-  const userId = await resolveUserId();
+  const { userId, sessionResolved } = await resolveUserWithRetry();
+  const userChanged = userId !== currentUserId;
 
-  const needsFreshInit = !initialized || userId !== currentUserId;
-  if (!needsFreshInit) return;
+  if (userChanged) {
+    if (pendingAuthRetry) {
+      clearTimeout(pendingAuthRetry);
+      pendingAuthRetry = null;
+    }
+    currentUserId = userId;
+    cachedBundle = null;
+    hasStoredBundle = false;
+    remoteVaultStatus = 'unknown';
+    cachedPassphrase = null;
+    lastVaultError = null;
+    sharedKey = null;
+  }
 
-  initialized = false;
-  notify();
+  const shouldResetLoading = force || !initialized || userChanged;
+  if (shouldResetLoading) {
+    initialized = false;
+    notify();
+  }
+
+  if (!currentUserId) {
+    // Without a confirmed user, defer vault decisions to avoid showing the creation flow incorrectly.
+    if (pendingAuthRetry) {
+      clearTimeout(pendingAuthRetry);
+      pendingAuthRetry = null;
+    }
+
+    if (!force && sessionResolved) {
+      lastVaultError =
+        lastVaultError ?? 'Preparing your session. If this persists, refresh and try again before creating a passphrase.';
+      loadingPromise = null;
+      pendingAuthRetry = setTimeout(() => {
+        ensureInitialized(true).catch(() => {
+          // swallow retry errors; UI will surface the retry guidance
+        });
+      }, 250);
+      return;
+    }
+
+    loadingPromise = (async () => {
+      try {
+        cachedPassphrase = null;
+        remoteVaultStatus = 'unknown';
+        lastVaultError = sessionResolved
+          ? 'Sign in to continue before creating or unlocking your vault.'
+          : 'Preparing your session. Refresh and try again before creating a passphrase.';
+      } finally {
+        initialized = true;
+        notify();
+        loadingPromise = null;
+      }
+    })();
+
+    await loadingPromise;
+    return;
+  }
 
   loadingPromise = (async () => {
     try {
-      if (userId !== currentUserId) {
-        currentUserId = userId;
-        cachedBundle = null;
-        hasStoredBundle = false;
-        expectedRemoteVault = false;
-        lastVaultError = null;
-        sharedKey = null;
-        cachedPassphrase = null;
-        autoUnlockAttemptedFor = null;
-      }
-
       if (!currentUserId) {
-        initialized = true;
+        cachedPassphrase = null;
+        remoteVaultStatus = 'unknown';
         lastVaultError = null;
         return;
       }
 
+      cachedPassphrase = readStoredPassphrase(currentUserId);
       const key = bundleKeyForUser(currentUserId);
       const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
+        remoteVaultStatus = 'present';
         lastVaultError = null;
-      }
-
-      const remote = await fetchRemoteBundle();
-      expectedRemoteVault = remote.hasVault || remote.status !== 'ok';
-      if (remote.bundle) {
-        cachedBundle = remote.bundle;
-        hasStoredBundle = true;
-        await idbSet(key, remote.bundle).catch(() => {});
-        lastVaultError = null;
-      } else if (!localBundle && !remote.hasVault) {
-        const directBundle = await fetchDirectBundle(currentUserId);
-        if (directBundle) {
-          cachedBundle = directBundle;
-          hasStoredBundle = true;
-          expectedRemoteVault = true;
-          await idbSet(key, directBundle).catch(() => {});
-          lastVaultError = null;
+      } else {
+        const remote = await fetchRemoteBundle();
+        if (remote) {
+          remoteVaultStatus = remote.hasVault ? 'present' : 'absent';
         }
-      } else if (!localBundle) {
-        cachedBundle = null;
-        hasStoredBundle = remote.hasVault;
-        lastVaultError = null;
+
+        if (!remote) {
+          const statusFallback = await fetchVaultStatus(currentUserId);
+          if (statusFallback !== 'unknown') {
+            remoteVaultStatus = statusFallback;
+          } else {
+            lastVaultError =
+              lastVaultError ??
+              'Unable to verify your vault status right now. Please try again to continue unlocking your journal.';
+          }
+        }
+
+        if (remote?.bundle) {
+          cachedBundle = remote.bundle;
+          hasStoredBundle = true;
+          await idbSet(key, remote.bundle).catch(() => {});
+          lastVaultError = null;
+        } else {
+          cachedBundle = null;
+          hasStoredBundle = false;
+          if (remoteVaultStatus === 'present') {
+            lastVaultError =
+              lastVaultError ??
+              'Your vault exists but the encrypted key could not be loaded. Refresh or try again before creating a new passphrase.';
+          }
+        }
       }
 
-      const savedPassphrase = getStoredPassphrase();
-      cachedPassphrase = savedPassphrase;
-
-      if (cachedBundle && cachedPassphrase && autoUnlockAttemptedFor !== currentUserId && !sharedKey) {
-        autoUnlockAttemptedFor = currentUserId;
+      if (cachedBundle && cachedPassphrase && !sharedKey) {
         try {
           sharedKey = await unwrapDataKey(cachedBundle, cachedPassphrase);
           lastVaultError = null;
         } catch {
           sharedKey = null;
           cachedPassphrase = null;
-          clearStoredPassphrase();
+          persistStoredPassphrase(currentUserId, null);
           lastVaultError =
-            'Stored passphrase could not decrypt your vault. Re-enter the exact phrase to unlock and optionally save it again.';
+            'The saved passphrase on this device could not unlock the vault. Enter your passphrase again to continue.';
         }
       }
     } finally {
@@ -218,13 +279,13 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
-    expectedRemoteVault = true;
+    remoteVaultStatus = 'present';
     lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
-    expectedRemoteVault = false;
+    remoteVaultStatus = 'absent';
     lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
@@ -236,96 +297,67 @@ export function useVault() {
 
   useEffect(() => {
     let active = true;
+    const supabase = supabaseBrowser();
+
     ensureInitialized().catch(() => {
       // swallow errors; user can still create a new bundle
     });
+
     const listener = () => {
       if (active) forceUpdate((v) => v + 1);
     };
-    listeners.add(listener);
-    const supabase = supabaseBrowser();
+
     const { data } = supabase.auth.onAuthStateChange(() => {
-      ensureInitialized().catch(() => {});
+      ensureInitialized().catch(() => {
+        // swallow errors triggered by transient auth states
+      });
     });
+
+    listeners.add(listener);
+
     return () => {
       active = false;
       listeners.delete(listener);
-      data.subscription?.unsubscribe();
+      data.subscription.unsubscribe();
     };
   }, []);
 
-  const createWithPassphrase = useCallback(async (passphrase: string, rememberDevice: boolean, rememberPassphrase?: boolean) => {
-    if (!passphrase) throw new Error('Passphrase required');
-    await ensureInitialized();
-    if (!currentUserId) {
-      currentUserId = await resolveUserId();
-    }
-    if (!currentUserId) throw new Error('Sign in before creating your vault');
-
-    // Safety check: if a vault already exists remotely or locally, do not generate a new key.
-    const remote = await fetchRemoteBundle();
-    if (remote.status !== 'ok') {
-      throw new Error('Unable to confirm your existing vault. Ensure you are signed in and try again.');
-    }
-    if (remote.bundle || cachedBundle || hasStoredBundle || remote.hasVault || expectedRemoteVault) {
-      const existingBundle = remote.bundle ?? cachedBundle;
-      if (existingBundle) {
-        const key = bundleKeyForUser(currentUserId);
-        cachedBundle = existingBundle;
-        hasStoredBundle = true;
-        expectedRemoteVault = true;
-        await idbSet(key, existingBundle).catch(() => {});
-        notify();
-      } else if (remote.hasVault || expectedRemoteVault) {
-        expectedRemoteVault = true;
-        notify();
+  const createWithPassphrase = useCallback(
+    async (passphrase: string, rememberDevice: boolean, rememberPassphrase: boolean) => {
+      if (!passphrase) throw new Error('Passphrase required');
+      await ensureInitialized();
+      if (!currentUserId) throw new Error('Sign in before creating your vault');
+      if (remoteVaultStatus === 'unknown') {
+        throw new Error('Unable to verify your vault status. Please refresh and try again.');
       }
-
-      throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
-    }
-
-    if (!cachedBundle && !remote.hasVault) {
-      const directBundle = await fetchDirectBundle(currentUserId);
-      if (directBundle) {
-        cachedBundle = directBundle;
-        hasStoredBundle = true;
-        expectedRemoteVault = true;
-        const key = bundleKeyForUser(currentUserId);
-        await idbSet(key, directBundle).catch(() => {});
-        notify();
-        throw new Error('An encrypted vault already exists for this account. Unlock it with your original passphrase.');
+      if (hasStoredBundle || remoteVaultStatus === 'present') {
+        throw new Error('A vault already exists for this account. Unlock with your existing passphrase.');
       }
-    }
-
-    const key = await generateDataKey();
-    sharedKey = key;
-    lastVaultError = null;
-    const bundle = await wrapDataKey(key, passphrase);
-    if (rememberDevice) {
-      await persistBundle(bundle);
-    } else {
-      // Keep the remote copy for recovery, but wipe local storage on this device.
-      cachedBundle = bundle;
-      hasStoredBundle = true;
-      expectedRemoteVault = true;
+      const key = await generateDataKey();
+      sharedKey = key;
       lastVaultError = null;
-      await saveRemoteBundle(bundle);
-      await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
-    }
-    if (rememberPassphrase) {
-      await persistPassphrase(passphrase);
-    } else {
-      await persistPassphrase(null);
-    }
-    notify();
-  }, []);
+      const bundle = await wrapDataKey(key, passphrase);
+      persistStoredPassphrase(currentUserId, rememberPassphrase ? passphrase : null);
+      cachedPassphrase = rememberPassphrase ? passphrase : null;
+      if (rememberDevice) {
+        await persistBundle(bundle);
+      } else {
+        // Keep the remote copy for recovery, but wipe local storage on this device.
+        cachedBundle = bundle;
+        hasStoredBundle = true;
+        remoteVaultStatus = 'present';
+        lastVaultError = null;
+        await saveRemoteBundle(bundle);
+        await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
+      }
+      notify();
+    },
+    [],
+  );
 
-  const unlockWithPassphrase = useCallback(async (passphrase: string, opts?: { rememberPassphrase?: boolean }) => {
+  const unlockWithPassphrase = useCallback(async (passphrase: string, rememberPassphrase = false) => {
     if (!passphrase) throw new Error('Passphrase required');
     await ensureInitialized();
-    if (!currentUserId) {
-      currentUserId = await resolveUserId();
-    }
     if (!currentUserId) throw new Error('Sign in before unlocking your vault');
     let bundle = cachedBundle;
     if (!bundle) {
@@ -333,33 +365,41 @@ export function useVault() {
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
         const remote = await fetchRemoteBundle();
-        expectedRemoteVault = remote.hasVault || remote.status !== 'ok';
-        bundle = remote.bundle;
+        if (remote) {
+          remoteVaultStatus = remote.hasVault ? 'present' : 'absent';
+        }
+        bundle = remote?.bundle ?? null;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
-        } else if (!remote.hasVault) {
-          const directBundle = await fetchDirectBundle(currentUserId);
-          if (directBundle) {
-            bundle = directBundle;
-            cachedBundle = directBundle;
-            hasStoredBundle = true;
-            expectedRemoteVault = true;
-            await idbSet(key, directBundle).catch(() => {});
-          }
         }
       }
     }
-    if (!bundle) throw new Error('No encrypted vault found. Create one first.');
+    if (!bundle) {
+      if (remoteVaultStatus === 'unknown') {
+        const statusFallback = await fetchVaultStatus(currentUserId);
+        if (statusFallback !== 'unknown') {
+          remoteVaultStatus = statusFallback;
+        }
+      }
+
+      if (remoteVaultStatus !== 'absent') {
+        throw new Error(
+          lastVaultError ??
+            'Your vault already exists, but the encrypted key could not be loaded. Refresh and try again or retry unlocking.',
+        );
+      }
+
+      throw new Error(
+        lastVaultError ?? 'No encrypted vault found. Please try again or create a new passphrase after status is confirmed.',
+      );
+    }
     try {
       sharedKey = await unwrapDataKey(bundle, passphrase);
       cachedBundle = bundle;
       hasStoredBundle = true;
       lastVaultError = null;
-      if (opts?.rememberPassphrase) {
-        await persistPassphrase(passphrase);
-      } else if (opts?.rememberPassphrase === false) {
-        await persistPassphrase(null);
-      }
+      persistStoredPassphrase(currentUserId, rememberPassphrase ? passphrase : null);
+      cachedPassphrase = rememberPassphrase ? passphrase : null;
       notify();
     } catch (error) {
       sharedKey = null;
@@ -376,27 +416,26 @@ export function useVault() {
     sharedKey = null;
     if (wipeLocal && currentUserId) {
       await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
-      clearStoredPassphrase();
-      cachedPassphrase = null;
       hasStoredBundle = !!cachedBundle;
+      persistStoredPassphrase(currentUserId, null);
+      cachedPassphrase = null;
     }
     notify();
   }, []);
 
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle || expectedRemoteVault,
+    hasBundle: hasStoredBundle || remoteVaultStatus === 'present',
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
     lock,
+    passphraseStored: !!cachedPassphrase,
     vaultError: lastVaultError,
-    hasStoredPassphrase: !!cachedPassphrase,
     encryptText,
     decryptText,
     getCurrentKey: () => sharedKey,
   };
 }
 
-// SECURITY NOTE: Vault bundles are synced to the server encrypted with the user's passphrase-derived KEK. Without that phrase,
-// the wrapped key remains useless. Losing the passphrase still makes ciphertext unrecoverable.
+// SECURITY NOTE: Vault bundles are synced to the server encrypted with the user's passphrase-derived KEK. Without that phrase, the wrapped key remains useless. Losing the passphrase still makes ciphertext unrecoverable.

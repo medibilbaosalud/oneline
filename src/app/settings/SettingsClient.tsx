@@ -78,7 +78,7 @@ function formatWindow(window?: { start: string; end: string }) {
 export default function SettingsClient() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
-  const { lock, hasStoredPassphrase } = useVault();
+  const { lock } = useVault();
   const [frequency, setFrequency] = useState<Frequency>("weekly");
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -178,7 +178,7 @@ export default function SettingsClient() {
   useEffect(() => {
     const stored = getStoredPassphrase();
     setPassphraseStored(!!stored);
-  }, [hasStoredPassphrase]);
+  }, []);
 
   async function handleSaveSettings({
     nextFrequency,

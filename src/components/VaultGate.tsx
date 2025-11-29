@@ -5,37 +5,18 @@
 
 import { useEffect, useState } from 'react';
 import { useVault } from '@/hooks/useVault';
-import { clearStoredPassphrase, getStoredPassphrase } from '@/lib/passphraseStorage';
 
 export default function VaultGate({ children }: { children: React.ReactNode }) {
-  const {
-    dataKey,
-    hasBundle,
-    loading,
-    createWithPassphrase,
-    unlockWithPassphrase,
-    vaultError,
-    hasStoredPassphrase,
-  } = useVault();
+  const { dataKey, hasBundle, loading, createWithPassphrase, unlockWithPassphrase, vaultError, passphraseStored } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
   const [rememberPassphrase, setRememberPassphrase] = useState(false);
+  useEffect(() => {
+    setRememberPassphrase(passphraseStored);
+  }, [passphraseStored]);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    setRememberPassphrase(hasStoredPassphrase);
-  }, [hasStoredPassphrase]);
-
-  useEffect(() => {
-    const stored = getStoredPassphrase();
-    if (stored) {
-      setPassphrase(stored);
-      setConfirmPassphrase(stored);
-      setRememberPassphrase(true);
-    }
-  }, []);
 
   if (loading) {
     return (
@@ -70,15 +51,12 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     setFormError(null);
     try {
       if (hasBundle) {
-        await unlockWithPassphrase(trimmed, { rememberPassphrase });
+        await unlockWithPassphrase(trimmed, rememberPassphrase);
       } else {
         await createWithPassphrase(trimmed, remember, rememberPassphrase);
       }
       setPassphrase('');
       setConfirmPassphrase('');
-      if (!rememberPassphrase) {
-        clearStoredPassphrase();
-      }
     } catch (err: unknown) {
       const fallback =
         'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.';
@@ -119,9 +97,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
         </header>
 
         {vaultError && (
-          <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-            {vaultError}
-          </p>
+          <p className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{vaultError}</p>
         )}
 
         <div className="space-y-3">
@@ -172,8 +148,13 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
               onChange={(event) => setRememberPassphrase(event.target.checked)}
               className="h-4 w-4 rounded border-white/20 bg-neutral-900"
             />
-            Remember passphrase on this device (avoid shared or public computers)
+            Auto-unlock on this device (stores your passphrase locally)
           </label>
+          {rememberPassphrase && (
+            <p className="text-xs text-amber-300">
+              Only enable this on a trusted device. The passphrase stays on this browser to auto-unlock your vault.
+            </p>
+          )}
 
           {formError && <p className="text-sm text-rose-400">{formError}</p>}
         </div>
@@ -188,9 +169,6 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
         </button>
         <p className="text-xs text-neutral-500">
           Tip: Prefer a long passphrase you can remember. Store it in a password manager — if it changes or is lost, the encrypted data stays locked forever.
-        </p>
-        <p className="text-[11px] text-neutral-500">
-          If you save it locally, still back it up elsewhere. Clearing this device will remove the stored passphrase and you’ll need to type it again.
         </p>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google';
 import TopNav from '@/components/TopNav';
 import Providers from './providers';
 import { PwaRegister } from './pwa-register';
+import { AuthSessionListener } from './_components/AuthSessionListener';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-screen app-shell`}>
         <Providers>
           <PwaRegister />
+          <AuthSessionListener />
           {/* Global navigation across all pages */}
           <TopNav />
           {children}
