@@ -23,6 +23,7 @@ let cachedPassphrase: string | null = null;
 let lastVaultError: string | null = null;
 const listeners = new Set<() => void>();
 let loadingPromise: Promise<void> | null = null;
+let pendingAuthRetry: NodeJS.Timeout | null = null;
 
 function bundleKeyForUser(userId: string) {
   return `${BUNDLE_KEY_PREFIX}.${userId}`;
@@ -105,25 +106,49 @@ async function saveRemoteBundle(bundle: WrappedBundle | null) {
   }
 }
 
+async function resolveUserWithRetry(): Promise<{ userId: string | null; sessionResolved: boolean }> {
+  const supabase = supabaseBrowser();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const [{ data: sessionData }, { data: userData }] = await Promise.all([
+      supabase.auth.getSession(),
+      supabase.auth.getUser(),
+    ]);
+
+    const session = sessionData.session;
+    const user = userData.user;
+    const userId = (user ?? session?.user)?.id ?? null;
+
+    if (userId) {
+      return { userId, sessionResolved: true };
+    }
+
+    // If Supabase reports no session at all, stop retrying and treat it as resolved.
+    if (!session) {
+      return { userId: null, sessionResolved: true };
+    }
+
+    // Otherwise, give the client a moment to finish hydrating the session before re-checking.
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
+  return { userId: null, sessionResolved: true };
+}
+
 async function ensureInitialized(force = false) {
   if (loadingPromise) {
     await loadingPromise;
     return;
   }
 
-  const supabase = supabaseBrowser();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const userId = (user ?? session?.user)?.id ?? null;
+  const { userId, sessionResolved } = await resolveUserWithRetry();
   const userChanged = userId !== currentUserId;
 
   if (userChanged) {
+    if (pendingAuthRetry) {
+      clearTimeout(pendingAuthRetry);
+      pendingAuthRetry = null;
+    }
     currentUserId = userId;
     cachedBundle = null;
     hasStoredBundle = false;
@@ -137,6 +162,43 @@ async function ensureInitialized(force = false) {
   if (shouldResetLoading) {
     initialized = false;
     notify();
+  }
+
+  if (!currentUserId) {
+    // Without a confirmed user, defer vault decisions to avoid showing the creation flow incorrectly.
+    if (pendingAuthRetry) {
+      clearTimeout(pendingAuthRetry);
+      pendingAuthRetry = null;
+    }
+
+    if (!force && sessionResolved) {
+      lastVaultError =
+        lastVaultError ?? 'Preparing your session. If this persists, refresh and try again before creating a passphrase.';
+      loadingPromise = null;
+      pendingAuthRetry = setTimeout(() => {
+        ensureInitialized(true).catch(() => {
+          // swallow retry errors; UI will surface the retry guidance
+        });
+      }, 250);
+      return;
+    }
+
+    loadingPromise = (async () => {
+      try {
+        cachedPassphrase = null;
+        remoteVaultStatus = 'unknown';
+        lastVaultError = sessionResolved
+          ? 'Sign in to continue before creating or unlocking your vault.'
+          : 'Preparing your session. Refresh and try again before creating a passphrase.';
+      } finally {
+        initialized = true;
+        notify();
+        loadingPromise = null;
+      }
+    })();
+
+    await loadingPromise;
+    return;
   }
 
   loadingPromise = (async () => {
