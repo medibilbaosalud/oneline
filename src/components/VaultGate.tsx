@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useVault } from '@/hooks/useVault';
 
 export default function VaultGate({ children }: { children: React.ReactNode }) {
-  const { dataKey, hasBundle, loading, createWithPassphrase, unlockWithPassphrase, vaultError, passphraseStored } = useVault();
+  const { dataKey, status, loading, createWithPassphrase, unlockWithPassphrase, vaultError, passphraseStored } = useVault();
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
@@ -18,7 +18,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (loading) {
+  if (loading || status === 'loading') {
     return (
       <div className="flex h-64 items-center justify-center rounded-2xl border border-white/10 bg-neutral-950/60 text-neutral-400">
         Preparing secure vault…
@@ -30,13 +30,33 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // If we have an error determining status (e.g. network fail), show it.
+  if (status === 'error') {
+    return (
+      <div className="rounded-3xl border border-rose-500/20 bg-neutral-950/70 p-6 shadow-xl backdrop-blur">
+        <h2 className="text-xl font-semibold text-rose-400">Connection Error</h2>
+        <p className="mt-2 text-sm text-neutral-400">
+          {vaultError ?? 'Unable to verify your vault status. Please check your connection and try again.'}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-xl bg-neutral-800 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const isUnlockMode = status === 'present';
+
   async function handleSubmit() {
     const trimmed = passphrase.trim();
     if (!trimmed) {
       setFormError('Enter a passphrase.');
       return;
     }
-    if (!hasBundle) {
+    if (!isUnlockMode) {
       const confirmTrimmed = confirmPassphrase.trim();
       if (!confirmTrimmed) {
         setFormError('Confirm your passphrase.');
@@ -50,7 +70,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
     setBusy(true);
     setFormError(null);
     try {
-      if (hasBundle) {
+      if (isUnlockMode) {
         await unlockWithPassphrase(trimmed, rememberPassphrase);
       } else {
         await createWithPassphrase(trimmed, remember, rememberPassphrase);
@@ -61,7 +81,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       const fallback =
         'Decryption failed — the passphrase must match the exact code you set when you first encrypted your journal.';
       const message = err instanceof Error && err.message ? err.message : fallback;
-      setFormError(hasBundle ? fallback : message);
+      setFormError(isUnlockMode ? fallback : message);
     } finally {
       setBusy(false);
     }
@@ -72,24 +92,24 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
       <div className="space-y-4 text-sm text-neutral-300">
         <header className="space-y-1">
           <h2 className="text-xl font-semibold text-white">
-            {hasBundle ? 'Unlock your encrypted journal' : 'Create your encrypted vault'}
+            {isUnlockMode ? 'Unlock your encrypted journal' : 'Create your encrypted vault'}
           </h2>
           <p className="text-neutral-400">
-            {hasBundle
+            {isUnlockMode
               ? 'Enter the exact passphrase you created before. A different phrase will fail and your encrypted entries will remain unreadable.'
               : 'Choose a strong passphrase and type it twice to confirm. You must reuse this exact code every time you unlock OneLine.'}
           </p>
-          {!hasBundle && (
+          {!isUnlockMode && (
             <p className="text-xs text-amber-300">
               Set it once and never change it — losing or altering this passphrase permanently locks all existing entries.
             </p>
           )}
-          {!hasBundle && (
+          {!isUnlockMode && (
             <p className="text-xs text-neutral-400">
               Choose numbers that are easy to remember — something like your own phone number keeps the code memorable without sharing it.
             </p>
           )}
-          {hasBundle && (
+          {isUnlockMode && (
             <p className="text-xs text-amber-300">
               We never store your passphrase. If you forget it, we cannot recover or reset your data.
             </p>
@@ -115,7 +135,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             />
           </label>
 
-          {!hasBundle && (
+          {!isUnlockMode && (
             <label className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-wider text-neutral-500">Confirm passphrase</span>
               <input
@@ -129,7 +149,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
             </label>
           )}
 
-          {!hasBundle && (
+          {!isUnlockMode && (
             <label className="flex items-center gap-2 text-xs text-neutral-400">
               <input
                 type="checkbox"
@@ -165,7 +185,7 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
           disabled={busy}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
         >
-          {busy ? 'Working…' : hasBundle ? 'Unlock vault' : 'Create & continue'}
+          {busy ? 'Working…' : isUnlockMode ? 'Unlock vault' : 'Create & continue'}
         </button>
         <p className="text-xs text-neutral-500">
           Tip: Prefer a long passphrase you can remember. Store it in a password manager — if it changes or is lost, the encrypted data stays locked forever.
