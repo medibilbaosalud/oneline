@@ -13,6 +13,7 @@ const PASSPHRASE_KEY_PREFIX = 'oneline.v1.passphrase';
 
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
+let remoteHasVault = false;
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
@@ -39,12 +40,12 @@ function notify() {
   });
 }
 
-async function fetchRemoteBundle(): Promise<WrappedBundle | null> {
+async function fetchRemoteBundle(): Promise<{ bundle: WrappedBundle | null; hasVault: boolean } | null> {
   try {
     const res = await fetch('/api/vault', { cache: 'no-store' });
     if (!res.ok) return null;
-    const payload = (await res.json()) as { bundle?: WrappedBundle | null };
-    return payload?.bundle ?? null;
+    const payload = (await res.json()) as { bundle?: WrappedBundle | null; hasVault?: boolean };
+    return { bundle: payload?.bundle ?? null, hasVault: !!payload?.hasVault };
   } catch {
     return null;
   }
@@ -102,6 +103,7 @@ async function ensureInitialized(force = false) {
     currentUserId = userId;
     cachedBundle = null;
     hasStoredBundle = false;
+    remoteHasVault = false;
     cachedPassphrase = null;
     lastVaultError = null;
     sharedKey = null;
@@ -127,13 +129,16 @@ async function ensureInitialized(force = false) {
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
+        remoteHasVault = true;
         lastVaultError = null;
       } else {
-        const remoteBundle = await fetchRemoteBundle();
-        if (remoteBundle) {
-          cachedBundle = remoteBundle;
+        const remote = await fetchRemoteBundle();
+        remoteHasVault = remote?.hasVault ?? false;
+
+        if (remote?.bundle) {
+          cachedBundle = remote.bundle;
           hasStoredBundle = true;
-          await idbSet(key, remoteBundle).catch(() => {});
+          await idbSet(key, remote.bundle).catch(() => {});
           lastVaultError = null;
         } else {
           cachedBundle = null;
@@ -170,11 +175,13 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
+    remoteHasVault = true;
     lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
+    remoteHasVault = false;
     lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
@@ -216,6 +223,9 @@ export function useVault() {
       if (!passphrase) throw new Error('Passphrase required');
       await ensureInitialized();
       if (!currentUserId) throw new Error('Sign in before creating your vault');
+      if (hasStoredBundle || remoteHasVault) {
+        throw new Error('A vault already exists for this account. Unlock with your existing passphrase.');
+      }
       const key = await generateDataKey();
       sharedKey = key;
       lastVaultError = null;
@@ -246,13 +256,20 @@ export function useVault() {
       const key = bundleKeyForUser(currentUserId);
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
-        bundle = await fetchRemoteBundle();
+        const remote = await fetchRemoteBundle();
+        remoteHasVault = remote?.hasVault ?? remoteHasVault;
+        bundle = remote?.bundle ?? null;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
         }
       }
     }
-    if (!bundle) throw new Error('No encrypted vault found. Create one first.');
+    if (!bundle) {
+      if (remoteHasVault) {
+        throw new Error('Your vault already exists, but the encrypted key could not be loaded. Refresh and try again.');
+      }
+      throw new Error('No encrypted vault found. Create one first.');
+    }
     try {
       sharedKey = await unwrapDataKey(bundle, passphrase);
       cachedBundle = bundle;
@@ -285,7 +302,7 @@ export function useVault() {
 
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle,
+    hasBundle: hasStoredBundle || remoteHasVault,
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,
