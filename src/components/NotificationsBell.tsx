@@ -205,6 +205,13 @@ export default function NotificationsBell() {
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
+  const openAndMarkUnread = () => {
+    setOpen(true);
+    if (unreadCount > 0) {
+      void markAllRead();
+    }
+  };
+
   const toggle = () => {
     const next = !open;
     setOpen(next);
@@ -320,15 +327,23 @@ export default function NotificationsBell() {
           </span>
         )}
       </button>
-      <span className="ml-2 text-xs font-semibold text-neutral-50 flex items-center gap-2">
+      <span className="ml-2 flex items-center gap-2 text-xs font-semibold text-neutral-50">
         Notifications
         {unreadCount > 0 && (
-          <span className="rounded-full bg-indigo-500 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">{unreadCount} unread</span>
+          <button
+            type="button"
+            onClick={openAndMarkUnread}
+            className="rounded-full bg-indigo-500 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60"
+          >
+            {unreadCount} unread
+          </button>
         )}
       </span>
 
       {open && (
-        <div className="absolute right-0 top-10 w-[30rem] max-w-3xl rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur">
+        <div
+          className="absolute left-1/2 top-12 w-[30rem] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 transform rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl ring-1 ring-black/60 backdrop-blur md:left-auto md:right-0 md:top-10 md:translate-x-0 md:max-w-3xl"
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-white">Notifications</div>
