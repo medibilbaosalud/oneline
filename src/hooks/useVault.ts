@@ -11,9 +11,11 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 const BUNDLE_KEY_PREFIX = 'oneline.v1.bundle';
 const PASSPHRASE_KEY_PREFIX = 'oneline.v1.passphrase';
 
+type RemoteStatus = 'unknown' | 'absent' | 'present';
+
 let sharedKey: CryptoKey | null = null;
 let hasStoredBundle = false;
-let remoteHasVault = false;
+let remoteVaultStatus: RemoteStatus = 'unknown';
 let initialized = false;
 let currentUserId: string | null = null;
 let cachedBundle: WrappedBundle | null = null;
@@ -103,7 +105,7 @@ async function ensureInitialized(force = false) {
     currentUserId = userId;
     cachedBundle = null;
     hasStoredBundle = false;
-    remoteHasVault = false;
+    remoteVaultStatus = 'unknown';
     cachedPassphrase = null;
     lastVaultError = null;
     sharedKey = null;
@@ -119,6 +121,7 @@ async function ensureInitialized(force = false) {
     try {
       if (!currentUserId) {
         cachedPassphrase = null;
+        remoteVaultStatus = 'unknown';
         lastVaultError = null;
         return;
       }
@@ -129,11 +132,18 @@ async function ensureInitialized(force = false) {
       if (localBundle) {
         cachedBundle = localBundle;
         hasStoredBundle = true;
-        remoteHasVault = true;
+        remoteVaultStatus = 'present';
         lastVaultError = null;
       } else {
         const remote = await fetchRemoteBundle();
-        remoteHasVault = remote?.hasVault ?? false;
+        if (remote) {
+          remoteVaultStatus = remote.hasVault ? 'present' : 'absent';
+        }
+
+        if (!remote && !hasStoredBundle) {
+          remoteVaultStatus = hasStoredBundle ? 'present' : 'unknown';
+          return;
+        }
 
         if (remote?.bundle) {
           cachedBundle = remote.bundle;
@@ -175,13 +185,13 @@ async function persistBundle(bundle: WrappedBundle | null) {
   if (bundle) {
     cachedBundle = bundle;
     hasStoredBundle = true;
-    remoteHasVault = true;
+    remoteVaultStatus = 'present';
     lastVaultError = null;
     await Promise.all([idbSet(key, bundle).catch(() => {}), saveRemoteBundle(bundle)]);
   } else {
     cachedBundle = null;
     hasStoredBundle = false;
-    remoteHasVault = false;
+    remoteVaultStatus = 'absent';
     lastVaultError = null;
     await Promise.all([idbDel(key).catch(() => {}), saveRemoteBundle(null)]);
   }
@@ -223,7 +233,10 @@ export function useVault() {
       if (!passphrase) throw new Error('Passphrase required');
       await ensureInitialized();
       if (!currentUserId) throw new Error('Sign in before creating your vault');
-      if (hasStoredBundle || remoteHasVault) {
+      if (remoteVaultStatus === 'unknown') {
+        throw new Error('Unable to verify your vault status. Please refresh and try again.');
+      }
+      if (hasStoredBundle || remoteVaultStatus === 'present') {
         throw new Error('A vault already exists for this account. Unlock with your existing passphrase.');
       }
       const key = await generateDataKey();
@@ -238,6 +251,7 @@ export function useVault() {
         // Keep the remote copy for recovery, but wipe local storage on this device.
         cachedBundle = bundle;
         hasStoredBundle = true;
+        remoteVaultStatus = 'present';
         lastVaultError = null;
         await saveRemoteBundle(bundle);
         await idbDel(bundleKeyForUser(currentUserId)).catch(() => {});
@@ -257,7 +271,9 @@ export function useVault() {
       bundle = (await idbGet<WrappedBundle>(key)) ?? null;
       if (!bundle) {
         const remote = await fetchRemoteBundle();
-        remoteHasVault = remote?.hasVault ?? remoteHasVault;
+        if (remote) {
+          remoteVaultStatus = remote.hasVault ? 'present' : 'absent';
+        }
         bundle = remote?.bundle ?? null;
         if (bundle) {
           await idbSet(key, bundle).catch(() => {});
@@ -265,7 +281,7 @@ export function useVault() {
       }
     }
     if (!bundle) {
-      if (remoteHasVault) {
+      if (remoteVaultStatus !== 'absent') {
         throw new Error('Your vault already exists, but the encrypted key could not be loaded. Refresh and try again.');
       }
       throw new Error('No encrypted vault found. Create one first.');
@@ -302,7 +318,7 @@ export function useVault() {
 
   return {
     dataKey: sharedKey,
-    hasBundle: hasStoredBundle || remoteHasVault,
+    hasBundle: hasStoredBundle || remoteVaultStatus === 'present',
     loading: !initialized,
     createWithPassphrase,
     unlockWithPassphrase,

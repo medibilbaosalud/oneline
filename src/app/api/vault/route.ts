@@ -42,13 +42,21 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: statusRow } = await supabase
+  const { data: statusRow, error: statusError } = await supabase
     .from(STATUS_TABLE)
     .select('has_passphrase')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const hasVault = !!data || statusRow?.has_passphrase === true;
+  if (statusError) {
+    return NextResponse.json({ error: statusError.message }, { status: 500 });
+  }
+
+  if (!statusRow) {
+    await supabase.from(STATUS_TABLE).upsert({ user_id: user.id, has_passphrase: false }).eq('user_id', user.id);
+  }
+
+  const hasVault = statusRow?.has_passphrase === true || !!data;
 
   return NextResponse.json({ bundle: data ?? null, hasVault }, { headers: { 'cache-control': 'no-store' } });
 }
