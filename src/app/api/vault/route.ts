@@ -56,9 +56,12 @@ export async function GET() {
     await supabase.from(STATUS_TABLE).upsert({ user_id: user.id, has_passphrase: false }).eq('user_id', user.id);
   }
 
-  const hasVault = statusRow?.has_passphrase === true || !!data;
+  // SECURITY: The status table is the single source of truth.
+  // If has_passphrase is false, we treat the vault as non-existent, even if orphaned data exists.
+  const hasVault = statusRow?.has_passphrase === true;
+  const bundleToReturn = hasVault ? data : null;
 
-  return NextResponse.json({ bundle: data ?? null, hasVault }, { headers: { 'cache-control': 'no-store' } });
+  return NextResponse.json({ bundle: bundleToReturn ?? null, hasVault }, { headers: { 'cache-control': 'no-store' } });
 }
 
 export async function PUT(request: NextRequest) {

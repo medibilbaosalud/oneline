@@ -192,11 +192,20 @@ async function ensureInitialized(force = false) {
 
     loadingPromise = (async () => {
       try {
-        cachedPassphrase = null;
-        vaultStatus = 'loading'; // Keep loading until we have a user or confirm no user
-        lastVaultError = sessionResolved
-          ? 'Sign in to continue before creating or unlocking your vault.'
-          : 'Preparing your session. Refresh and try again before creating a passphrase.';
+        // Safety Timeout: If initialization takes > 10s, fail to error state.
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Vault initialization timed out')), 10000),
+        );
+
+        const initLogic = async () => {
+          cachedPassphrase = null;
+          vaultStatus = 'loading'; // Keep loading until we have a user or confirm no user
+          lastVaultError = sessionResolved
+            ? 'Sign in to continue before creating or unlocking your vault.'
+            : 'Preparing your session. Refresh and try again before creating a passphrase.';
+        };
+
+        await Promise.race([initLogic(), timeoutPromise]);
       } finally {
         initialized = true;
         notify();
@@ -210,87 +219,96 @@ async function ensureInitialized(force = false) {
 
   loadingPromise = (async () => {
     try {
-      if (!currentUserId) {
-        cachedPassphrase = null;
-        vaultStatus = 'loading';
-        lastVaultError = null;
-        return;
-      }
+      // Safety Timeout: If initialization takes > 10s, fail to error state.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Vault initialization timed out')), 10000),
+      );
 
-      cachedPassphrase = readStoredPassphrase(currentUserId);
-      const key = bundleKeyForUser(currentUserId);
-      const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
-
-      // Always check remote to ensure we respect the server's truth (e.g. if user wiped vault in DB)
-      const remote = await fetchRemoteBundle();
-      let remoteStatus: 'present' | 'absent' | 'unknown' = 'unknown';
-
-      if (remote) {
-        if (remote.bundle) {
-          remoteStatus = 'present';
-        } else if (remote.hasVault) {
-          remoteStatus = 'present';
-        } else {
-          remoteStatus = 'absent';
-        }
-      } else {
-        // If fetchRemoteBundle failed (e.g. 404 or network), try specific status check
-        remoteStatus = await fetchVaultStatus(currentUserId);
-      }
-
-      // Reconciliation Logic
-      if (remoteStatus === 'absent') {
-        // Server says NO vault.
-        // We treat status as absent to allow creation, but we do NOT delete local data automatically
-        // per user request (safety measure).
-        cachedBundle = null;
-        vaultStatus = 'absent';
-        lastVaultError = null;
-      } else if (remoteStatus === 'present') {
-        // Server says YES vault.
-        if (remote?.bundle) {
-          // We got a fresh bundle from server
-          cachedBundle = remote.bundle;
-          vaultStatus = 'present';
-          await idbSet(key, remote.bundle).catch(() => { });
-          lastVaultError = null;
-        } else if (localBundle) {
-          // We have local bundle, and server confirms vault exists. Use local.
-          cachedBundle = localBundle;
-          vaultStatus = 'present';
-          lastVaultError = null;
-        } else {
-          // Server says present, but we have no bundle (neither local nor remote payload).
-          cachedBundle = null;
-          vaultStatus = 'present'; // Will show Unlock, but unlock will fail/refetch if no bundle.
-          lastVaultError = 'Your vault exists but the encrypted key could not be loaded. Refresh or try again.';
-        }
-      } else {
-        // Remote status is UNKNOWN (offline/error).
-        // Fallback to local if available.
-        if (localBundle) {
-          cachedBundle = localBundle;
-          vaultStatus = 'present';
-          lastVaultError = null;
-        } else {
-          // No local, no remote info.
-          vaultStatus = 'error';
-          lastVaultError = 'Unable to verify your vault status. Please check your connection and try again.';
-        }
-      }
-
-      if (cachedBundle && cachedPassphrase && !sharedKey) {
-        try {
-          sharedKey = await unwrapDataKey(cachedBundle, cachedPassphrase);
-          lastVaultError = null;
-        } catch {
-          sharedKey = null;
+      const initLogic = async () => {
+        if (!currentUserId) {
           cachedPassphrase = null;
-          persistStoredPassphrase(currentUserId, null);
-          lastVaultError =
-            'The saved passphrase on this device could not unlock the vault. Enter your passphrase again to continue.';
+          vaultStatus = 'loading';
+          lastVaultError = null;
+          return;
         }
-      }
+
+        cachedPassphrase = readStoredPassphrase(currentUserId);
+        const key = bundleKeyForUser(currentUserId);
+        const localBundle = (await idbGet<WrappedBundle>(key)) ?? null;
+
+        // Always check remote to ensure we respect the server's truth (e.g. if user wiped vault in DB)
+        const remote = await fetchRemoteBundle();
+        let remoteStatus: 'present' | 'absent' | 'unknown' = 'unknown';
+
+        if (remote) {
+          if (remote.bundle) {
+            remoteStatus = 'present';
+          } else if (remote.hasVault) {
+            remoteStatus = 'present';
+          } else {
+            remoteStatus = 'absent';
+          }
+        } else {
+          // If fetchRemoteBundle failed (e.g. 404 or network), try specific status check
+          remoteStatus = await fetchVaultStatus(currentUserId);
+        }
+
+        // Reconciliation Logic
+        if (remoteStatus === 'absent') {
+          // Server says NO vault.
+          // We treat status as absent to allow creation, but we do NOT delete local data automatically
+          // per user request (safety measure).
+          cachedBundle = null;
+          vaultStatus = 'absent';
+          lastVaultError = null;
+        } else if (remoteStatus === 'present') {
+          // Server says YES vault.
+          if (remote?.bundle) {
+            // We got a fresh bundle from server
+            cachedBundle = remote.bundle;
+            vaultStatus = 'present';
+            await idbSet(key, remote.bundle).catch(() => { });
+            lastVaultError = null;
+          } else if (localBundle) {
+            // We have local bundle, and server confirms vault exists. Use local.
+            cachedBundle = localBundle;
+            vaultStatus = 'present';
+            lastVaultError = null;
+          } else {
+            // Server says present, but we have no bundle (neither local nor remote payload).
+            cachedBundle = null;
+            vaultStatus = 'present'; // Will show Unlock, but unlock will fail/refetch if no bundle.
+            lastVaultError = 'Your vault exists but the encrypted key could not be loaded. Refresh or try again.';
+          }
+        } else {
+          // Remote status is UNKNOWN (offline/error).
+          // Fallback to local if available.
+          if (localBundle) {
+            cachedBundle = localBundle;
+            vaultStatus = 'present';
+            lastVaultError = null;
+          } else {
+            // No local, no remote info.
+            vaultStatus = 'error';
+            lastVaultError = 'Unable to verify your vault status. Please check your connection and try again.';
+          }
+        }
+
+        if (cachedBundle && cachedPassphrase && !sharedKey) {
+          try {
+            sharedKey = await unwrapDataKey(cachedBundle, cachedPassphrase);
+            lastVaultError = null;
+          } catch {
+            sharedKey = null;
+            cachedPassphrase = null;
+            persistStoredPassphrase(currentUserId, null);
+            lastVaultError =
+              'The saved passphrase on this device could not unlock the vault. Enter your passphrase again to continue.';
+          }
+        }
+      };
+
+      await Promise.race([initLogic(), timeoutPromise]);
     } catch (err) {
       console.error('Vault initialization error:', err);
       vaultStatus = 'error';
