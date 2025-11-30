@@ -20,11 +20,13 @@ export async function GET() {
   try {
     const now = new Date();
     const { used, startIso, endIso } = await ensureMonthlySummaryWindow(sb, user.id, now);
-    const limit = 10;
-    const remaining = Math.max(0, limit - used);
+    const unlimited = user.email?.toLowerCase() === "aitoralboniga@gmail.com";
+    const limit = unlimited ? 1000000 : 20;
+    const remaining = unlimited ? limit : Math.max(0, limit - used);
 
     return NextResponse.json(
       {
+        unlimited,
         limit,
         used,
         remaining,
