@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const TABLE = 'user_vaults';
+const STATUS_TABLE = 'user_vault_status';
 
 function normalizeBundle(input: unknown): WrappedBundle | null {
   if (!input || typeof input !== 'object') return null;
@@ -41,7 +42,15 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ bundle: data ?? null }, { headers: { 'cache-control': 'no-store' } });
+  const { data: statusRow } = await supabase
+    .from(STATUS_TABLE)
+    .select('has_passphrase')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const hasVault = !!data || statusRow?.has_passphrase === true;
+
+  return NextResponse.json({ bundle: data ?? null, hasVault }, { headers: { 'cache-control': 'no-store' } });
 }
 
 export async function PUT(request: NextRequest) {
@@ -59,6 +68,10 @@ export async function PUT(request: NextRequest) {
 
   if (!bundle) {
     await supabase.from(TABLE).delete().eq('user_id', user.id);
+    await supabase
+      .from(STATUS_TABLE)
+      .upsert({ user_id: user.id, has_passphrase: false })
+      .eq('user_id', user.id);
     return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
   }
 
@@ -70,6 +83,11 @@ export async function PUT(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await supabase
+    .from(STATUS_TABLE)
+    .upsert({ user_id: user.id, has_passphrase: true })
+    .eq('user_id', user.id);
 
   return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
 }
