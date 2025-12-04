@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 type SpeechToTextProps = {
     onTranscript: (text: string) => void;
@@ -11,6 +11,11 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
     const [isListening, setIsListening] = useState(false);
     const [isSupported, setIsSupported] = useState(false);
     const [recognition, setRecognition] = useState<any>(null);
+    const onTranscriptRef = useRef(onTranscript);
+
+    useEffect(() => {
+        onTranscriptRef.current = onTranscript;
+    }, [onTranscript]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -19,19 +24,33 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
             if (SpeechRecognition) {
                 setIsSupported(true);
                 const recog = new SpeechRecognition();
-                recog.continuous = false;
-                recog.interimResults = false;
-                recog.lang = 'en-US'; // Default to English
+                recog.continuous = true;
+                recog.interimResults = true;
+                recog.lang = 'en-US';
 
                 recog.onresult = (event: any) => {
-                    const transcript = event.results[0][0].transcript;
-                    onTranscript(transcript);
-                    setIsListening(false);
+                    let finalTranscript = '';
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    let interimTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+
+                    if (finalTranscript) {
+                        onTranscriptRef.current(finalTranscript);
+                    }
                 };
 
                 recog.onerror = (event: any) => {
                     console.error('Speech recognition error', event.error);
-                    setIsListening(false);
+                    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                        setIsListening(false);
+                    }
                 };
 
                 recog.onend = () => {
@@ -41,7 +60,14 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
                 setRecognition(recog);
             }
         }
-    }, [onTranscript]);
+    }, []);
+
+    useEffect(() => {
+        if (disabled && isListening && recognition) {
+            recognition.stop();
+            setIsListening(false);
+        }
+    }, [disabled, isListening, recognition]);
 
     const toggleListening = useCallback(() => {
         if (!recognition) return;
