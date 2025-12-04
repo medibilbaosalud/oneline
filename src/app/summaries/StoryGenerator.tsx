@@ -885,20 +885,35 @@ export default function StoryGenerator({
             </div>
 
             {(imageData || audioData) && (
-              <div className="mb-6 grid gap-4 sm:grid-cols-2">
+              <div className="mb-8 grid gap-6 sm:grid-cols-2">
                 {imageData && (
-                  <div className="overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-lg">
-                    <img src={`data:image/png;base64,${imageData}`} alt="Story Cover" className="h-full w-full object-cover" />
+                  <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition hover:border-white/20">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
+                    <img src={`data:image/png;base64,${imageData}`} alt="Story Cover" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/80">Generated Cover</p>
+                    </div>
                   </div>
                 )}
                 {audioData && (
-                  <div className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/5 p-4">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-indigo-300">Audio Story</p>
-                    <audio controls src={`data:audio/mp3;base64,${audioData}`} className="w-full" />
+                  <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-900/20 to-purple-900/20 p-6 backdrop-blur-sm">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                          <path fillRule="evenodd" d="M19.952 1.651a.75.75 0 01.298.599V16.303a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V6.994l-9 2.572v9.737a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V9.017 5.25a.75.75 0 01.544-.721l10.5-3a.75.75 0 01.658.122z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white">Audio Story</p>
+                        <p className="text-xs text-zinc-400">Read by Gemini</p>
+                      </div>
+                    </div>
+                    <audio controls src={`data:audio/mp3;base64,${audioData}`} className="w-full accent-indigo-500" />
                   </div>
                 )}
               </div>
             )}
+
 
             <div className="relative space-y-3 font-serif text-[17px] leading-relaxed text-zinc-50">
               {formattedStory.map((block, idx) => (
