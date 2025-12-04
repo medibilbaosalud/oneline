@@ -532,63 +532,14 @@ export async function generateStoryImage(summary: string): Promise<string | null
     return null;
   }
 }
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) return null;
 
-try {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  // Use gemini-2.0-flash for audio generation capabilities
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const prompt = `Read the following story with a warm, engaging, and natural voice. Do not add any introductory text, just read the story:
-    
-    "${text.slice(0, 4000)}"`; // Limit text length for audio generation
 
-  // Note: The SDK might require specific config for audio output. 
-  // If standard generateContent doesn't return audio, we might need a specific tool or endpoint.
-  // However, based on recent updates, requesting audio output via prompt or config is the way.
-  // We will try standard generation. If it returns text, we'll log it.
-  // Ideally, we should check for 'audio' in the response candidates.
 
-  // For now, as a robust fallback if 2.0 Flash doesn't return audio directly via this method in this SDK version:
-  // We will return null to avoid errors if the feature isn't fully active on the key.
-  // BUT, the user explicitly asked for it. 
-  // Let's try to use the specific "speech" endpoint if possible, but SDK doesn't expose it easily.
 
-  // Let's assume the user has access to the feature via standard prompt for now.
-  // If this fails, we catch it.
 
-  return null;
 
-} catch (error) {
-  console.warn("Audio generation failed:", error);
-  return null;
-}
-}
 
-export async function generateStoryImage(summary: string): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
 
-  try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    const prompt = `Generate a cinematic, abstract, and emotional cover image for a story about: "${summary.slice(0, 300)}...". The style should be artistic, warm, and personal. High quality, 4k.`;
-
-    // Request image generation
-    // Note: In the JS SDK, we might need to specify generationConfig or tools.
-    // For Imagen 3 or Gemini 2.0 Flash Image, it's often a prompt.
-    // We will try to get the image from the response.
-
-    // Placeholder: The current JS SDK version in this project might not fully support parsing the image bytes easily 
-    // without updated types. 
-    // We will return null to prevent 429s from blocking the main flow until we are sure of the implementation.
-
-    return null;
-  } catch (error) {
-    console.warn("Image generation failed:", error);
-    return null;
-  }
-}
 
