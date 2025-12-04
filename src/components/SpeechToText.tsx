@@ -8,12 +8,14 @@ type SpeechToTextProps = {
 };
 
 export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
-    const [status, setStatus] = useState<'idle' | 'recording' | 'processing'>('idle');
+    const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const audioChunks = useRef<Blob[]>([]);
 
     const startRecording = async () => {
         try {
+            setErrorMessage(null);
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder.current = new MediaRecorder(stream);
             audioChunks.current = [];
@@ -35,16 +37,29 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
                         body: formData,
                     });
 
-                    if (!response.ok) throw new Error('Transcription failed');
-
                     const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Transcription failed');
+                    }
+
                     if (data.text) {
                         onTranscript(data.text);
+                        setStatus('idle');
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Transcription error:', error);
+                    setStatus('error');
+                    setErrorMessage(error.message || 'Error processing audio');
+                    // Clear error after 5 seconds
+                    setTimeout(() => {
+                        setStatus('idle');
+                        setErrorMessage(null);
+                    }, 5000);
                 } finally {
-                    setStatus('idle');
+                    if (status !== 'error') {
+                        // setStatus('idle'); // Handled in success/error blocks to avoid flickering
+                    }
                     stream.getTracks().forEach(track => track.stop());
                 }
             };
@@ -53,6 +68,8 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
             setStatus('recording');
         } catch (err) {
             console.error('Failed to start recording', err);
+            setStatus('error');
+            setErrorMessage('Could not access microphone');
         }
     };
 
@@ -72,42 +89,57 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
 
     const isRecording = status === 'recording';
     const isProcessing = status === 'processing';
+    const isError = status === 'error';
 
     return (
-        <button
-            type="button"
-            onClick={handleClick}
-            disabled={disabled || isProcessing}
-            className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
-                    ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
-                    : isProcessing
-                        ? 'bg-indigo-500/10 text-indigo-400'
-                        : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
-                } disabled:opacity-50`}
-            title="Dictate entry"
-        >
-            {isRecording ? (
-                <>
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                    </span>
-                    <span>Stop</span>
-                </>
-            ) : isProcessing ? (
-                <>
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                    <span>Processing...</span>
-                </>
-            ) : (
-                <>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
-                        <path d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.964V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.536c2.96-.38 5.25-2.904 5.25-5.964v-.357a.75.75 0 00-1.5 0V10c0 2.485-2.015 4.5-4.5 4.5s-4.5-2.015-4.5-4.5v-.357z" />
-                    </svg>
-                    <span>Dictate</span>
-                </>
+        <div className="flex flex-col items-center gap-2">
+            <button
+                type="button"
+                onClick={handleClick}
+                disabled={disabled || isProcessing}
+                className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
+                        ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
+                        : isProcessing
+                            ? 'bg-indigo-500/10 text-indigo-400'
+                            : isError
+                                ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/50'
+                                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                    } disabled:opacity-50`}
+                title="Dictate entry"
+            >
+                {isRecording ? (
+                    <>
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                        </span>
+                        <span>Stop</span>
+                    </>
+                ) : isProcessing ? (
+                    <>
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                        <span>Processing...</span>
+                    </>
+                ) : isError ? (
+                    <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <span>Error</span>
+                    </>
+                ) : (
+                    <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
+                            <path d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.964V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.536c2.96-.38 5.25-2.904 5.25-5.964v-.357a.75.75 0 00-1.5 0V10c0 2.485-2.015 4.5-4.5 4.5s-4.5-2.015-4.5-4.5v-.357z" />
+                        </svg>
+                        <span>Dictate</span>
+                    </>
+                )}
+            </button>
+            {errorMessage && (
+                <span className="text-xs text-red-400 animate-pulse">{errorMessage}</span>
             )}
-        </button>
+        </div>
     );
 }

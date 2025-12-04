@@ -180,6 +180,8 @@ export default function StoryGenerator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
+  const [audioData, setAudioData] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<string | null>(null);
   const formattedStory = useMemo(() => (story ? formatStoryBlocks(story) : []), [story]);
   const [loadingPhrase, setLoadingPhrase] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
@@ -519,18 +521,18 @@ export default function StoryGenerator({
       });
 
       const json = (await res.json().catch(() => null)) as
-        | { story?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
+        | { story?: string; audioBase64?: string; imageBase64?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
         | null;
       if (!res.ok) {
         const message = json?.message || json?.error || res.statusText || "Failed to generate story";
         setUsageInfo((current) =>
           json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null
             ? {
-                mode,
-                usageUnits: json.usageUnits,
-                remainingUnits: json.remainingUnits,
-                dailyLimit: json.dailyLimit,
-              }
+              mode,
+              usageUnits: json.usageUnits,
+              remainingUnits: json.remainingUnits,
+              dailyLimit: json.dailyLimit,
+            }
             : current,
         );
         throw new Error(message);
@@ -538,6 +540,11 @@ export default function StoryGenerator({
 
       const storyText = json?.story || "";
       setStory(storyText);
+
+      // Set audio and image if available
+      if (json?.audioBase64) setAudioData(json.audioBase64);
+      if (json?.imageBase64) setImageData(json.imageBase64);
+
       if (json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null) {
         setUsageInfo({
           mode,
@@ -687,11 +694,10 @@ export default function StoryGenerator({
                 key={option.key}
                 type="button"
                 onClick={() => setMode(option.key)}
-                className={`flex min-w-[180px] flex-col gap-1 rounded-xl border px-3 py-2 text-left shadow-sm transition ${
-                  mode === option.key
-                    ? "border-indigo-400 bg-indigo-500/20 text-white"
-                    : "border-white/10 bg-white/5 text-zinc-200 hover:border-white/30 hover:bg-white/10"
-                }`}
+                className={`flex min-w-[180px] flex-col gap-1 rounded-xl border px-3 py-2 text-left shadow-sm transition ${mode === option.key
+                  ? "border-indigo-400 bg-indigo-500/20 text-white"
+                  : "border-white/10 bg-white/5 text-zinc-200 hover:border-white/30 hover:bg-white/10"
+                  }`}
               >
                 <span className="text-sm font-semibold">{option.label}</span>
                 <span className="text-xs text-zinc-400">{option.desc}</span>
@@ -877,6 +883,22 @@ export default function StoryGenerator({
                 Export as PDF
               </button>
             </div>
+
+            {(imageData || audioData) && (
+              <div className="mb-6 grid gap-4 sm:grid-cols-2">
+                {imageData && (
+                  <div className="overflow-hidden rounded-xl border border-white/10 bg-black/20 shadow-lg">
+                    <img src={`data:image/png;base64,${imageData}`} alt="Story Cover" className="h-full w-full object-cover" />
+                  </div>
+                )}
+                {audioData && (
+                  <div className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/5 p-4">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-indigo-300">Audio Story</p>
+                    <audio controls src={`data:audio/mp3;base64,${audioData}`} className="w-full" />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative space-y-3 font-serif text-[17px] leading-relaxed text-zinc-50">
               {formattedStory.map((block, idx) => (

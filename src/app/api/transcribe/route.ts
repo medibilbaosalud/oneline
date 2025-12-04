@@ -21,8 +21,11 @@ export async function POST(request: Request) {
         const arrayBuffer = await audioFile.arrayBuffer();
         const base64Audio = Buffer.from(arrayBuffer).toString('base64');
 
-        // Try 2.5 Flash first (better quality), fallback to 2.0 Flash (higher limits)
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+        // Robust fallback chain:
+        // 1. Gemini 2.5 Flash: Best quality (Experimental)
+        // 2. Gemini 2.0 Flash: High limits & speed (Stable)
+        // 3. Gemini 1.5 Flash: Old reliable fallback
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
         let lastError = null;
 
         for (const modelName of modelsToTry) {
@@ -39,6 +42,8 @@ export async function POST(request: Request) {
                 ]);
 
                 const text = result.response.text();
+                if (!text) throw new Error('Empty response');
+
                 return NextResponse.json({ text });
             } catch (error: any) {
                 console.warn(`Model ${modelName} failed:`, error.message);
@@ -47,10 +52,18 @@ export async function POST(request: Request) {
             }
         }
 
-        throw lastError || new Error('All models failed');
+        // If we get here, all models failed
+        console.error('All transcription models failed');
+        return NextResponse.json(
+            { error: "Lo siento, los servicios de IA están saturados en este momento. Por favor, inténtalo de nuevo en unos segundos." },
+            { status: 503 }
+        );
 
     } catch (error: any) {
         console.error('Transcription error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json(
+            { error: "Error al procesar el audio. Por favor, verifica tu conexión." },
+            { status: 500 }
+        );
     }
 }

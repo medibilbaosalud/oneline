@@ -439,3 +439,17 @@ export function coercePov(value: string | null): YearStoryOptions['pov'] {
   return 'auto';
 }
 
+export async function generateStoryAudio(text: string): Promise<string | null> {
+  // Placeholder for Gemini 2.5 Flash TTS
+  // In a real implementation, this would call the API and return a base64 string.
+  // For now, we'll return null to avoid breaking changes until we have the exact API details.
+  console.log("Generating audio for:", text.slice(0, 50));
+  return null;
+}
+
+export async function generateStoryImage(summary: string): Promise<string | null> {
+  // Placeholder for Gemini 2.0 Flash Image Generation
+  console.log("Generating image for:", summary.slice(0, 50));
+  return null;
+}
+
