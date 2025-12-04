@@ -17,24 +17,37 @@ export async function POST(request: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Use the latest flash model as requested
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const arrayBuffer = await audioFile.arrayBuffer();
         const base64Audio = Buffer.from(arrayBuffer).toString('base64');
 
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    mimeType: audioFile.type || 'audio/webm',
-                    data: base64Audio
-                }
-            },
-            { text: "Transcribe this audio exactly as spoken. Do not add any commentary. Return only the text." }
-        ]);
+        // Try 2.5 Flash first (better quality), fallback to 2.0 Flash (higher limits)
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+        let lastError = null;
 
-        const text = result.response.text();
-        return NextResponse.json({ text });
+        for (const modelName of modelsToTry) {
+            try {
+                const model = genAI.getGenerativeModel({ model: modelName });
+                const result = await model.generateContent([
+                    {
+                        inlineData: {
+                            mimeType: audioFile.type || 'audio/webm',
+                            data: base64Audio
+                        }
+                    },
+                    { text: "Transcribe this audio exactly as spoken. Do not add any commentary. Return only the text." }
+                ]);
+
+                const text = result.response.text();
+                return NextResponse.json({ text });
+            } catch (error: any) {
+                console.warn(`Model ${modelName} failed:`, error.message);
+                lastError = error;
+                // Continue to next model
+            }
+        }
+
+        throw lastError || new Error('All models failed');
 
     } catch (error: any) {
         console.error('Transcription error:', error);

@@ -269,7 +269,7 @@ Here are my diary entries. Convert ALL of the content into one continuous narrat
 
 ${feed}
 `.trim();
- }
+}
 
 
 function extractStoryText(response: unknown) {
@@ -318,8 +318,8 @@ function describeBlockedResponse(response: unknown): string | null {
     const ratings = promptFeedback?.safetyRatings?.filter((rating) => rating?.category && rating?.probability);
     const ratingLine = ratings?.length
       ? ` (${ratings
-          .map((r) => `${String(r.category)}=${String(r.probability)}`)
-          .join(', ')})`
+        .map((r) => `${String(r.category)}=${String(r.probability)}`)
+        .join(', ')})`
       : '';
     return `The model blocked this request for safety reasons${ratingLine}. Try removing sensitive content or shortening the range.`;
   }
@@ -348,8 +348,8 @@ async function loadGenerativeModel(config: StoryModelConfig) {
   if (!apiKey) return null;
   const genAI = new GoogleGenerativeAI(apiKey);
   const modelNames = config.mode === 'advanced'
-    ? ['gemini-2.5-pro']
-    : ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+    ? ['gemini-2.0-pro-exp-02-05', 'gemini-1.5-pro']
+    : ['gemini-2.0-flash', 'gemini-1.5-flash'];
 
   for (const name of modelNames) {
     try {
