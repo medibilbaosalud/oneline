@@ -33,6 +33,7 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
                     setStatus('ready');
                     setProgress(0);
                 } else if (type === 'result') {
+                    console.log('[SpeechToText] Received result from worker');
                     onTranscript(data);
                     setStatus('ready');
                 } else if (type === 'error') {
@@ -63,9 +64,15 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
             };
 
             mediaRecorder.current.onstop = async () => {
+                console.log('[SpeechToText] Recording stopped, processing audio...');
+                const startProcess = performance.now();
                 setStatus('processing');
                 const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
                 const audioBuffer = await readAudio(audioBlob);
+                const endProcess = performance.now();
+                console.log(`[SpeechToText] Audio processed in ${(endProcess - startProcess).toFixed(2)}ms. Buffer size: ${audioBuffer.length}`);
+
+                console.log('[SpeechToText] Sending to worker...');
                 worker.current?.postMessage({ type: 'generate', data: { audio: audioBuffer } });
 
                 // Stop all tracks
@@ -122,10 +129,10 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
             onClick={handleClick}
             disabled={disabled || isProcessing}
             className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
-                    ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
-                    : isProcessing
-                        ? 'bg-indigo-500/10 text-indigo-400'
-                        : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
+                : isProcessing
+                    ? 'bg-indigo-500/10 text-indigo-400'
+                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
                 } disabled:opacity-50`}
             title="Dictate entry"
         >
