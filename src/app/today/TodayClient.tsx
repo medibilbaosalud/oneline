@@ -464,14 +464,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
         >
           Sign in / Sign up
         </motion.a>
-        <div className="mt-8 border-t border-white/10 pt-6">
-          <button
-            onClick={toggleLocalMode}
-            className="text-xs text-neutral-500 hover:text-neutral-300 underline decoration-neutral-700 underline-offset-4"
-          >
-            Or use Local Mode (Offline only)
-          </button>
-        </div>
+
       </motion.div>
     );
   }
