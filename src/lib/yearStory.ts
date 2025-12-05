@@ -460,21 +460,17 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   if (!apiKey) return null;
 
   try {
-    // Use v1alpha for experimental audio generation features
-    // Updated to gemini-2.5-flash-tts as requested/observed in user dashboard
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash-tts:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-tts:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
+          role: 'user',
           parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
         }],
         generationConfig: {
-          response_modalities: ["AUDIO"],
-          speech_config: {
-            voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
-          }
+          responseMimeType: 'audio/ogg; codecs=opus'
         }
       })
     });
@@ -486,12 +482,16 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
     }
 
     const data = await response.json();
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
-      return part.inlineData.data;
+    const parts = data?.candidates?.[0]?.content?.parts ?? [];
+    const audioPart = Array.isArray(parts)
+      ? parts.find((part: any) => part?.inlineData?.mimeType?.startsWith('audio'))
+      : undefined;
+
+    if (audioPart?.inlineData?.data) {
+      return audioPart.inlineData.data;
     }
 
-    console.warn("Audio gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
+    console.warn("Audio gen response structure unexpected:", JSON.stringify(data).slice(0, 500));
     return null;
 
   } catch (error) {
@@ -505,17 +505,17 @@ export async function generateStoryImage(summary: string): Promise<string | null
   if (!apiKey) return null;
 
   try {
-    // Use v1alpha for experimental image generation features
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
+          role: 'user',
           parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
         }],
         generationConfig: {
-          response_modalities: ["IMAGE"]
+          responseMimeType: 'image/png'
         }
       })
     });
@@ -527,12 +527,16 @@ export async function generateStoryImage(summary: string): Promise<string | null
     }
 
     const data = await response.json();
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-      return part.inlineData.data;
+    const parts = data?.candidates?.[0]?.content?.parts ?? [];
+    const imagePart = Array.isArray(parts)
+      ? parts.find((part: any) => part?.inlineData?.mimeType?.startsWith('image'))
+      : undefined;
+
+    if (imagePart?.inlineData?.data) {
+      return imagePart.inlineData.data;
     }
 
-    console.warn("Image gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
+    console.warn("Image gen response structure unexpected:", JSON.stringify(data).slice(0, 500));
     return null;
   } catch (error) {
     console.error("Image generation failed:", error);
