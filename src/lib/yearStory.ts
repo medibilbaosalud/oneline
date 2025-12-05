@@ -576,6 +576,7 @@ export async function generateStoryImage(summary: string): Promise<string | null
 
   console.error("All image generation attempts failed.");
   return null;
+}
 
 
 
