@@ -455,89 +455,104 @@ async function generateWithRetry(model: any, prompt: any, retries = 3, delay = 1
   }
 }
 
-export async function generateStoryAudio(text: string): Promise<string | null> {
+type InlineMediaPart = {
+  inlineData?: { mimeType?: string; data?: string };
+};
+
+type MediaRequest = {
+  model: string;
+  prompt: string;
+  responseMimeType: string;
+};
+
+async function requestMediaFromGemini({ model, prompt, responseMimeType }: MediaRequest): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    // Use v1alpha for experimental audio generation features
-    // Updated to gemini-2.5-flash-tts as requested/observed in user dashboard
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash-tts:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
-        }],
-        generationConfig: {
-          response_modalities: ["AUDIO"],
-          speech_config: {
-            voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
-          }
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Audio gen failed status:", response.status, errorText);
-      return null;
-    }
-
-    const data = await response.json();
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
-      return part.inlineData.data;
-    }
-
-    console.warn("Audio gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
-    return null;
-
-  } catch (error) {
-    console.error("Audio generation failed:", error);
+  if (!apiKey) {
+    console.error('Gemini media generation skipped: GEMINI_API_KEY is missing');
     return null;
   }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [{ text: prompt }],
+    }],
+    generationConfig: {
+      responseMimeType,
+    },
+  } satisfies Record<string, unknown>;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    cache: 'no-store',
+    body: JSON.stringify(body),
+  });
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    console.error('Gemini media request failed', response.status, responseText.slice(0, 800));
+    return null;
+  }
+
+  let data: any;
+  try {
+    data = JSON.parse(responseText);
+  } catch (error) {
+    console.error('Gemini media JSON parse failed', error, responseText.slice(0, 300));
+    return null;
+  }
+
+  const parts: InlineMediaPart[] | undefined = data?.candidates?.[0]?.content?.parts;
+  const mediaPart = Array.isArray(parts)
+    ? parts.find((part) => part?.inlineData?.mimeType?.startsWith(responseMimeType.split('/')[0]))
+    : undefined;
+
+  if (mediaPart?.inlineData?.data) {
+    return mediaPart.inlineData.data;
+  }
+
+  console.error('Gemini media response missing inlineData', JSON.stringify(data).slice(0, 800));
+  return null;
+}
+
+export async function generateStoryAudio(text: string): Promise<string | null> {
+  const trimmed = text.slice(0, 4000).trim();
+  if (!trimmed) return null;
+
+  return requestMediaFromGemini({
+    model: 'gemini-2.5-flash-tts',
+    responseMimeType: 'audio/mp3',
+    prompt: `Read this story aloud. Return ONLY the audio data, no text.\n\n${trimmed}`,
+  });
 }
 
 export async function generateStoryImage(summary: string): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  const trimmed = summary.slice(0, 500).trim();
+  if (!trimmed) return null;
 
-  try {
-    // Use v1alpha for experimental image generation features
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
-        }],
-        generationConfig: {
-          response_modalities: ["IMAGE"]
-        }
-      })
-    });
+  const prompt =
+    'Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ' +
+    trimmed;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Image gen failed status:", response.status, errorText);
-      return null;
-    }
+  const primary = await requestMediaFromGemini({
+    model: 'gemini-2.0-flash',
+    responseMimeType: 'image/png',
+    prompt,
+  });
 
-    const data = await response.json();
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-      return part.inlineData.data;
-    }
+  if (primary) return primary;
 
-    console.warn("Image gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
-    return null;
-  } catch (error) {
-    console.error("Image generation failed:", error);
-    return null;
-  }
+  // Retry with the LCM image-tuned variant if the primary model does not return inline data.
+  return requestMediaFromGemini({
+    model: 'gemini-2.0-flash-lcm',
+    responseMimeType: 'image/png',
+    prompt,
+  });
 }
 
 
