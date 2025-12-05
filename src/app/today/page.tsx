@@ -7,6 +7,7 @@ import {
 } from '@/lib/summaryPreferences';
 
 export const metadata = { title: 'Today — OneLine' };
+export const dynamic = 'force-dynamic';
 
 export default async function TodayPage() {
   let entryLimit = ENTRY_LIMIT_BASE;
