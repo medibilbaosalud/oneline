@@ -635,7 +635,6 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                       </motion.span>
                     )}
                   </AnimatePresence>
-                  <span className="text-xs text-red-500">Debug: Mic</span>
                   <SpeechToText
                     onTranscript={(transcript) => {
                       const newText = text ? `${text} ${transcript}` : transcript;
@@ -653,7 +652,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                     disabled={saving || loadingEntry}
                     className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-200 transition hover:bg-neutral-700 disabled:opacity-50"
                   >
-                    Clear
+                    Clear Text
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
