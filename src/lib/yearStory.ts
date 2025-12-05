@@ -459,85 +459,104 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  try {
-    // Use v1beta for stable access to new models
-    // Updated to gemini-2.5-flash-tts as requested/observed in user dashboard
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-tts:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
-        }],
-        generationConfig: {
-          response_modalities: ["AUDIO"],
-          speech_config: {
-            voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
+  const modelsToTry = [
+    'gemini-2.5-flash-tts',
+    'gemini-2.5-flash-preview-tts'
+  ];
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Attempting audio generation with model: ${modelName}`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
+          }],
+          generationConfig: {
+            response_modalities: ["AUDIO"],
+            speech_config: {
+              voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
+            }
           }
-        }
-      })
-    });
+        })
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Audio gen failed status:", response.status, errorText);
-      return null;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`Audio gen failed with ${modelName}:`, response.status, errorText);
+        continue; // Try next model
+      }
+
+      const data = await response.json();
+      const part = data?.candidates?.[0]?.content?.parts?.[0];
+      if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
+        console.log(`Audio generation successful with ${modelName}`);
+        return part.inlineData.data;
+      }
+
+      console.warn(`Audio gen response structure unexpected for ${modelName}:`, JSON.stringify(data).slice(0, 200));
+    } catch (error) {
+      console.error(`Audio generation error with ${modelName}:`, error);
     }
-
-    const data = await response.json();
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
-      return part.inlineData.data;
-    }
-
-    console.warn("Audio gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
-    return null;
-
-  } catch (error) {
-    console.error("Audio generation failed:", error);
-    return null;
   }
+
+  console.error("All audio generation attempts failed.");
+  return null;
 }
 
 export async function generateStoryImage(summary: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  try {
-    // Use v1beta for stable access to new models
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
-        }],
-        generationConfig: {
-          response_modalities: ["IMAGE"]
-        }
-      })
-    });
+  const modelsToTry = [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-exp',
+    'gemini-2.0-flash-preview-image-generation'
+  ];
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Image gen failed status:", response.status, errorText);
-      return null;
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Attempting image generation with model: ${modelName}`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
+          }],
+          generationConfig: {
+            response_modalities: ["IMAGE"]
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn(`Image gen failed with ${modelName}:`, response.status, errorText);
+        continue; // Try next model
+      }
+
+      const data = await response.json();
+      const part = data?.candidates?.[0]?.content?.parts?.[0];
+      if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
+        console.log(`Image generation successful with ${modelName}`);
+        return part.inlineData.data;
+      }
+
+      console.warn(`Image gen response structure unexpected for ${modelName}:`, JSON.stringify(data).slice(0, 200));
+    } catch (error) {
+      console.error(`Image generation error with ${modelName}:`, error);
     }
-
-    const data = await response.json();
-    const part = data?.candidates?.[0]?.content?.parts?.[0];
-    if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-      return part.inlineData.data;
-    }
-
-    console.warn("Image gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
-    return null;
-  } catch (error) {
-    console.error("Image generation failed:", error);
-    return null;
   }
+
+  console.error("All image generation attempts failed.");
+  return null;
 }
 
 
