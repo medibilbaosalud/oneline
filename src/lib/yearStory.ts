@@ -461,8 +461,8 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
 
   try {
     // Use v1alpha for experimental audio generation features
-    // Updated to gemini-2.5-flash as requested
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    // Updated to gemini-2.5-flash-tts as requested/observed in user dashboard
+    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash-tts:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
