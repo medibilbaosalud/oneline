@@ -635,6 +635,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                       </motion.span>
                     )}
                   </AnimatePresence>
+                  <span className="text-xs text-red-500">Debug: Mic</span>
                   <SpeechToText
                     onTranscript={(transcript) => {
                       const newText = text ? `${text} ${transcript}` : transcript;
