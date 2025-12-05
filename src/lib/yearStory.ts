@@ -459,15 +459,13 @@ type InlineMediaPart = {
   inlineData?: { mimeType?: string; data?: string };
 };
 
-async function requestMediaFromGemini({
-  model,
-  prompt,
-  responseMimeType,
-}: {
+type MediaRequest = {
   model: string;
   prompt: string;
   responseMimeType: string;
-}): Promise<string | null> {
+};
+
+async function requestMediaFromGemini({ model, prompt, responseMimeType }: MediaRequest): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.error('Gemini media generation skipped: GEMINI_API_KEY is missing');
@@ -491,6 +489,7 @@ async function requestMediaFromGemini({
       'Content-Type': 'application/json',
       'x-goog-api-key': apiKey,
     },
+    cache: 'no-store',
     body: JSON.stringify(body),
   });
 
@@ -522,22 +521,37 @@ async function requestMediaFromGemini({
 }
 
 export async function generateStoryAudio(text: string): Promise<string | null> {
-  const trimmed = text.slice(0, 4000);
+  const trimmed = text.slice(0, 4000).trim();
+  if (!trimmed) return null;
+
   return requestMediaFromGemini({
-    model: 'gemini-2.0-flash-tts',
-    responseMimeType: 'audio/ogg',
+    model: 'gemini-2.5-flash-tts',
+    responseMimeType: 'audio/mp3',
     prompt: `Read this story aloud. Return ONLY the audio data, no text.\n\n${trimmed}`,
   });
 }
 
 export async function generateStoryImage(summary: string): Promise<string | null> {
-  const trimmed = summary.slice(0, 500);
-  return requestMediaFromGemini({
+  const trimmed = summary.slice(0, 500).trim();
+  if (!trimmed) return null;
+
+  const prompt =
+    'Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ' +
+    trimmed;
+
+  const primary = await requestMediaFromGemini({
     model: 'gemini-2.0-flash',
     responseMimeType: 'image/png',
-    prompt:
-      'Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ' +
-      trimmed,
+    prompt,
+  });
+
+  if (primary) return primary;
+
+  // Retry with the LCM image-tuned variant if the primary model does not return inline data.
+  return requestMediaFromGemini({
+    model: 'gemini-2.0-flash-lcm',
+    responseMimeType: 'image/png',
+    prompt,
   });
 }
 
