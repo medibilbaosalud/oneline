@@ -469,9 +469,9 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
           parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
         }],
         generationConfig: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
+          response_modalities: ["AUDIO"],
+          speech_config: {
+            voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
           }
         }
       })
@@ -510,7 +510,7 @@ export async function generateStoryImage(summary: string): Promise<string | null
           parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
         }],
         generationConfig: {
-          responseModalities: ["IMAGE"]
+          response_modalities: ["IMAGE"]
         }
       })
     });
