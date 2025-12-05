@@ -459,15 +459,20 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
+  // FALLBACK MECHANISM:
+  // The user reported issues with specific model names and API versions.
+  // We iterate through a list of likely candidates, including "Preview" versions and both v1beta/v1alpha endpoints.
+  // This ensures we find a working configuration without manual intervention.
   const modelsToTry = [
-    'gemini-2.5-flash-tts',
-    'gemini-2.5-flash-preview-tts'
+    { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' }, // Primary choice from user screenshot
+    { name: 'gemini-2.5-flash-tts', version: 'v1beta' },         // Standard v1beta
+    { name: 'gemini-2.5-flash-tts', version: 'v1alpha' }         // Legacy/Experimental v1alpha
   ];
 
-  for (const modelName of modelsToTry) {
+  for (const model of modelsToTry) {
     try {
-      console.log(`Attempting audio generation with model: ${modelName}`);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      console.log(`Attempting audio generation with model: ${model.name} (${model.version})`);
+      const url = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -487,20 +492,25 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`Audio gen failed with ${modelName}:`, response.status, errorText);
-        continue; // Try next model
+        console.warn(`Audio gen failed with ${model.name}:`, response.status, errorText);
+        continue; // Try next model in the list
       }
 
       const data = await response.json();
-      const part = data?.candidates?.[0]?.content?.parts?.[0];
-      if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
-        console.log(`Audio generation successful with ${modelName}`);
-        return part.inlineData.data;
+      // Robustly check for audio data in candidates
+      const candidates = data?.candidates || [];
+      for (const candidate of candidates) {
+        for (const part of candidate?.content?.parts || []) {
+          if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
+            console.log(`Audio generation successful with ${model.name}`);
+            return part.inlineData.data;
+          }
+        }
       }
 
-      console.warn(`Audio gen response structure unexpected for ${modelName}:`, JSON.stringify(data).slice(0, 200));
+      console.warn(`Audio gen response structure unexpected for ${model.name}:`, JSON.stringify(data).slice(0, 200));
     } catch (error) {
-      console.error(`Audio generation error with ${modelName}:`, error);
+      console.error(`Audio generation error with ${model.name}:`, error);
     }
   }
 
@@ -512,16 +522,20 @@ export async function generateStoryImage(summary: string): Promise<string | null
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
+  // FALLBACK MECHANISM:
+  // Similar to audio, we try multiple image generation models.
+  // 'gemini-2.0-flash-preview-image-generation' is the specific one from the user's dashboard.
   const modelsToTry = [
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-exp',
-    'gemini-2.0-flash-preview-image-generation'
+    { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Primary choice
+    { name: 'gemini-2.0-flash-exp-image-generation', version: 'v1alpha' },    // Experimental variant
+    { name: 'gemini-2.0-flash-exp', version: 'v1alpha' },                     // Short experimental name
+    { name: 'gemini-2.0-flash', version: 'v1beta' }                           // Standard name
   ];
 
-  for (const modelName of modelsToTry) {
+  for (const model of modelsToTry) {
     try {
-      console.log(`Attempting image generation with model: ${modelName}`);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      console.log(`Attempting image generation with model: ${model.name} (${model.version})`);
+      const url = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -538,26 +552,30 @@ export async function generateStoryImage(summary: string): Promise<string | null
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`Image gen failed with ${modelName}:`, response.status, errorText);
+        console.warn(`Image gen failed with ${model.name}:`, response.status, errorText);
         continue; // Try next model
       }
 
       const data = await response.json();
-      const part = data?.candidates?.[0]?.content?.parts?.[0];
-      if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-        console.log(`Image generation successful with ${modelName}`);
-        return part.inlineData.data;
+      // Robustly check for image data in candidates
+      const candidates = data?.candidates || [];
+      for (const candidate of candidates) {
+        for (const part of candidate?.content?.parts || []) {
+          if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
+            console.log(`Image generation successful with ${model.name}`);
+            return part.inlineData.data;
+          }
+        }
       }
 
-      console.warn(`Image gen response structure unexpected for ${modelName}:`, JSON.stringify(data).slice(0, 200));
+      console.warn(`Image gen response structure unexpected for ${model.name}:`, JSON.stringify(data).slice(0, 200));
     } catch (error) {
-      console.error(`Image generation error with ${modelName}:`, error);
+      console.error(`Image generation error with ${model.name}:`, error);
     }
   }
 
   console.error("All image generation attempts failed.");
   return null;
-}
 
 
 
