@@ -461,7 +461,8 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
 
   try {
     // Use v1alpha for experimental audio generation features
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // Updated to gemini-2.5-flash as requested
+    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -479,7 +480,8 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.warn("Audio gen failed status:", response.status);
+      const errorText = await response.text();
+      console.error("Audio gen failed status:", response.status, errorText);
       return null;
     }
 
@@ -489,10 +491,11 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
       return part.inlineData.data;
     }
 
+    console.warn("Audio gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
     return null;
 
   } catch (error) {
-    console.warn("Audio generation failed:", error);
+    console.error("Audio generation failed:", error);
     return null;
   }
 }
@@ -518,7 +521,8 @@ export async function generateStoryImage(summary: string): Promise<string | null
     });
 
     if (!response.ok) {
-      console.warn("Image gen failed status:", response.status);
+      const errorText = await response.text();
+      console.error("Image gen failed status:", response.status, errorText);
       return null;
     }
 
@@ -528,9 +532,10 @@ export async function generateStoryImage(summary: string): Promise<string | null
       return part.inlineData.data;
     }
 
+    console.warn("Image gen response structure unexpected:", JSON.stringify(data).slice(0, 200));
     return null;
   } catch (error) {
-    console.warn("Image generation failed:", error);
+    console.error("Image generation failed:", error);
     return null;
   }
 }
