@@ -64,6 +64,12 @@ export async function POST(req: NextRequest) {
       : entries[entries.length - 1].day ?? entries[entries.length - 1].created_at?.slice(0, 10) ?? '';
 
   const mode: SummaryMode = body?.mode === 'advanced' ? 'advanced' : 'standard';
+  const unlimitedEmails = new Set([
+    'aitoralboniga@gmail.com',
+    'aitoralboniga001@gmail.com',
+    'aitoralboniga@sfidelikastola.com',
+  ]);
+  const isUnlimitedUser = unlimitedEmails.has((user.email ?? '').toLowerCase());
 
   const options: YearStoryOptions = {
     length: ['short', 'medium', 'long'].includes(body?.options?.length) ? body.options.length : 'medium',
@@ -84,15 +90,16 @@ export async function POST(req: NextRequest) {
     const dailyUsage = await ensureDailyUsage(supabase, user.id, todayIso);
     const usedUnits = usageUnits(dailyUsage);
     const cost = mode === 'advanced' ? 2 : 1;
+    const effectiveDailyLimit = isUnlimitedUser ? Number.MAX_SAFE_INTEGER : DAILY_LIMIT_UNITS;
 
-    if (usedUnits + cost > DAILY_LIMIT_UNITS) {
+    if (usedUnits + cost > effectiveDailyLimit) {
       return NextResponse.json(
         {
           error: 'daily_limit_reached',
           message: 'You have reached today’s summary limit. Please try again tomorrow.',
           usageUnits: usedUnits,
           remainingUnits: 0,
-          dailyLimit: DAILY_LIMIT_UNITS,
+          dailyLimit: effectiveDailyLimit,
         },
         { status: 429 },
       );
@@ -152,8 +159,8 @@ export async function POST(req: NextRequest) {
         words: wordCount,
         mode,
         usageUnits: usedAfter,
-        remainingUnits: remainingUnits(updated),
-        dailyLimit: DAILY_LIMIT_UNITS,
+        remainingUnits: isUnlimitedUser ? effectiveDailyLimit : remainingUnits(updated),
+        dailyLimit: effectiveDailyLimit,
       },
       { headers: { 'cache-control': 'no-store' } },
     );
