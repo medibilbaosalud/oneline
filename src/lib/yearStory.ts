@@ -460,9 +460,9 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   if (!apiKey) return null;
 
   try {
-    // Use v1alpha for experimental audio generation features
+    // Use v1beta for stable access to new models
     // Updated to gemini-2.5-flash-tts as requested/observed in user dashboard
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.5-flash-tts:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-tts:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -505,8 +505,8 @@ export async function generateStoryImage(summary: string): Promise<string | null
   if (!apiKey) return null;
 
   try {
-    // Use v1alpha for experimental image generation features
-    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // Use v1beta for stable access to new models
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
