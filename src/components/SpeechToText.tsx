@@ -14,9 +14,9 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
     const [recognition, setRecognition] = useState<any>(null);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && (window.SpeechRecognition || (window as any).webkitSpeechRecognition)) {
+        if (typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)) {
             setIsSupported(true);
-            const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
             const recognitionInstance = new SpeechRecognition();
             recognitionInstance.continuous = false;
             recognitionInstance.interimResults = false;
