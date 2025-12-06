@@ -80,7 +80,7 @@ type TodayClientProps = {
   initialEntryLimit?: number;
 };
 
-export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
+export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
   const { entryLimit } = useEntryLimits({ entryLimit: initialEntryLimit });
   const { dataKey } = useVault();
   const router = useRouter();
@@ -477,7 +477,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6"
+      className="space-y-6 border-4 border-red-600 rounded-xl p-2"
     >
       <ProductTourAssistant />
       <VaultGate>

@@ -1,4 +1,4 @@
-import TodayClient from './TodayClient';
+import TodayView from './TodayView';
 import { supabaseServer } from '@/lib/supabaseServer';
 import {
   ENTRY_LIMIT_BASE,
@@ -48,7 +48,7 @@ export default async function TodayPage() {
             })}
           </h1>
         </header>
-        <TodayClient initialEntryLimit={entryLimit} />
+        <TodayView initialEntryLimit={entryLimit} />
       </div>
     </main>
   );
