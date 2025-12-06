@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default function HowToUsePage() {
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
@@ -36,9 +38,10 @@ export default function HowToUsePage() {
       <div className="mx-auto max-w-5xl px-6 py-14">
         <div className="grid gap-4 rounded-2xl border border-white/5 bg-white/[0.02] p-6 shadow-[0_20px_80px_-60px_rgba(0,0,0,0.9)] md:grid-cols-3">
           {[{
-            title: "Set your vault", body: "Create your account, choose a passphrase, and unlock your private vault. Only you know it—there is no recovery."},
-            { title: "Capture one line", body: "Type up to 333 characters in any language. A couple of sentences or a few bullets are enough to capture the day." },
-            { title: "See the patterns", body: "Check your streaks, weekly stories, and longer summaries. They stay in your voice and respect your mix of languages." },
+            title: "Set your vault", body: "Create your account, choose a passphrase, and unlock your private vault. Only you know it—there is no recovery."
+          },
+          { title: "Capture one line", body: "Type up to 333 characters in any language. A couple of sentences or a few bullets are enough to capture the day." },
+          { title: "See the patterns", body: "Check your streaks, weekly stories, and longer summaries. They stay in your voice and respect your mix of languages." },
           ].map((item) => (
             <div key={item.title} className="rounded-xl border border-white/5 bg-white/[0.03] p-4 shadow-[0_10px_50px_-45px_rgba(0,0,0,0.9)]">
               <h3 className="text-base font-semibold text-white">{item.title}</h3>

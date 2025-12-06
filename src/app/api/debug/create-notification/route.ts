@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(_req: NextRequest) {
-  const sb = supabaseServer();
+  const sb = await supabaseServer();
   const {
     data: { user },
     error: authError,

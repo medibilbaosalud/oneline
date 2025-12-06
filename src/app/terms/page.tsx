@@ -1,5 +1,6 @@
 // src/app/terms/page.tsx
 export const metadata = { title: "Terms of Service — OneLine" };
+export const dynamic = 'force-dynamic';
 
 const lastUpdated = new Date().toISOString().slice(0, 10);
 

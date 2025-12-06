@@ -1,6 +1,8 @@
 // src/app/visitor/page.tsx
 import VisitorExperience from './VisitorExperience';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Visitor mode — OneLine',
   description: 'Preview the OneLine interface in read-only mode before creating your encrypted account.',

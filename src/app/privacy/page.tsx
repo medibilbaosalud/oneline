@@ -1,5 +1,6 @@
 // src/app/privacy/page.tsx
 export const metadata = { title: "Privacy Policy — OneLine" };
+export const dynamic = 'force-dynamic';
 
 const lastUpdated = new Date().toISOString().slice(0, 10);
 

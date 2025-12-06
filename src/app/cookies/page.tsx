@@ -1,5 +1,6 @@
 // src/app/cookies/page.tsx
 export const metadata = { title: "Cookies — OneLine" };
+export const dynamic = 'force-dynamic';
 
 export default function CookiesPage() {
   return (

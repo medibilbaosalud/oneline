@@ -13,7 +13,7 @@ export default async function TodayPage() {
   let entryLimit = ENTRY_LIMIT_BASE;
 
   try {
-    const supabase = supabaseServer();
+    const supabase = await supabaseServer();
     const {
       data: { user },
     } = await supabase.auth.getUser();
