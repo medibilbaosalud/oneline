@@ -460,9 +460,9 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   if (!apiKey) return null;
 
   const modelsToTry = [
-    { name: 'gemini-2.5-flash-tts', version: 'v1beta', voice: 'Aoede' },
+    { name: 'gemini-2.0-flash-tts', version: 'v1alpha', voice: 'Aoede' },
+    { name: 'gemini-1.5-pro-tts', version: 'v1beta', voice: 'Aoede' },
     { name: 'gemini-1.5-flash-tts', version: 'v1beta', voice: 'Aoede' },
-    { name: 'gemini-2.5-flash', version: 'v1beta', voice: 'Aoede' },
   ];
 
   const requestText = `Read this story aloud with warmth and clarity. Return ONLY the audio data (base64).\n\n${text.slice(0, 4000)}`;

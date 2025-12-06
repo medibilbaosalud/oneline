@@ -106,7 +106,7 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
                 type="button"
                 onClick={handleClick}
                 disabled={disabled || isProcessing}
-                className={`relative inline-flex min-w-[160px] items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium transition-all ${isRecording
+                className={`relative inline-flex min-w-[160px] w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium transition-all sm:w-auto ${isRecording
                         ? 'bg-rose-500/10 text-rose-200 ring-1 ring-rose-500/50'
                         : isProcessing
                             ? 'bg-indigo-500/10 text-indigo-200 ring-1 ring-indigo-500/40'
