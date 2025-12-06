@@ -51,6 +51,12 @@ SUPABASE_SERVICE_ROLE_KEY
 
 For Vercel preview deployments, add at least `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. If background jobs or admin endpoints are required in previews, also add `SUPABASE_SERVICE_ROLE_KEY`.
 
+### Today page sources and deploy verification
+
+- The Today page renders from `src/app/today` in the web app and from `mobile-build/src/app/today` in the Expo/mobile bundle. Update both when changing entry actions (including the dictation button) to keep web and mobile in sync.
+- To confirm the live site is serving the latest commit, compare `git rev-parse --short HEAD` locally with the commit hash shown on the Vercel deployment page. Trigger a fresh deployment if the hashes differ.
+- If cached assets obscure UI changes (for example, a missing dictation button), hard-refresh the browser or open the site in a private window to bypass stale Next.js chunks.
+
 ## Progressive Web App
 
 The app ships with a web manifest, vector maskable icons, and a lightweight service worker (`public/sw.js`) so OneLine can be installed from desktop or mobile browsers.
