@@ -80,7 +80,7 @@ type TodayClientProps = {
   initialEntryLimit?: number;
 };
 
-export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
+export default function FreshView({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
   const { entryLimit } = useEntryLimits({ entryLimit: initialEntryLimit });
   const { dataKey } = useVault();
   const router = useRouter();
@@ -480,6 +480,9 @@ export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
       animate={{ opacity: 1 }}
       className="space-y-6"
     >
+      <div className="bg-purple-600 text-white p-2 text-center font-bold rounded-lg">
+        FRESH VIEW LOADED - V3
+      </div>
       <ProductTourAssistant />
       <VaultGate>
         <div className="space-y-6">
