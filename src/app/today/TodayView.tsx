@@ -477,7 +477,7 @@ export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6 border-4 border-red-600 rounded-xl p-2"
+      className="space-y-6"
     >
       <ProductTourAssistant />
       <VaultGate>

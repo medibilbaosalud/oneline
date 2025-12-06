@@ -91,19 +91,21 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
     const isProcessing = status === 'processing';
     const isError = status === 'error';
 
+    console.log('[SpeechToText] Rendering component');
     return (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 border-2 border-yellow-400 p-2">
+            <div className="text-xs text-yellow-400">DEBUG: MIC HERE</div>
             <button
                 type="button"
                 onClick={handleClick}
                 disabled={disabled || isProcessing}
                 className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
-                        ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
-                        : isProcessing
-                            ? 'bg-indigo-500/10 text-indigo-400'
-                            : isError
-                                ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/50'
-                                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                    ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
+                    : isProcessing
+                        ? 'bg-indigo-500/10 text-indigo-400'
+                        : isError
+                            ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/50'
+                            : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
                     } disabled:opacity-50`}
                 title="Dictate entry"
             >
