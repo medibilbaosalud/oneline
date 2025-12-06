@@ -473,6 +473,7 @@ export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
   const upcomingCompanion = nextCompanion(streak?.current ?? 0);
   const progressPercent = Math.round((streak?.progress ?? 0) * 100);
 
+  console.log('Rendering TodayView - SpeechToText should appear below');
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -635,7 +636,7 @@ export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
                       </motion.span>
                     )}
                   </AnimatePresence>
-                  {console.log('Rendering SpeechToText component')}
+
                   <SpeechToText
                     onTranscript={(transcript) => {
                       const newText = text ? `${text} ${transcript}` : transcript;
