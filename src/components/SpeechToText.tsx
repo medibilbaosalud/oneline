@@ -98,18 +98,21 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
     const isError = status === 'error';
 
     return (
-        <div className="flex flex-col items-center gap-2 text-left">
+        <div className="flex flex-col items-center gap-2 text-left text-neutral-100">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500">
+                Dictation
+            </div>
             <button
                 type="button"
                 onClick={handleClick}
                 disabled={disabled || isProcessing}
-                className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
-                        ? 'bg-rose-500/10 text-rose-300 ring-1 ring-rose-500/50'
+                className={`relative inline-flex min-w-[160px] items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium transition-all ${isRecording
+                        ? 'bg-rose-500/10 text-rose-200 ring-1 ring-rose-500/50'
                         : isProcessing
-                            ? 'bg-indigo-500/10 text-indigo-300 ring-1 ring-indigo-500/40'
+                            ? 'bg-indigo-500/10 text-indigo-200 ring-1 ring-indigo-500/40'
                             : isError
-                                ? 'bg-red-500/10 text-red-300 ring-1 ring-red-500/50'
-                                : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700 hover:text-white'
+                                ? 'bg-red-500/10 text-red-200 ring-1 ring-red-500/50'
+                                : 'bg-neutral-800 text-neutral-100 hover:border-white/20 hover:bg-neutral-700'
                     } disabled:opacity-50`}
                 title="Dictate entry"
             >

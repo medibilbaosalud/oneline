@@ -892,6 +892,12 @@ export default function StoryGenerator({
               </button>
             </div>
 
+            {!loading && story && (!imageData || !audioData) && (
+              <div className="mb-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-200">
+                We will attach audio narration and a cover image when available. If they do not appear, please retry in a moment.
+              </div>
+            )}
+
             {(imageData || audioData) && (
               <div className="mb-8 grid gap-4 sm:grid-cols-2">
                 {imageData && (

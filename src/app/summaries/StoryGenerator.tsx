@@ -442,6 +442,8 @@ export default function StoryGenerator({
       setLoading(true);
       setError(null);
       setStory("");
+      setAudioData(null);
+      setImageData(null);
       setLoadingPhrase(loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)]);
 
       const params = new URLSearchParams({ from, to });
@@ -883,6 +885,12 @@ export default function StoryGenerator({
                 Export as PDF
               </button>
             </div>
+
+            {!loading && story && (!imageData || !audioData) && (
+              <div className="mb-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-neutral-200">
+                We will attach audio narration and a cover image when available. If they do not appear, please retry in a moment.
+              </div>
+            )}
 
             {(imageData || audioData) && (
               <div className="mb-8 grid gap-6 sm:grid-cols-2">
