@@ -1,4 +1,4 @@
-import FreshView from './FreshView';
+import TodayJournal from './TodayJournal';
 import { supabaseServer } from '@/lib/supabaseServer';
 import {
   ENTRY_LIMIT_BASE,
@@ -48,7 +48,7 @@ export default async function TodayPage() {
             })}
           </h1>
         </header>
-        <FreshView initialEntryLimit={entryLimit} />
+        <TodayJournal initialEntryLimit={entryLimit} />
       </div>
     </main>
   );

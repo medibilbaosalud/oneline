@@ -52,10 +52,7 @@ export default function RootLayout({
           {/* Global navigation across all pages */}
           <TopNav />
           {children}
-          {/* DEBUG VERSION INDICATOR */}
-          <a href="/debug-today" className="fixed bottom-1 right-1 z-50 rounded bg-red-600 px-2 py-1 text-[10px] font-bold text-white opacity-50 hover:opacity-100 decoration-none">
-            v2025-12-06-FIX-DEPLOYED (CLICK ME)
-          </a>
+
         </Providers>
         <script dangerouslySetInnerHTML={{ __html: `console.log("VERSION: v2025-12-06-FIX-DEPLOYED")` }} />
       </body>

@@ -80,7 +80,7 @@ type TodayClientProps = {
   initialEntryLimit?: number;
 };
 
-export default function FreshView({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
+export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
   const { entryLimit } = useEntryLimits({ entryLimit: initialEntryLimit });
   const { dataKey } = useVault();
   const router = useRouter();
@@ -473,16 +473,12 @@ export default function FreshView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
   const upcomingCompanion = nextCompanion(streak?.current ?? 0);
   const progressPercent = Math.round((streak?.progress ?? 0) * 100);
 
-  console.log('Rendering TodayView - SpeechToText should appear below');
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-6"
     >
-      <div className="bg-purple-600 text-white p-2 text-center font-bold rounded-lg">
-        FRESH VIEW LOADED - V3
-      </div>
       <ProductTourAssistant />
       <VaultGate>
         <div className="space-y-6">
@@ -639,7 +635,6 @@ export default function FreshView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
                       </motion.span>
                     )}
                   </AnimatePresence>
-
                   <SpeechToText
                     onTranscript={(transcript) => {
                       const newText = text ? `${text} ${transcript}` : transcript;
