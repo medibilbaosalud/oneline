@@ -1,26 +1,41 @@
-// Version: Update this to force service worker refresh
-const SW_VERSION = 'v2-2025-12-06';
+// NUCLEAR OPTION: Force unregister all service workers
+console.log('[SW] Unregistering all service workers...');
 
 self.addEventListener('install', () => {
-  console.log('[SW] Installing version:', SW_VERSION);
+  console.log('[SW] Installing UNREGISTER version');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating version:', SW_VERSION);
+  console.log('[SW] Activating UNREGISTER version');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      // Delete all caches to force fresh content
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          console.log('[SW] Deleting cache:', cacheName);
-          return caches.delete(cacheName);
-        })
-      );
-    }).then(() => self.clients.claim())
+    Promise.all([
+      // Delete ALL caches
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            console.log('[SW] Force deleting cache:', cacheName);
+            return caches.delete(cacheName);
+          })
+        );
+      }),
+      // Claim all clients
+      self.clients.claim(),
+      // Unregister this service worker after activation
+      self.registration.unregister().then(() => {
+        console.log('[SW] Service worker unregistered successfully');
+        // Force reload all clients to clear everything
+        return self.clients.matchAll().then((clients) => {
+          clients.forEach((client) => {
+            console.log('[SW] Reloading client:', client.url);
+            client.postMessage({ type: 'FORCE_RELOAD' });
+          });
+        });
+      })
+    ])
   );
 });
 
 self.addEventListener('fetch', () => {
-  // No offline caching yet; fetch normally.
+  // Pass through - no caching
 });
