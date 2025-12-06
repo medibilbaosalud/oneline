@@ -180,6 +180,8 @@ export default function StoryGenerator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
+  const [audioData, setAudioData] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<string | null>(null);
   const formattedStory = useMemo(() => (story ? formatStoryBlocks(story) : []), [story]);
   const [loadingPhrase, setLoadingPhrase] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
@@ -440,6 +442,8 @@ export default function StoryGenerator({
       setLoading(true);
       setError(null);
       setStory("");
+      setAudioData(null);
+      setImageData(null);
       setLoadingPhrase(loadingPhrases[Math.floor(Math.random() * loadingPhrases.length)]);
 
       const params = new URLSearchParams({ from, to });
@@ -519,7 +523,16 @@ export default function StoryGenerator({
       });
 
       const json = (await res.json().catch(() => null)) as
-        | { story?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
+        | {
+            story?: string;
+            audioBase64?: string;
+            imageBase64?: string;
+            error?: string;
+            message?: string;
+            usageUnits?: number;
+            remainingUnits?: number;
+            dailyLimit?: number;
+          }
         | null;
       if (!res.ok) {
         const message = json?.message || json?.error || res.statusText || "Failed to generate story";
@@ -535,9 +548,10 @@ export default function StoryGenerator({
         );
         throw new Error(message);
       }
-
       const storyText = json?.story || "";
       setStory(storyText);
+      if (json?.audioBase64) setAudioData(json.audioBase64);
+      if (json?.imageBase64) setImageData(json.imageBase64);
       if (json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null) {
         setUsageInfo({
           mode,
@@ -877,6 +891,44 @@ export default function StoryGenerator({
                 Export as PDF
               </button>
             </div>
+
+            {(imageData || audioData) && (
+              <div className="mb-8 grid gap-4 sm:grid-cols-2">
+                {imageData && (
+                  <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-xl transition hover:border-white/20">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
+                    <img
+                      src={`data:image/png;base64,${imageData}`}
+                      alt="Story Cover"
+                      className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/80">Generated Cover</p>
+                    </div>
+                  </div>
+                )}
+                {audioData && (
+                  <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-900/20 to-purple-900/20 p-5 backdrop-blur-sm">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                          <path
+                            fillRule="evenodd"
+                            d="M19.952 1.651a.75.75 0 01.298.599V16.303a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V6.994l-9 2.572v9.737a3 3 0 01-2.176 2.884l-1.32.377a2.553 2.553 0 11-1.403-4.909l2.311-.66a1.5 1.5 0 001.088-1.442V9.017 5.25a.75.75 0 01.544-.721l10.5-3a.75.75 0 01.658.122z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white">Audio Story</p>
+                        <p className="text-xs text-zinc-400">Read by Gemini</p>
+                      </div>
+                    </div>
+                    <audio controls src={`data:audio/mp3;base64,${audioData}`} className="w-full accent-indigo-500" />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative space-y-3 font-serif text-[17px] leading-relaxed text-zinc-50">
               {formattedStory.map((block, idx) => (
