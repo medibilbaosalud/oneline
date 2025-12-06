@@ -10,12 +10,16 @@ type SpeechToTextProps = {
 export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
     const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [statusDetail, setStatusDetail] = useState<string | null>(null);
+    const [modelUsed, setModelUsed] = useState<string | null>(null);
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const audioChunks = useRef<Blob[]>([]);
 
     const startRecording = async () => {
         try {
             setErrorMessage(null);
+            setModelUsed(null);
+            setStatusDetail('Listening — press stop when you are done.');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder.current = new MediaRecorder(stream);
             audioChunks.current = [];
@@ -26,6 +30,7 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
 
             mediaRecorder.current.onstop = async () => {
                 setStatus('processing');
+                setStatusDetail('Sending audio to Gemini 2.5 Flash Live…');
                 const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
 
                 const formData = new FormData();
@@ -45,21 +50,22 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
 
                     if (data.text) {
                         onTranscript(data.text);
+                        setModelUsed(data.modelUsed || 'Gemini dictation');
+                        setStatusDetail(data.modelUsed ? `Captured with ${data.modelUsed}` : 'Captured successfully');
                         setStatus('idle');
+                        setTimeout(() => setStatusDetail(null), 4000);
                     }
                 } catch (error: any) {
                     console.error('Transcription error:', error);
                     setStatus('error');
                     setErrorMessage(error.message || 'Error processing audio');
+                    setStatusDetail(null);
                     // Clear error after 5 seconds
                     setTimeout(() => {
                         setStatus('idle');
                         setErrorMessage(null);
                     }, 5000);
                 } finally {
-                    if (status !== 'error') {
-                        // setStatus('idle'); // Handled in success/error blocks to avoid flickering
-                    }
                     stream.getTracks().forEach(track => track.stop());
                 }
             };
@@ -92,18 +98,18 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
     const isError = status === 'error';
 
     return (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 text-left">
             <button
                 type="button"
                 onClick={handleClick}
                 disabled={disabled || isProcessing}
                 className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
-                        ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/50'
+                        ? 'bg-rose-500/10 text-rose-300 ring-1 ring-rose-500/50'
                         : isProcessing
-                            ? 'bg-indigo-500/10 text-indigo-400'
+                            ? 'bg-indigo-500/10 text-indigo-300 ring-1 ring-indigo-500/40'
                             : isError
-                                ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/50'
-                                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                                ? 'bg-red-500/10 text-red-300 ring-1 ring-red-500/50'
+                                : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700 hover:text-white'
                     } disabled:opacity-50`}
                 title="Dictate entry"
             >
@@ -113,12 +119,12 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
                         </span>
-                        <span>Stop</span>
+                        <span>Stop dictation</span>
                     </>
                 ) : isProcessing ? (
                     <>
                         <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-                        <span>Processing...</span>
+                        <span>Processing…</span>
                     </>
                 ) : isError ? (
                     <>
@@ -137,6 +143,11 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
                     </>
                 )}
             </button>
+            {(statusDetail || modelUsed) && !isError && (
+                <p className="text-xs text-neutral-400">
+                    {statusDetail || (modelUsed ? `Captured with ${modelUsed}` : null)}
+                </p>
+            )}
             {errorMessage && (
                 <span className="text-xs text-red-400 animate-pulse">{errorMessage}</span>
             )}

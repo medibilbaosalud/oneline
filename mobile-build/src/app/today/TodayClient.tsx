@@ -647,7 +647,7 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                       const newText = text ? `${text} ${transcript}` : transcript;
                       setText(newText.slice(0, entryLimit));
                     }}
-                    disabled={saving || loadingEntry}
+                    disabled={saving || loadingEntry || text.length >= entryLimit}
                   />
                   <motion.button
                     whileTap={{ scale: 0.95 }}
