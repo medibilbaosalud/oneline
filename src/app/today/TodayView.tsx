@@ -635,6 +635,7 @@ export default function TodayView({ initialEntryLimit = ENTRY_LIMIT_BASE }: Toda
                       </motion.span>
                     )}
                   </AnimatePresence>
+                  {console.log('Rendering SpeechToText component')}
                   <SpeechToText
                     onTranscript={(transcript) => {
                       const newText = text ? `${text} ${transcript}` : transcript;
