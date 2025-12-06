@@ -459,15 +459,13 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  // FALLBACK MECHANISM:
-  // The user reported issues with specific model names and API versions.
-  // We iterate through a list of likely candidates, including "Preview" versions and both v1beta/v1alpha endpoints.
-  // This ensures we find a working configuration without manual intervention.
   const modelsToTry = [
-    { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' }, // Primary choice from user screenshot
-    { name: 'gemini-2.5-flash-tts', version: 'v1beta' },         // Standard v1beta
-    { name: 'gemini-2.5-flash-tts', version: 'v1alpha' }         // Legacy/Experimental v1alpha
+    { name: 'gemini-2.0-flash-tts', version: 'v1alpha', voice: 'Aoede' },
+    { name: 'gemini-1.5-pro-tts', version: 'v1beta', voice: 'Aoede' },
+    { name: 'gemini-1.5-flash-tts', version: 'v1beta', voice: 'Aoede' },
   ];
+
+  const requestText = `Read this story aloud with warmth and clarity. Return ONLY the audio data (base64).\n\n${text.slice(0, 4000)}`;
 
   for (const model of modelsToTry) {
     try {
@@ -479,13 +477,13 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
+            parts: [{ text: requestText }]
           }],
           generationConfig: {
-            response_modalities: ["AUDIO"],
+            response_mime_type: 'audio/mp3',
             speech_config: {
-              voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
-            }
+              voice_config: { prebuilt_voice_config: { voice_name: model.voice ?? 'Aoede' } },
+            },
           }
         })
       });
@@ -522,9 +520,6 @@ export async function generateStoryImage(summary: string): Promise<string | null
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  // FALLBACK MECHANISM:
-  // Similar to audio, we try multiple image generation models.
-  // 'gemini-2.0-flash-preview-image-generation' is the specific one from the user's dashboard.
   const modelsToTry = [
     { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Primary choice
     { name: 'gemini-2.0-flash-exp-image-generation', version: 'v1alpha' },    // Experimental variant
@@ -537,17 +532,23 @@ export async function generateStoryImage(summary: string): Promise<string | null
       console.log(`Attempting image generation with model: ${model.name} (${model.version})`);
       const url = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`;
 
+      const coverPrompt =
+        `Create one cinematic cover image that captures the core mood and setting of this story. ` +
+        `No text, no watermarks—just a single evocative visual that represents the overall idea.\n\nStory: ${summary.slice(0, 800)}`;
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
-          }],
+          contents: [
+            {
+              parts: [{ text: coverPrompt }],
+            },
+          ],
           generationConfig: {
-            response_modalities: ["IMAGE"]
-          }
-        })
+            response_modalities: ['IMAGE'],
+          },
+        }),
       });
 
       if (!response.ok) {

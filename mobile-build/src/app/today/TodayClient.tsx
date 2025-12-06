@@ -624,12 +624,12 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                 </p>
               )}
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <span className={`text-sm ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-400'}`}>
                   {text.length}/{entryLimit}
                 </span>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:justify-end">
                   <AnimatePresence>
                     {msg && (
                       <motion.span
@@ -642,13 +642,15 @@ export default function TodayClient({ initialEntryLimit = ENTRY_LIMIT_BASE }: To
                       </motion.span>
                     )}
                   </AnimatePresence>
-                  <SpeechToText
-                    onTranscript={(transcript) => {
-                      const newText = text ? `${text} ${transcript}` : transcript;
-                      setText(newText.slice(0, entryLimit));
-                    }}
-                    disabled={saving || loadingEntry}
-                  />
+                  <div className="w-full sm:w-auto">
+                    <SpeechToText
+                      onTranscript={(transcript) => {
+                        const newText = text ? `${text} ${transcript}` : transcript;
+                        setText(newText.slice(0, entryLimit));
+                      }}
+                      disabled={saving || loadingEntry || text.length >= entryLimit}
+                    />
+                  </div>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     type="button"

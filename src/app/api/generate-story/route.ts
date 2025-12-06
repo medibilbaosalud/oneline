@@ -20,7 +20,6 @@ import {
   coerceTone,
   generateYearStory,
   generateStoryAudio,
-  generateStoryImage,
   type YearStoryEntry,
   type YearStoryOptions,
 } from '@/lib/yearStory';
@@ -135,12 +134,8 @@ export async function POST(req: NextRequest) {
       entries,
     });
 
-    // Generate Audio and Image in parallel
-    // We use the generated story as input for both.
-    const [audioBase64, imageBase64] = await Promise.all([
-      generateStoryAudio(story),
-      generateStoryImage(story)
-    ]);
+    // Generate audio from the final story (no image for now)
+    const audioBase64 = await generateStoryAudio(story);
 
     const usedAfter = usageUnits(updated);
 
@@ -148,7 +143,6 @@ export async function POST(req: NextRequest) {
       {
         story,
         audioBase64,
-        imageBase64,
         words: wordCount,
         mode,
         usageUnits: usedAfter,
