@@ -10,14 +10,6 @@ export function PwaRegister() {
       return;
     }
 
-    // Listen for messages from service worker
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data?.type === 'FORCE_RELOAD') {
-        console.log('[pwa] Force reloading page to clear cache');
-        window.location.reload();
-      }
-    });
-
     const register = async () => {
       try {
         const registration = await navigator.serviceWorker.register(SW_PATH);
