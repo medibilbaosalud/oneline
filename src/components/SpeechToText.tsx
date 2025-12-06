@@ -52,7 +52,7 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
         }
     }, [isListening, recognition, disabled]);
 
-    if (!isSupported) return null;
+    // if (!isSupported) return null;
 
     return (
         <button
@@ -60,8 +60,8 @@ export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
             onClick={toggleListening}
             disabled={disabled}
             className={`relative flex items-center justify-center rounded-lg p-2 transition-colors ${isListening ? 'bg-red-500/20 text-red-500' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-neutral-200'
-                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={isListening ? 'Stop listening' : 'Start dictation'}
+                } ${disabled || !isSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={!isSupported ? 'Speech recognition not supported' : (isListening ? 'Stop listening' : 'Start dictation')}
         >
             {isListening ? (
                 <motion.div
