@@ -1,4 +1,4 @@
-import TodayView from '../today/TodayView';
+import FreshView from '../today/FreshView';
 import { supabaseServer } from '@/lib/supabaseServer';
 import {
     ENTRY_LIMIT_BASE,
@@ -37,7 +37,7 @@ export default async function DebugTodayPage() {
         <main className="min-h-screen bg-neutral-950 text-neutral-100 border-4 border-blue-500">
             <div className="mx-auto max-w-5xl px-4 py-8">
                 <h1 className="text-red-500 text-2xl font-bold mb-4">DEBUG ROUTE - IF YOU SEE THIS, DEPLOYMENT IS WORKING</h1>
-                <TodayView initialEntryLimit={entryLimit} />
+                <FreshView initialEntryLimit={entryLimit} />
             </div>
         </main>
     );
