@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useRef, useState } from 'react';
 
 type SpeechToTextProps = {
     onTranscript: (text: string) => void;
@@ -8,81 +8,149 @@ type SpeechToTextProps = {
 };
 
 export function SpeechToText({ onTranscript, disabled }: SpeechToTextProps) {
-    const [isListening, setIsListening] = useState(false);
-    const [isSupported, setIsSupported] = useState(false);
-    const [recognition, setRecognition] = useState<any>(null);
+    const [status, setStatus] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [statusDetail, setStatusDetail] = useState<string | null>(null);
+    const [modelUsed, setModelUsed] = useState<string | null>(null);
+    const mediaRecorder = useRef<MediaRecorder | null>(null);
+    const audioChunks = useRef<Blob[]>([]);
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            // @ts-ignore
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                setIsSupported(true);
-                const recog = new SpeechRecognition();
-                recog.continuous = false;
-                recog.interimResults = false;
-                recog.lang = 'es-ES'; // Default to Spanish as per user language, could be dynamic
+    const startRecording = async () => {
+        try {
+            setErrorMessage(null);
+            setModelUsed(null);
+            setStatusDetail('Listening — tap stop when you are done.');
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder.current = new MediaRecorder(stream);
+            audioChunks.current = [];
 
-                recog.onresult = (event: any) => {
-                    const transcript = event.results[0][0].transcript;
-                    onTranscript(transcript);
-                    setIsListening(false);
-                };
+            mediaRecorder.current.ondataavailable = (event) => {
+                audioChunks.current.push(event.data);
+            };
 
-                recog.onerror = (event: any) => {
-                    console.error('Speech recognition error', event.error);
-                    setIsListening(false);
-                };
+            mediaRecorder.current.onstop = async () => {
+                setStatus('processing');
+                setStatusDetail('Sending audio to Gemini 2.5 Flash Live…');
+                const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
 
-                recog.onend = () => {
-                    setIsListening(false);
-                };
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
 
-                setRecognition(recog);
-            }
+                try {
+                    const response = await fetch('/api/transcribe', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Transcription failed');
+                    }
+
+                    if (data.text) {
+                        onTranscript(data.text);
+                        setModelUsed(data.modelUsed || 'Gemini dictation');
+                        setStatusDetail(data.modelUsed ? `Captured with ${data.modelUsed}` : 'Captured successfully');
+                        setStatus('idle');
+                        setTimeout(() => setStatusDetail(null), 4000);
+                    }
+                } catch (error: any) {
+                    console.error('Transcription error:', error);
+                    setStatus('error');
+                    setErrorMessage(error.message || 'Error processing audio');
+                    setStatusDetail(null);
+                    setTimeout(() => {
+                        setStatus('idle');
+                        setErrorMessage(null);
+                    }, 5000);
+                } finally {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            };
+
+            mediaRecorder.current.start();
+            setStatus('recording');
+        } catch (err) {
+            console.error('Failed to start recording', err);
+            setStatus('error');
+            setErrorMessage('Could not access microphone');
+            setStatusDetail(null);
         }
-    }, [onTranscript]);
+    };
 
-    const toggleListening = useCallback(() => {
-        if (!recognition) return;
+    const stopRecording = () => {
+        if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
+            mediaRecorder.current.stop();
+        }
+    };
 
-        if (isListening) {
-            recognition.stop();
-            setIsListening(false);
+    const handleClick = () => {
+        if (status === 'recording') {
+            stopRecording();
         } else {
-            try {
-                recognition.start();
-                setIsListening(true);
-            } catch (e) {
-                console.error('Failed to start recognition', e);
-            }
+            startRecording();
         }
-    }, [isListening, recognition]);
+    };
 
-    if (!isSupported) return null;
+    const isRecording = status === 'recording';
+    const isProcessing = status === 'processing';
+    const isError = status === 'error';
 
     return (
-        <button
-            type="button"
-            onClick={toggleListening}
-            disabled={disabled}
-            className={`relative inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-all ${isListening
-                    ? 'bg-rose-500/20 text-rose-400 ring-1 ring-rose-500/50'
-                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
-                } disabled:opacity-50`}
-            title="Dictar entrada"
-        >
-            {isListening ? (
-                <>
-                    <span className="mr-2 h-2 w-2 animate-pulse rounded-full bg-rose-500" />
-                    Escuchando...
-                </>
-            ) : (
-                <>
-                    <span className="mr-2 text-lg">🎙️</span>
-                    Dictar
-                </>
+        <div className="flex flex-col items-center gap-2 text-left">
+            <button
+                type="button"
+                onClick={handleClick}
+                disabled={disabled || isProcessing}
+                className={`relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all ${isRecording
+                        ? 'bg-rose-500/10 text-rose-300 ring-1 ring-rose-500/50'
+                        : isProcessing
+                            ? 'bg-indigo-500/10 text-indigo-300 ring-1 ring-indigo-500/40'
+                            : isError
+                                ? 'bg-red-500/10 text-red-300 ring-1 ring-red-500/50'
+                                : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700 hover:text-white'
+                    } disabled:opacity-50`}
+                title="Dictate entry"
+            >
+                {isRecording ? (
+                    <>
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                        </span>
+                        <span>Stop dictation</span>
+                    </>
+                ) : isProcessing ? (
+                    <>
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                        <span>Processing…</span>
+                    </>
+                ) : isError ? (
+                    <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <span>Error</span>
+                    </>
+                ) : (
+                    <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                            <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
+                            <path d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.964V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.536c2.96-.38 5.25-2.904 5.25-5.964v-.357a.75.75 0 00-1.5 0V10c0 2.485-2.015 4.5-4.5 4.5s-4.5-2.015-4.5-4.5v-.357z" />
+                        </svg>
+                        <span>Dictate</span>
+                    </>
+                )}
+            </button>
+            {(statusDetail || modelUsed) && !isError && (
+                <p className="text-xs text-neutral-400">
+                    {statusDetail || (modelUsed ? `Captured with ${modelUsed}` : null)}
+                </p>
             )}
-        </button>
+            {errorMessage && (
+                <span className="text-xs text-red-400 animate-pulse">{errorMessage}</span>
+            )}
+        </div>
     );
 }
