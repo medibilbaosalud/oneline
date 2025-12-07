@@ -175,14 +175,15 @@ export async function POST(req: NextRequest) {
       const imageResult = results[1];
 
       if (includeAudio && audioResult.status === 'fulfilled' && audioResult.value) {
-        audioBase64 = audioResult.value.data;
-        audioMimeType = audioResult.value.mimeType;
+        const val = audioResult.value as any;
+        audioBase64 = val.data;
+        audioMimeType = val.mimeType;
       } else if (includeAudio && audioResult.status === 'rejected') {
         console.error("Audio generation failed:", audioResult.reason);
       }
 
       if (includeImage && imageResult.status === 'fulfilled' && imageResult.value) {
-        imageBase64 = imageResult.value;
+        imageBase64 = imageResult.value as string;
       } else if (includeImage && imageResult.status === 'rejected') {
         console.error("Image generation failed:", imageResult.reason);
       }
