@@ -14,6 +14,8 @@ import { useEntryLimits } from '@/hooks/useEntryLimits';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import FeedbackForm from '@/components/FeedbackForm';
 import { SpeechToText } from '@/components/SpeechToText';
+import StreakDashboard from '@/components/engagement/StreakDashboard';
+import { recordDailyEntry } from '@/lib/streakService';
 
 type StreakData = {
   current: number;
@@ -404,6 +406,12 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           navigator.vibrate(50);
         }
         loadStreak();
+        // Record activity for new streak system
+        const supabase = supabaseBrowser();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id && isToday) {
+          recordDailyEntry(user.id).catch(() => { });
+        }
         setTimeout(() => setMsg(null), 1500);
       }
     } catch (e) {
@@ -746,6 +754,11 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
             </div>
 
             <FeedbackForm defaultPage="/today" className="border-white/15 bg-neutral-900/60" />
+          </div>
+
+          {/* Streak Dashboard */}
+          <div className="mt-8">
+            <StreakDashboard />
           </div>
         </div>
       </VaultGate>
