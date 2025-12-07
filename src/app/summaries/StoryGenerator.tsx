@@ -6,7 +6,7 @@ import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
 import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferences";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { persistSummary } from "@/lib/summaryHistory";
+import { persistSummary, uploadStoryImage } from "@/lib/summaryHistory";
 import type { SummaryMode } from "@/lib/summaryUsageDaily";
 
 const WEEKLY_MINIMUM_DAYS = 4;
@@ -716,7 +716,13 @@ export default function StoryGenerator({
         } = await supabase.auth.getUser();
         const uid = user?.id;
         if (uid && key && storyText) {
-          await persistSummary(uid, key, storyText, { from, to, period: inferPeriod(from, to) });
+          // Upload image to Supabase Storage if available
+          let imageUrl: string | undefined;
+          if (imageData) {
+            const uploadedUrl = await uploadStoryImage(uid, imageData);
+            if (uploadedUrl) imageUrl = uploadedUrl;
+          }
+          await persistSummary(uid, key, storyText, { from, to, period: inferPeriod(from, to), imageUrl });
         }
       } catch {
         // Best-effort persistence only; rendering still succeeds without local history.
