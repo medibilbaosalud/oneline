@@ -18,9 +18,9 @@ export type SummaryMinuteUsageRow = {
   tokens_used: number;
 };
 
-export const DAILY_LIMIT_UNITS = 30;
-export const WEEKLY_LIMIT_UNITS = 56;
-export const MONTHLY_LIMIT_UNITS = 240;
+export const DAILY_LIMIT_UNITS = 60;
+export const WEEKLY_LIMIT_UNITS = 420; // 60 * 7
+export const MONTHLY_LIMIT_UNITS = 1800; // 60 * 30
 
 export function usageUnits(row: SummaryDailyUsageRow): number {
   // Advanced generations cost two units to reflect the heavier model usage.
