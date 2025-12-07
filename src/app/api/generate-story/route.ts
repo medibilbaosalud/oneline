@@ -21,6 +21,7 @@ import {
   generateYearStory,
   generateStoryAudio,
   generateStoryImage,
+  generateImagePrompt,
   type YearStoryEntry,
   type YearStoryOptions,
 } from '@/lib/yearStory';
@@ -135,12 +136,29 @@ export async function POST(req: NextRequest) {
       entries,
     });
 
-    // Generate Audio and Image in parallel
-    // We use the generated story as input for both.
-    const [audioBase64, imageBase64] = await Promise.all([
-      generateStoryAudio(story),
-      generateStoryImage(story)
-    ]);
+    // Generate Audio and Image
+    // New Flow: Story -> Image Prompt -> Image
+    // This avoids sending massive context to the image model and improves quality/quota usage.
+
+    let imageBase64: string | null = null;
+    let audioBase64: string | null = null;
+
+    try {
+      // 1. Generate Image Prompt (using text model)
+      const imagePrompt = await generateImagePrompt(story);
+
+      // 2. Generate Audio and Image in parallel (using the optimized prompt for image)
+      const results = await Promise.all([
+        generateStoryAudio(story),
+        imagePrompt ? generateStoryImage(imagePrompt) : Promise.resolve(null)
+      ]);
+
+      audioBase64 = results[0];
+      imageBase64 = results[1];
+    } catch (e) {
+      console.error("Error generating multimedia assets:", e);
+      // Do not fail the whole request if assets fail
+    }
 
     const usedAfter = usageUnits(updated);
 

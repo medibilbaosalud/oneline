@@ -347,9 +347,14 @@ async function loadGenerativeModel(config: StoryModelConfig) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const genAI = new GoogleGenerativeAI(apiKey);
+
+  // User strict requirements:
+  // Advanced: Gemini 2.5 Pro
+  // Standard: Gemini 2.5 Flash -> Gemini 2.0 Flash (fallback)
+  // NEVER use 1.5
   const modelNames = config.mode === 'advanced'
-    ? ['gemini-2.0-pro-exp-02-05', 'gemini-1.5-pro']
-    : ['gemini-1.5-flash', 'gemini-2.0-flash'];
+    ? ['gemini-2.5-pro']
+    : ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
   for (const name of modelNames) {
     try {
@@ -518,9 +523,44 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   return null;
 }
 
-export async function generateStoryImage(summary: string): Promise<string | null> {
+/**
+ * Generates a concise image prompt based on the story.
+ * This intermediate step avoids sending the entire story to the image model,
+ * saving tokens and improving relevance.
+ */
+export async function generateImagePrompt(story: string): Promise<string> {
+  try {
+    // Use the standard model logic (Flash 2.5 -> 2.0) for this text task
+    const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.5-flash' });
+    if (!model) return '';
+
+    const response = await generateWithRetry(model, {
+      contents: [{
+        role: 'user',
+        parts: [{
+          text: `Based on the following story, write a single, concise, and vivid prompt for an AI image generator to create a cinematic, abstract, and emotional cover image. 
+          
+          Focus on mood, lighting, and abstract themes. Do NOT include text, characters, or specific details. 
+          Return ONLY the prompt text.
+          
+          Story:
+          ${story.slice(0, 10000)}` // Send a good chunk but not necessarily everything if it's huge
+        }]
+      }],
+      generationConfig: {},
+    });
+
+    const prompt = extractStoryText(response);
+    return prompt || '';
+  } catch (error) {
+    console.error("Failed to generate image prompt:", error);
+    return '';
+  }
+}
+
+export async function generateStoryImage(imagePrompt: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || !imagePrompt) return null;
 
   // FALLBACK MECHANISM:
   // Similar to audio, we try multiple image generation models.
@@ -542,7 +582,7 @@ export async function generateStoryImage(summary: string): Promise<string | null
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `Generate a cinematic, abstract, and emotional cover image for this story. Return ONLY the image.\n\nStory Summary: ${summary.slice(0, 500)}` }]
+            parts: [{ text: imagePrompt }]
           }],
           generationConfig: {
             response_modalities: ["IMAGE"]
