@@ -1,5 +1,29 @@
 // src/lib/streakService.ts
-// Service for managing user streaks and engagement
+/**
+ * OneLine Fire Engagement System
+ * ==============================
+ * 
+ * This service manages user engagement through:
+ * - 🔥 Fire Level: Visual streak indicator that grows from level 0-7+
+ * - 📅 Daily Activity: Tracks which days users write entries
+ * - 🏆 Badges: Awards for milestones (7, 30, 100, 365 days)
+ * - 🧊 Freeze Tokens: 2 free "streak saves" per month
+ * 
+ * Fire Level Progression:
+ *   Level 0: No fire (0 days)
+ *   Level 1: Ember (1-2 days)
+ *   Level 2: Small flame (3-6 days)
+ *   Level 3: Growing (7-13 days)
+ *   Level 4: Blazing (14-29 days)
+ *   Level 5: Inferno (30-59 days)
+ *   Level 6: Golden fire (60-99 days)
+ *   Level 7+: Diamond fire (100+ days)
+ * 
+ * Database Tables:
+ *   - user_streaks: Main streak data per user
+ *   - user_daily_activity: Calendar of activity days
+ *   - user_badges: Earned achievements
+ */
 
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
