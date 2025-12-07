@@ -1,10 +1,25 @@
 {
-  "name": "OneLine",
+  "name": "OneLine - Daily Journal",
   "short_name": "OneLine",
+  "description": "Write one line every day. Watch your story unfold. AI-powered encrypted journal with weekly, monthly, and yearly summaries.",
   "start_url": "/today",
+  "id": "/today",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
   "background_color": "#020617",
   "theme_color": "#0ea5e9",
+  "scope": "/",
+  "categories": [
+    "lifestyle",
+    "productivity",
+    "health"
+  ],
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icons/icon-192.svg",
@@ -28,5 +43,63 @@
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/today-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Today's journal entry"
+    },
+    {
+      "src": "/screenshots/summary-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "AI-generated story summaries"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Write Today",
+      "short_name": "Today",
+      "description": "Open today's journal entry",
+      "url": "/today",
+      "icons": [
+        {
+          "src": "/icons/icon-192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "View History",
+      "short_name": "History",
+      "description": "View your story history",
+      "url": "/history",
+      "icons": [
+        {
+          "src": "/icons/icon-192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Generate Summary",
+      "short_name": "Summary",
+      "description": "Generate an AI summary of your entries",
+      "url": "/summaries",
+      "icons": [
+        {
+          "src": "/icons/icon-192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

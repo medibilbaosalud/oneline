@@ -6,6 +6,7 @@ import TopNav from '@/components/TopNav';
 import Providers from './providers';
 import { PwaRegister } from './pwa-register';
 import { AuthSessionListener } from './_components/AuthSessionListener';
+import InstallPrompt from '@/components/InstallPrompt';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -52,7 +53,7 @@ export default function RootLayout({
           {/* Global navigation across all pages */}
           <TopNav />
           {children}
-
+          <InstallPrompt />
         </Providers>
         <script dangerouslySetInnerHTML={{ __html: `console.log("VERSION: v2025-12-06-FIX-DEPLOYED")` }} />
       </body>
