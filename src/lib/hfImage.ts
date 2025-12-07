@@ -69,7 +69,7 @@ export async function generateImageSDXL(prompt: string): Promise<string | null> 
         if ((result as any) instanceof Blob) {
             const arrayBuffer = await (result as unknown as Blob).arrayBuffer();
             buffer = Buffer.from(arrayBuffer);
-        } else if (result instanceof Uint8Array) {
+        } else if ((result as any) instanceof Uint8Array) {
             buffer = Buffer.from(result);
         } else {
             // Handle streaming response (unlikely but safe)
