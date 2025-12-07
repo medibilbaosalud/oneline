@@ -591,8 +591,8 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
 export async function generateImagePrompt(story: string): Promise<string> {
   try {
     console.log("Generating image prompt from story...");
-    // Use the Lite model as per user preference for fast text tasks
-    const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.0-flash-lite-preview-02-05' });
+    // Use a fast, available model for prompt generation
+    const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.5-flash-lite' });
     if (!model) {
       console.warn("Failed to load model for image prompt generation.");
       return 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
@@ -627,54 +627,47 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || !imagePrompt) return null;
 
+  const client = new GoogleGenerativeAI(apiKey);
+
   // FALLBACK MECHANISM:
-  // We prioritize the specific preview model requested by the user.
-  // We also add 'gemini-2.0-flash-exp' as the user provided a working example with it.
+  // Use only models that are available in the account to avoid silent 404/permission issues.
+  // All of these support IMAGE responses via responseModalities/responseMimeType.
   const modelsToTry = [
-    { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Explicit user request
-    { name: 'gemini-2.0-flash-exp', version: 'v1beta' },                      // User provided example
-    { name: 'gemini-2.0-flash', version: 'v1beta' },                          // Standard fallback
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite-preview-02-05',
+    'gemini-1.5-flash',
   ];
 
-  for (const model of modelsToTry) {
+  for (const modelName of modelsToTry) {
     try {
-      console.log(`Attempting image generation with model: ${model.name} (${model.version})`);
-      const url = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: imagePrompt }]
-          }],
-          generationConfig: {
-            responseModalities: ["IMAGE"], // CamelCase as per documentation
-          }
-        })
+      console.log(`Attempting image generation with model: ${modelName}`);
+      const model = client.getGenerativeModel({ model: modelName });
+      const response = await model.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: imagePrompt }],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+          responseMimeType: 'image/png',
+        },
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`Image gen failed with ${model.name}:`, response.status, errorText);
-        continue; // Try next model
-      }
-
-      const data = await response.json();
-      // Check for image data in candidates
-      const candidates = data?.candidates || [];
+      const candidates = response?.response?.candidates || [];
       for (const candidate of candidates) {
         for (const part of candidate?.content?.parts || []) {
           if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-            console.log(`Image generation successful with ${model.name}, mime: ${part.inlineData.mimeType}, length: ${part.inlineData.data.length}`);
+            console.log(`Image generation successful with ${modelName}, mime: ${part.inlineData.mimeType}, length: ${part.inlineData.data.length}`);
             return part.inlineData.data;
           }
         }
       }
 
-      console.warn(`Image gen response structure unexpected for ${model.name}:`, JSON.stringify(data).slice(0, 200));
+      console.warn(`Image gen response structure unexpected for ${modelName}:`, JSON.stringify({ candidates }).slice(0, 200));
     } catch (error) {
-      console.error(`Image generation error with ${model.name}:`, error);
+      console.error(`Image generation error with ${modelName}:`, error);
     }
   }
 
