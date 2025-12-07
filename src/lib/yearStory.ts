@@ -692,123 +692,12 @@ ${story.slice(0, 8000)}`
 }
 
 export async function generateStoryImage(imagePrompt: string): Promise<string | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("[IMAGE] CRITICAL: GEMINI_API_KEY is not set.");
-    return null;
-  }
-  if (!imagePrompt || imagePrompt.trim().length === 0) {
-    console.error("[IMAGE] CRITICAL: imagePrompt is empty.");
-    return null;
-  }
+  // Import dynamically to avoid issues if HF_TOKEN is not set during build
+  const { generateImageSDXL } = await import('./hfImage');
 
-  // BULLETPROOF FALLBACK MECHANISM:
-  // We try multiple models in order of preference. Based on Google documentation (Dec 2024):
-  // - gemini-2.5-flash-image: The recommended model for image generation (replaces deprecated previews)
-  // - gemini-2.5-flash-image-preview: Preview version of the above
-  // - gemini-2.0-flash-preview-image-generation: Older but still functional
-  // - gemini-2.0-flash-exp: Experimental model with image capabilities
-  // All use v1beta endpoint and require responseModalities: ["IMAGE"]
+  console.log(`[IMAGE] Delegating to HuggingFace SDXL. Prompt: "${imagePrompt.slice(0, 100)}..."`);
 
-  const modelsToTry = [
-    'imagen-3.0-generate-001',          // 1. Dedicated Imagen 3 model
-    'gemini-2.0-flash-exp',             // 2. Experimental (often has image cap)
-    'gemini-2.5-flash-image',           // 3. Flash 2.5 Image
-  ];
-
-  console.log(`[IMAGE] Starting image generation. Prompt: "${imagePrompt.slice(0, 100)}..."`);
-  console.log(`[IMAGE] Will try ${modelsToTry.length} models in order.`);
-
-  for (const modelName of modelsToTry) {
-    try {
-      // Add a small delay before each attempt (except the first) to avoid hammering the API
-      if (modelName !== modelsToTry[0]) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-      console.log(`[IMAGE] Attempting with model: ${modelName}`);
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-      const requestBody = {
-        contents: [{
-          parts: [{ text: imagePrompt }]
-        }],
-        generationConfig: {
-          responseModalities: ["IMAGE"], // CamelCase as per Google documentation
-        }
-      };
-
-      console.log(`[IMAGE] Request URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
-      console.log(`[IMAGE] Request body: ${JSON.stringify(requestBody).slice(0, 200)}...`);
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      const responseText = await response.text();
-      console.log(`[IMAGE] Response status: ${response.status}`);
-      console.log(`[IMAGE] Response body (first 500 chars): ${responseText.slice(0, 500)}`);
-
-      if (!response.ok) {
-        const isQuotaError = responseText.includes('429') || responseText.includes('quota') || responseText.includes('RESOURCE_EXHAUSTED');
-        const isNotFound = responseText.includes('404') || responseText.includes('not found') || responseText.includes('NOT_FOUND');
-
-        if (isQuotaError) {
-          console.warn(`[IMAGE] Model ${modelName} hit quota limit. Trying next...`);
-          continue;
-        }
-        if (isNotFound) {
-          console.warn(`[IMAGE] Model ${modelName} not found. Trying next...`);
-          continue;
-        }
-
-        console.warn(`[IMAGE] Model ${modelName} failed with status ${response.status}. Trying next...`);
-        continue;
-      }
-
-      // Parse the response
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error(`[IMAGE] Failed to parse response JSON from ${modelName}:`, parseError);
-        continue;
-      }
-
-      // Extract image data from candidates
-      const candidates = data?.candidates || [];
-      console.log(`[IMAGE] Found ${candidates.length} candidates in response.`);
-
-      for (const candidate of candidates) {
-        const parts = candidate?.content?.parts || [];
-        console.log(`[IMAGE] Candidate has ${parts.length} parts.`);
-
-        for (const part of parts) {
-          if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-            const imageDataLength = part.inlineData.data.length;
-            console.log(`[IMAGE] ✅ SUCCESS! Model: ${modelName}, MIME: ${part.inlineData.mimeType}, Data length: ${imageDataLength}`);
-            return part.inlineData.data;
-          }
-
-          // Log what we found if it's not image data
-          if (part?.text) {
-            console.log(`[IMAGE] Part contains text (not image): "${part.text.slice(0, 100)}..."`);
-          }
-        }
-      }
-
-      // If we got here, the response was OK but didn't contain image data
-      console.warn(`[IMAGE] Model ${modelName} returned OK but no image data found. Response structure:`, JSON.stringify(data).slice(0, 300));
-
-    } catch (error) {
-      console.error(`[IMAGE] Exception with model ${modelName}:`, error);
-    }
-  }
-
-  console.error(`[IMAGE] ❌ ALL ${modelsToTry.length} MODELS FAILED. Image generation unsuccessful.`);
-  return null;
+  return generateImageSDXL(imagePrompt);
 }
 
 
