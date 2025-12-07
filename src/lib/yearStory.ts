@@ -483,19 +483,19 @@ export async function generateYearStory(
   const lastErrorStr = String(lastError);
 
   if (lastErrorStr.includes('404') || lastErrorStr.includes('NOT_FOUND')) {
-    throw new Error(`Modelos no disponibles. Por favor contacta soporte. (${modelsToTry.length} modelos probados)`);
+    throw new Error(`Models unavailable. Please contact support. (${modelsToTry.length} models tested)`);
   }
 
   if (lastErrorStr.includes('429') || lastErrorStr.includes('quota') || lastErrorStr.includes('RESOURCE_EXHAUSTED')) {
-    throw new Error("Cuota diaria agotada en todos los modelos. Por favor intenta mañana.");
+    throw new Error("Daily quota exceeded for all models. Please try again tomorrow.");
   }
 
   if (lastErrorStr.includes('500') || lastErrorStr.includes('503') || lastErrorStr.includes('INTERNAL')) {
-    throw new Error("Error temporal del servidor de Google. Por favor intenta de nuevo en unos minutos.");
+    throw new Error("Temporary Google server error. Please try again in a few minutes.");
   }
 
   // Generic error with the actual message for debugging
-  throw new Error(`Error de generación: ${message.slice(0, 200)}`);
+  throw new Error(`Generation error: ${message.slice(0, 200)}`);
 }
 
 export function coerceTone(value: string | null): YearStoryOptions['tone'] {

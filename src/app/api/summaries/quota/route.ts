@@ -21,7 +21,7 @@ export async function GET() {
     const now = new Date();
     const { used, startIso, endIso } = await ensureMonthlySummaryWindow(sb, user.id, now);
     const unlimited = user.email?.toLowerCase() === "aitoralboniga@gmail.com";
-    const limit = unlimited ? 1000000 : 20;
+    const limit = unlimited ? 1000000 : 60;
     const remaining = unlimited ? limit : Math.max(0, limit - used);
 
     return NextResponse.json(
