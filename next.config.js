@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: { ignoreDuringBuilds: true },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+  // eslint: { ignoreDuringBuilds: true }, // Removed as per Next.js 15+ warning
   async headers() {
     return [
       {

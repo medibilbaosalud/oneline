@@ -216,7 +216,9 @@ export default function StoryGenerator({
   const [tone, setTone] = useState<Tone>(initialOptions?.tone ?? "auto");
   const [pov, setPov] = useState<Pov>(initialOptions?.pov ?? "auto");
   const [mode, setMode] = useState<SummaryMode>("standard");
-  const includeHighlights = true;
+  const [includeHighlights, setIncludeHighlights] = useState(true);
+  const [includeImage, setIncludeImage] = useState(true);
+  const [includeAudio, setIncludeAudio] = useState(true);
   const [notes, setNotes] = useState(initialOptions?.notes ?? "");
   const [language, setLanguage] = useState<SummaryLanguage>(initialOptions?.language ?? "en");
 
