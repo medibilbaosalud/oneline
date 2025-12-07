@@ -149,12 +149,16 @@ export async function POST(req: NextRequest) {
 
     try {
       // 1. Generate Image Prompt (using text model) - ONLY if image is requested
+      // LOGIC FOR CODEX: We first generate a specific prompt for the image using a cheaper/faster text model.
+      // This ensures the image model receives a concise, optimized description rather than the full story text.
       let imagePrompt = null;
       if (includeImage) {
         imagePrompt = await generateImagePrompt(story);
       }
 
       // 2. Generate Audio and Image in parallel (using the optimized prompt for image)
+      // LOGIC FOR CODEX: We use Promise.allSettled to ensure that if one fails (e.g. image quota), the other (audio) still succeeds.
+      // This decoupling is critical for user experience.
       const tasks = [];
 
       if (includeAudio) {
@@ -164,6 +168,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (includeImage && imagePrompt) {
+        // LOGIC FOR CODEX: Here we call the actual image generation model with the prompt generated in step 1.
         tasks.push(generateStoryImage(imagePrompt));
       } else {
         tasks.push(Promise.resolve(null)); // Placeholder for image result
