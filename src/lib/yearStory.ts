@@ -650,7 +650,6 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
           },
         ],
         generationConfig: {
-          responseModalities: ['IMAGE'],
           responseMimeType: 'image/png',
         },
       });
