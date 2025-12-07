@@ -567,13 +567,12 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   if (!apiKey || !imagePrompt) return null;
 
   // FALLBACK MECHANISM:
-  // The user has "Generación de imágenes de vista previa con Gemini 2.0 Flash".
-  // This usually maps to the standard 'gemini-2.0-flash' model with 'response_modalities' set to 'IMAGE'.
-  // We prioritize the standard flash model, then the experimental ones.
+  // The user provided specific documentation showing 'gemini-2.0-flash-preview-image-generation'.
+  // The documentation also shows 'responseModalities' (camelCase) in the JSON payload.
   const modelsToTry = [
-    { name: 'gemini-2.0-flash', version: 'v1beta' },          // Standard 2.0 Flash (likely the one shown in UI)
-    { name: 'gemini-2.0-flash-exp', version: 'v1beta' },      // Experimental 2.0 Flash
-    { name: 'gemini-2.0-flash-preview', version: 'v1beta' }   // Preview variant
+    { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Explicit user request
+    { name: 'gemini-2.0-flash', version: 'v1beta' },                          // Standard fallback
+    { name: 'gemini-2.0-flash-exp', version: 'v1beta' }                       // Experimental fallback
   ];
 
   for (const model of modelsToTry) {
@@ -589,9 +588,7 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
             parts: [{ text: imagePrompt }]
           }],
           generationConfig: {
-            response_modalities: ["IMAGE"],
-            // Optional: Add aspect ratio or sample count if needed, but defaults usually work.
-            // aspect_ratio: "16:9" 
+            responseModalities: ["IMAGE"], // CamelCase as per user screenshot
           }
         })
       });
