@@ -718,6 +718,9 @@ export default function StoryGenerator({
       }
       refreshQuota();
 
+      // Store the image data before it gets set to state (for immediate use)
+      const receivedImageBase64 = json?.imageBase64 || null;
+
       try {
         const supabase = supabaseBrowser();
         const {
@@ -727,13 +730,17 @@ export default function StoryGenerator({
         if (uid && key && storyText) {
           // Upload image to Supabase Storage if available
           let imageUrl: string | undefined;
-          if (imageData) {
-            const uploadedUrl = await uploadStoryImage(uid, imageData);
+          if (receivedImageBase64) {
+            console.log("[PERSIST] Uploading image to storage...");
+            const uploadedUrl = await uploadStoryImage(uid, receivedImageBase64);
+            console.log("[PERSIST] Upload result:", uploadedUrl);
             if (uploadedUrl) imageUrl = uploadedUrl;
           }
           await persistSummary(uid, key, storyText, { from, to, period: inferPeriod(from, to), imageUrl });
+          console.log("[PERSIST] Summary saved with imageUrl:", imageUrl);
         }
-      } catch {
+      } catch (persistErr) {
+        console.error("[PERSIST] Error saving summary:", persistErr);
         // Best-effort persistence only; rendering still succeeds without local history.
       }
     } catch (err: unknown) {
