@@ -885,6 +885,31 @@ export default function StoryGenerator({
             </div>
             <span className="text-xs text-zinc-500">Your story ends with the biggest wins and low points by default.</span>
           </div>
+
+          {/* Multimedia Options */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-zinc-400">Multimedia</label>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeImage}
+                  onChange={(e) => setIncludeImage(e.target.checked)}
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900"
+                />
+                <span className="text-sm text-zinc-200">Generate Cover Image</span>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900 border border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeAudio}
+                  onChange={(e) => setIncludeAudio(e.target.checked)}
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-zinc-900"
+                />
+                <span className="text-sm text-zinc-200">Generate Audio Narration</span>
+              </label>
+            </div>
+          </div>
         </div>
 
         {/* Notes */}
