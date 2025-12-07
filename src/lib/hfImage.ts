@@ -67,7 +67,7 @@ export async function generateImageSDXL(prompt: string): Promise<string | null> 
         let buffer: Buffer;
 
         if ((result as any) instanceof Blob) {
-            const arrayBuffer = await (result as Blob).arrayBuffer();
+            const arrayBuffer = await (result as unknown as Blob).arrayBuffer();
             buffer = Buffer.from(arrayBuffer);
         } else if (result instanceof Uint8Array) {
             buffer = Buffer.from(result);
