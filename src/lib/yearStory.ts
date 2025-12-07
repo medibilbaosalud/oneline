@@ -343,6 +343,35 @@ type StoryModelConfig = {
   modelName: string;
 };
 
+function buildModelCascade(mode: SummaryMode, requestedModel?: string) {
+  const baseCascade =
+    mode === 'advanced'
+      ? [
+          'gemini-2.5-pro',
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-preview',
+          'gemini-2.5-flash-lite',
+          'gemini-2.5-flash-lite-preview',
+          'gemini-2.0-flash',
+          'gemini-2.0-flash-lite',
+        ]
+      : [
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-preview',
+          'gemini-2.5-flash-lite',
+          'gemini-2.5-flash-lite-preview',
+          'gemini-2.0-flash',
+          'gemini-2.0-flash-lite',
+        ];
+
+  if (!requestedModel) {
+    return baseCascade;
+  }
+
+  const deduped = new Set<string>([requestedModel, ...baseCascade]);
+  return Array.from(deduped);
+}
+
 async function loadGenerativeModel(config: StoryModelConfig) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -356,7 +385,9 @@ async function loadGenerativeModel(config: StoryModelConfig) {
   // If a specific model name is requested (e.g. for image prompts), prioritize it.
   const modelNames = config.modelName
     ? [config.modelName]
-    : (config.mode === 'advanced' ? ['gemini-2.5-pro'] : ['gemini-2.5-flash', 'gemini-2.0-flash']);
+    : config.mode === 'advanced'
+      ? ['gemini-2.5-pro']
+      : ['gemini-2.5-flash'];
 
   for (const name of modelNames) {
     try {
@@ -385,28 +416,11 @@ export async function generateYearStory(
   const requestedModel = modelConfig?.modelName;
   const mode = modelConfig?.mode ?? 'standard';
 
-  let modelsToTry: string[] = [];
-  if (requestedModel) {
-    modelsToTry = [requestedModel];
-  } else if (mode === 'advanced') {
-    modelsToTry = ['gemini-2.5-pro'];
-  } else {
-    // Comprehensive fallback list as requested by user to avoid 429 errors
-    modelsToTry = [
-      'gemini-2.5-flash',           // 1. Flash 2.5
-      'gemini-2.5-flash-preview',   // 2. Flash 2.5 Preview
-      'gemini-2.5-flash-001',       // 2b. Flash 2.5 Preview (alt name)
-      'gemini-2.5-flash-lite',      // 3. Flash-Lite 2.5
-      'gemini-2.5-flash-lite-preview', // 4. Flash-Lite 2.5 Preview
-      'gemini-2.5-flash-lite-001',  // 4b. Flash-Lite 2.5 Preview (alt name)
-      'gemini-2.0-flash',           // 5. Flash 2.0
-      'gemini-2.0-flash-lite',      // 6. Flash-Lite 2.0
-      'gemini-2.0-flash-lite-preview-02-05', // 6b. Flash-Lite 2.0 Preview
-      'gemini-1.5-flash',           // 7. Flash 1.5 (Last resort)
-    ];
-  }
+  const modelsToTry = buildModelCascade(mode, requestedModel);
 
   let lastError: unknown = null;
+  let sawQuotaError = false;
+  let sawNonQuotaFailure = false;
 
   for (const modelName of modelsToTry) {
     try {
@@ -426,13 +440,16 @@ export async function generateYearStory(
       const story = extractStoryText(response);
       if (!story) {
         const blockMessage = describeBlockedResponse(response);
-        throw new Error(blockMessage ?? 'Model returned an empty story.');
+        lastError = new Error(blockMessage ?? 'Model returned an empty story.');
+        sawNonQuotaFailure = true;
+        continue;
       }
 
       return {
         story,
         wordCount: story.split(/\s+/).length,
         tokenUsage: response?.response?.usageMetadata ?? { totalTokenCount: 0 },
+        modelUsed: modelName,
       };
 
     } catch (error: unknown) {
@@ -441,6 +458,10 @@ export async function generateYearStory(
 
       const message = error instanceof Error ? error.message : String(error);
       const isQuotaError = message.includes('429') || message.includes('quota') || message.includes('Too Many Requests');
+
+      if (isQuotaError) {
+        sawQuotaError = true;
+      }
 
       // If it's NOT a quota error and NOT a model loading error, it might be a prompt issue, so maybe don't retry?
       // But for safety, we'll try the next model if it's a system/API error.
@@ -453,6 +474,7 @@ export async function generateYearStory(
 
       // For other errors, we might also want to continue, but let's be careful not to loop forever on bad prompts.
       // For now, we treat most errors as "try next model" to be robust.
+      sawNonQuotaFailure = true;
     }
   }
 
@@ -475,7 +497,7 @@ export async function generateYearStory(
   const excerpt = combined.length > 1500 ? `${combined.slice(0, 1500)}…` : combined;
 
   // If it was a quota error specifically that killed all attempts
-  if (String(lastError).includes('429')) {
+  if (sawQuotaError && !sawNonQuotaFailure) {
     throw new Error("Daily quota exceeded for all available models. Please try again tomorrow.");
   }
 
@@ -633,9 +655,12 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   // Use only models that are available in the account to avoid silent 404/permission issues.
   // All of these support IMAGE responses via responseModalities/responseMimeType.
   const modelsToTry = [
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-preview',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash-lite-preview',
     'gemini-2.0-flash',
-    'gemini-2.0-flash-lite-preview-02-05',
-    'gemini-1.5-flash',
+    'gemini-2.0-flash-lite',
   ];
 
   for (const modelName of modelsToTry) {

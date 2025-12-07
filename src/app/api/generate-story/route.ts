@@ -118,14 +118,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { story, wordCount, tokenUsage } = await generateYearStory(entries, from, to, options, {
+    const { story, wordCount, tokenUsage, modelUsed } = await generateYearStory(entries, from, to, options, {
       mode,
       modelName,
     });
+    const effectiveModel = modelUsed ?? modelName;
     const consumedTokens = tokenUsage?.totalTokenCount ?? 0;
 
     const updated = await updateDailyUsage(supabase, dailyUsage, mode, consumedTokens);
-    await bumpMinuteUsage(supabase, minuteUsage, consumedTokens);
+    const minuteRow = effectiveModel === modelName
+      ? minuteUsage
+      : await ensureMinuteUsage(supabase, effectiveModel, minuteIso);
+    await bumpMinuteUsage(supabase, minuteRow, consumedTokens);
 
     await recordSummaryRun({
       supabase,
