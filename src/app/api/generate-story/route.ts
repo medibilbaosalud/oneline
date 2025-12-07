@@ -154,7 +154,10 @@ export async function POST(req: NextRequest) {
         imagePrompt ? generateStoryImage(imagePrompt) : Promise.resolve(null)
       ]);
 
-      audioBase64 = results[0];
+      if (results[0]) {
+        audioBase64 = results[0].data;
+        audioMimeType = results[0].mimeType;
+      }
       imageBase64 = results[1];
     } catch (e) {
       console.error("Error generating multimedia assets:", e);
@@ -167,6 +170,7 @@ export async function POST(req: NextRequest) {
       {
         story,
         audioBase64,
+        audioMimeType,
         imageBase64,
         words: wordCount,
         mode,

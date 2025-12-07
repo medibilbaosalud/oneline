@@ -912,7 +912,7 @@ export default function StoryGenerator({
                         <p className="text-xs text-zinc-400">Read by Gemini</p>
                       </div>
                     </div>
-                    <audio controls src={`data:audio/mp3;base64,${audioData}`} className="w-full accent-indigo-500" />
+                    <audio controls src={`data:${audioMimeType};base64,${audioData}`} className="w-full accent-indigo-500" />
                   </div>
                 )}
               </div>
