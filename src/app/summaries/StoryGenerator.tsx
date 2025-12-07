@@ -545,7 +545,8 @@ export default function StoryGenerator({
       // Set audio and image if available
       if (json?.audioBase64) {
         setAudioData(json.audioBase64);
-        setAudioMimeType(json.audioMimeType || 'audio/mp3'); // Fallback to mp3 if missing
+        setAudioMimeType(json.audioMimeType || 'audio/mp3');
+        console.log("Audio received:", json.audioMimeType, "Length:", json.audioBase64.length);
       }
       if (json?.imageBase64) setImageData(json.imageBase64);
 
@@ -912,7 +913,16 @@ export default function StoryGenerator({
                         <p className="text-xs text-zinc-400">Read by Gemini</p>
                       </div>
                     </div>
-                    <audio controls src={`data:${audioMimeType};base64,${audioData}`} className="w-full accent-indigo-500" />
+                    <div className="flex flex-col gap-2">
+                      <audio controls src={`data:${audioMimeType};base64,${audioData}`} className="w-full accent-indigo-500" />
+                      <a
+                        href={`data:${audioMimeType};base64,${audioData}`}
+                        download={`story-audio.${audioMimeType.split('/')[1] || 'mp3'}`}
+                        className="text-center text-xs text-indigo-300 hover:text-indigo-200 hover:underline"
+                      >
+                        Download Audio File
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>
