@@ -25,6 +25,8 @@ export default function ImageTestPage() {
         const startTime = Date.now();
 
         try {
+            // Call our internal API route which handles the server-side HF token authentication.
+            // We don't call HuggingFace directly from the client to keep the token secure.
             const res = await fetch("/api/image-test", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

@@ -7,6 +7,7 @@ const HF_TOKEN = process.env.HF_TOKEN;
 const MODEL = "stabilityai/stable-diffusion-xl-base-1.0";
 
 // Timeout for image generation (SDXL can take 30-60 seconds)
+// We set a generous timeout to prevent the request from hanging indefinitely if the model is cold.
 const GENERATION_TIMEOUT_MS = 90000; // 90 seconds
 
 /**
@@ -33,6 +34,8 @@ export async function generateImageSDXL(prompt: string): Promise<string | null> 
 
     try {
         // Create a timeout promise
+        // This ensures we can reject the request if HuggingFace takes too long,
+        // rather than waiting forever or relying on default fetch timeouts.
         const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => {
                 reject(new Error(`Image generation timed out after ${GENERATION_TIMEOUT_MS / 1000}s`));
@@ -59,6 +62,8 @@ export async function generateImageSDXL(prompt: string): Promise<string | null> 
         console.log(`[HF_IMAGE] Generation completed in ${(elapsedMs / 1000).toFixed(1)}s`);
 
         // Convert Blob to base64
+        // The result can be a Blob, Uint8Array, or a stream depending on the response type.
+        // We normalize it to a Buffer to easily convert to base64.
         let buffer: Buffer;
 
         if (result instanceof Blob) {

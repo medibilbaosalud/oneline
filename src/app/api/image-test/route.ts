@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateImageSDXL } from "@/lib/hfImage";
 
 export const runtime = "nodejs";
+// We allow a longer duration because image generation can be slow (30s+ for cold starts).
 export const maxDuration = 120; // Allow up to 2 minutes for image generation
 
 export async function POST(req: NextRequest) {

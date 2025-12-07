@@ -692,7 +692,8 @@ ${story.slice(0, 8000)}`
 }
 
 export async function generateStoryImage(imagePrompt: string): Promise<string | null> {
-  // Import dynamically to avoid issues if HF_TOKEN is not set during build
+  // Import dynamically to avoid issues if HF_TOKEN is not set during build time.
+  // This ensures the module is only loaded when actually needed for generation.
   const { generateImageSDXL } = await import('./hfImage');
 
   console.log(`[IMAGE] Delegating to HuggingFace SDXL. Prompt: "${imagePrompt.slice(0, 100)}..."`);
