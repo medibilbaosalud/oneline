@@ -567,13 +567,13 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   if (!apiKey || !imagePrompt) return null;
 
   // FALLBACK MECHANISM:
-  // Similar to audio, we try multiple image generation models.
-  // 'gemini-2.0-flash-preview-image-generation' is the specific one from the user's dashboard.
+  // The user has "Generación de imágenes de vista previa con Gemini 2.0 Flash".
+  // This usually maps to the standard 'gemini-2.0-flash' model with 'response_modalities' set to 'IMAGE'.
+  // We prioritize the standard flash model, then the experimental ones.
   const modelsToTry = [
-    { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Primary choice
-    { name: 'gemini-2.0-flash-exp-image-generation', version: 'v1alpha' },    // Experimental variant
-    { name: 'gemini-2.0-flash-exp', version: 'v1alpha' },                     // Short experimental name
-    { name: 'gemini-2.0-flash', version: 'v1beta' }                           // Standard name
+    { name: 'gemini-2.0-flash', version: 'v1beta' },          // Standard 2.0 Flash (likely the one shown in UI)
+    { name: 'gemini-2.0-flash-exp', version: 'v1beta' },      // Experimental 2.0 Flash
+    { name: 'gemini-2.0-flash-preview', version: 'v1beta' }   // Preview variant
   ];
 
   for (const model of modelsToTry) {
@@ -589,7 +589,9 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
             parts: [{ text: imagePrompt }]
           }],
           generationConfig: {
-            response_modalities: ["IMAGE"]
+            response_modalities: ["IMAGE"],
+            // Optional: Add aspect ratio or sample count if needed, but defaults usually work.
+            // aspect_ratio: "16:9" 
           }
         })
       });
@@ -606,7 +608,7 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
       for (const candidate of candidates) {
         for (const part of candidate?.content?.parts || []) {
           if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-            console.log(`Image generation successful with ${model.name}`);
+            console.log(`Image generation successful with ${model.name}, mime: ${part.inlineData.mimeType}, length: ${part.inlineData.data.length}`);
             return part.inlineData.data;
           }
         }
