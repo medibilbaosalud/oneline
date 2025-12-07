@@ -634,16 +634,21 @@ export async function generateImagePrompt(story: string): Promise<string> {
 
   // Models to try for text generation (fast/cheap models first)
   const modelsToTry = [
-    'gemini-2.0-flash-lite',
-    'gemini-2.0-flash',
-    'gemini-2.5-flash',
-    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',      // 1. Cheapest/Fastest (good for simple prompts)
+    'gemini-1.5-flash',         // 2. Standard Flash
+    'gemini-2.0-flash-lite',    // 3. Flash Lite 2.0
+    'gemini-2.0-flash',         // 4. Flash 2.0
   ];
 
   console.log("[IMAGE_PROMPT] Generating image prompt from story...");
 
   for (const modelName of modelsToTry) {
     try {
+      // Add delay to avoid rate limits
+      if (modelName !== modelsToTry[0]) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
       console.log(`[IMAGE_PROMPT] Attempting with model: ${modelName}`);
       const model = await loadGenerativeModel({ mode: 'standard', modelName });
 
@@ -706,11 +711,9 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   // All use v1beta endpoint and require responseModalities: ["IMAGE"]
 
   const modelsToTry = [
-    'gemini-2.5-flash-image',           // 1. Recommended stable model
-    'gemini-2.5-flash-image-preview',   // 2. Preview version
-    'gemini-2.0-flash-preview-image-generation', // 3. Legacy preview
-    'gemini-2.0-flash-exp',             // 4. Experimental
-    'gemini-2.0-flash',                 // 5. Standard fallback (may not support images)
+    'imagen-3.0-generate-001',          // 1. Dedicated Imagen 3 model
+    'gemini-2.0-flash-exp',             // 2. Experimental (often has image cap)
+    'gemini-2.5-flash-image',           // 3. Flash 2.5 Image
   ];
 
   console.log(`[IMAGE] Starting image generation. Prompt: "${imagePrompt.slice(0, 100)}..."`);
@@ -718,6 +721,10 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
 
   for (const modelName of modelsToTry) {
     try {
+      // Add a small delay before each attempt (except the first) to avoid hammering the API
+      if (modelName !== modelsToTry[0]) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
       console.log(`[IMAGE] Attempting with model: ${modelName}`);
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;

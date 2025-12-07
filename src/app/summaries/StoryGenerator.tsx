@@ -562,6 +562,8 @@ export default function StoryGenerator({
           includeHighlights,
           notes: notes.trim() || undefined,
           language,
+          includeImage,
+          includeAudio,
         },
         entries: decrypted,
       };
