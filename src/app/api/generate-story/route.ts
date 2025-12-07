@@ -99,13 +99,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const modelName = mode === 'advanced' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+    // For standard mode, let the fallback mechanism in yearStory.ts try multiple models.
+    // For advanced mode, we specifically want gemini-2.5-pro.
+    const modelConfig = mode === 'advanced'
+      ? { mode, modelName: 'gemini-2.5-pro' }
+      : { mode }; // No modelName = use full fallback list
 
     // Soft TPM guard to avoid spikes; falls back to a gentle 429 if exceeded.
     const minuteStart = new Date();
     minuteStart.setSeconds(0, 0);
     const minuteIso = minuteStart.toISOString();
-    const minuteUsage = await ensureMinuteUsage(supabase, modelName, minuteIso);
+    // For tracking, use primary model name per mode
+    const trackingModelName = mode === 'advanced' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+    const minuteUsage = await ensureMinuteUsage(supabase, trackingModelName, minuteIso);
     const tpmSoftLimit = mode === 'advanced' ? 80000 : 160000;
     const estimatedTokens = mode === 'advanced' ? 3500 : 2200;
     if (minuteUsage.tokens_used + estimatedTokens > tpmSoftLimit) {
@@ -118,10 +124,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { story, wordCount, tokenUsage } = await generateYearStory(entries, from, to, options, {
-      mode,
-      modelName,
-    });
+    const { story, wordCount, tokenUsage } = await generateYearStory(entries, from, to, options, modelConfig);
     const consumedTokens = tokenUsage?.totalTokenCount ?? 0;
 
     const updated = await updateDailyUsage(supabase, dailyUsage, mode, consumedTokens);
