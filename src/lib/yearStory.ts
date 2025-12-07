@@ -587,98 +587,186 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
  * Generates a concise image prompt based on the story.
  * This intermediate step avoids sending the entire story to the image model,
  * saving tokens and improving relevance.
+ * 
+ * BULLETPROOF: Uses the same fallback strategy as story generation.
  */
 export async function generateImagePrompt(story: string): Promise<string> {
-  try {
-    console.log("Generating image prompt from story...");
-    // Use the Lite model as per user preference for fast text tasks
-    const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.0-flash-lite-preview-02-05' });
-    if (!model) {
-      console.warn("Failed to load model for image prompt generation.");
-      return 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
-    }
+  const DEFAULT_PROMPT = 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
 
-    const response = await generateWithRetry(model, {
-      contents: [{
-        role: 'user',
-        parts: [{
-          text: `Based on the following story, write a single, concise, and vivid prompt for an AI image generator to create a cinematic, abstract, and emotional cover image. 
-          
-          Focus on mood, lighting, and abstract themes. Do NOT include text, characters, or specific details. 
-          Return ONLY the prompt text.
-          
-          Story:
-          ${story.slice(0, 10000)}`
-        }]
-      }],
-      generationConfig: {},
-    });
-
-    const prompt = extractStoryText(response);
-    console.log("Generated image prompt:", prompt);
-    return prompt || 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
-  } catch (error) {
-    console.error("Failed to generate image prompt:", error);
-    return 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
+  if (!story || story.trim().length === 0) {
+    console.warn("[IMAGE_PROMPT] Story is empty, returning default prompt.");
+    return DEFAULT_PROMPT;
   }
+
+  // Models to try for text generation (fast/cheap models first)
+  const modelsToTry = [
+    'gemini-2.0-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-2.5-flash',
+    'gemini-1.5-flash',
+  ];
+
+  console.log("[IMAGE_PROMPT] Generating image prompt from story...");
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[IMAGE_PROMPT] Attempting with model: ${modelName}`);
+      const model = await loadGenerativeModel({ mode: 'standard', modelName });
+
+      if (!model) {
+        console.warn(`[IMAGE_PROMPT] Failed to load model ${modelName}. Trying next...`);
+        continue;
+      }
+
+      const response = await generateWithRetry(model, {
+        contents: [{
+          role: 'user',
+          parts: [{
+            text: `Based on the following story, write a single, concise, and vivid prompt for an AI image generator to create a cinematic, abstract, and emotional cover image. 
+          
+Focus on mood, lighting, and abstract themes. Do NOT include text, characters, or specific details. 
+Return ONLY the prompt text, nothing else.
+          
+Story:
+${story.slice(0, 8000)}`
+          }]
+        }],
+        generationConfig: {},
+      });
+
+      const prompt = extractStoryText(response);
+      if (prompt && prompt.trim().length > 10) {
+        console.log(`[IMAGE_PROMPT] ✅ SUCCESS with ${modelName}. Prompt: "${prompt.slice(0, 100)}..."`);
+        return prompt;
+      }
+
+      console.warn(`[IMAGE_PROMPT] Model ${modelName} returned empty or invalid prompt. Trying next...`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isQuotaError = message.includes('429') || message.includes('quota');
+      console.warn(`[IMAGE_PROMPT] Model ${modelName} failed${isQuotaError ? ' (quota)' : ''}:`, message.slice(0, 200));
+    }
+  }
+
+  console.error("[IMAGE_PROMPT] ❌ All models failed. Returning default prompt.");
+  return DEFAULT_PROMPT;
 }
 
 export async function generateStoryImage(imagePrompt: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || !imagePrompt) return null;
+  if (!apiKey) {
+    console.error("[IMAGE] CRITICAL: GEMINI_API_KEY is not set.");
+    return null;
+  }
+  if (!imagePrompt || imagePrompt.trim().length === 0) {
+    console.error("[IMAGE] CRITICAL: imagePrompt is empty.");
+    return null;
+  }
 
-  // FALLBACK MECHANISM:
-  // We prioritize the specific preview model requested by the user.
-  // We also add 'gemini-2.0-flash-exp' as the user provided a working example with it.
+  // BULLETPROOF FALLBACK MECHANISM:
+  // We try multiple models in order of preference. Based on Google documentation (Dec 2024):
+  // - gemini-2.5-flash-image: The recommended model for image generation (replaces deprecated previews)
+  // - gemini-2.5-flash-image-preview: Preview version of the above
+  // - gemini-2.0-flash-preview-image-generation: Older but still functional
+  // - gemini-2.0-flash-exp: Experimental model with image capabilities
+  // All use v1beta endpoint and require responseModalities: ["IMAGE"]
+
   const modelsToTry = [
-    { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Explicit user request
-    { name: 'gemini-2.0-flash-exp', version: 'v1beta' },                      // User provided example
-    { name: 'gemini-2.0-flash', version: 'v1beta' },                          // Standard fallback
+    'gemini-2.5-flash-image',           // 1. Recommended stable model
+    'gemini-2.5-flash-image-preview',   // 2. Preview version
+    'gemini-2.0-flash-preview-image-generation', // 3. Legacy preview
+    'gemini-2.0-flash-exp',             // 4. Experimental
+    'gemini-2.0-flash',                 // 5. Standard fallback (may not support images)
   ];
 
-  for (const model of modelsToTry) {
+  console.log(`[IMAGE] Starting image generation. Prompt: "${imagePrompt.slice(0, 100)}..."`);
+  console.log(`[IMAGE] Will try ${modelsToTry.length} models in order.`);
+
+  for (const modelName of modelsToTry) {
     try {
-      console.log(`Attempting image generation with model: ${model.name} (${model.version})`);
-      const url = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`;
+      console.log(`[IMAGE] Attempting with model: ${modelName}`);
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+      const requestBody = {
+        contents: [{
+          parts: [{ text: imagePrompt }]
+        }],
+        generationConfig: {
+          responseModalities: ["IMAGE"], // CamelCase as per Google documentation
+        }
+      };
+
+      console.log(`[IMAGE] Request URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
+      console.log(`[IMAGE] Request body: ${JSON.stringify(requestBody).slice(0, 200)}...`);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: imagePrompt }]
-          }],
-          generationConfig: {
-            responseModalities: ["IMAGE"], // CamelCase as per documentation
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      const responseText = await response.text();
+      console.log(`[IMAGE] Response status: ${response.status}`);
+      console.log(`[IMAGE] Response body (first 500 chars): ${responseText.slice(0, 500)}`);
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`Image gen failed with ${model.name}:`, response.status, errorText);
-        continue; // Try next model
+        const isQuotaError = responseText.includes('429') || responseText.includes('quota') || responseText.includes('RESOURCE_EXHAUSTED');
+        const isNotFound = responseText.includes('404') || responseText.includes('not found') || responseText.includes('NOT_FOUND');
+
+        if (isQuotaError) {
+          console.warn(`[IMAGE] Model ${modelName} hit quota limit. Trying next...`);
+          continue;
+        }
+        if (isNotFound) {
+          console.warn(`[IMAGE] Model ${modelName} not found. Trying next...`);
+          continue;
+        }
+
+        console.warn(`[IMAGE] Model ${modelName} failed with status ${response.status}. Trying next...`);
+        continue;
       }
 
-      const data = await response.json();
-      // Check for image data in candidates
+      // Parse the response
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(`[IMAGE] Failed to parse response JSON from ${modelName}:`, parseError);
+        continue;
+      }
+
+      // Extract image data from candidates
       const candidates = data?.candidates || [];
+      console.log(`[IMAGE] Found ${candidates.length} candidates in response.`);
+
       for (const candidate of candidates) {
-        for (const part of candidate?.content?.parts || []) {
+        const parts = candidate?.content?.parts || [];
+        console.log(`[IMAGE] Candidate has ${parts.length} parts.`);
+
+        for (const part of parts) {
           if (part?.inlineData?.mimeType?.startsWith('image') && part?.inlineData?.data) {
-            console.log(`Image generation successful with ${model.name}, mime: ${part.inlineData.mimeType}, length: ${part.inlineData.data.length}`);
+            const imageDataLength = part.inlineData.data.length;
+            console.log(`[IMAGE] ✅ SUCCESS! Model: ${modelName}, MIME: ${part.inlineData.mimeType}, Data length: ${imageDataLength}`);
             return part.inlineData.data;
+          }
+
+          // Log what we found if it's not image data
+          if (part?.text) {
+            console.log(`[IMAGE] Part contains text (not image): "${part.text.slice(0, 100)}..."`);
           }
         }
       }
 
-      console.warn(`Image gen response structure unexpected for ${model.name}:`, JSON.stringify(data).slice(0, 200));
+      // If we got here, the response was OK but didn't contain image data
+      console.warn(`[IMAGE] Model ${modelName} returned OK but no image data found. Response structure:`, JSON.stringify(data).slice(0, 300));
+
     } catch (error) {
-      console.error(`Image generation error with ${model.name}:`, error);
+      console.error(`[IMAGE] Exception with model ${modelName}:`, error);
     }
   }
 
-  console.error("All image generation attempts failed.");
+  console.error(`[IMAGE] ❌ ALL ${modelsToTry.length} MODELS FAILED. Image generation unsuccessful.`);
   return null;
 }
 
