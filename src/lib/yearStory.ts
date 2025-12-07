@@ -391,8 +391,19 @@ export async function generateYearStory(
   } else if (mode === 'advanced') {
     modelsToTry = ['gemini-2.5-pro'];
   } else {
-    // Standard mode fallbacks: 2.5 Flash -> 2.0 Flash -> 1.5 Flash (last resort)
-    modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    // Comprehensive fallback list as requested by user to avoid 429 errors
+    modelsToTry = [
+      'gemini-2.5-flash',           // 1. Flash 2.5
+      'gemini-2.5-flash-preview',   // 2. Flash 2.5 Preview
+      'gemini-2.5-flash-001',       // 2b. Flash 2.5 Preview (alt name)
+      'gemini-2.5-flash-lite',      // 3. Flash-Lite 2.5
+      'gemini-2.5-flash-lite-preview', // 4. Flash-Lite 2.5 Preview
+      'gemini-2.5-flash-lite-001',  // 4b. Flash-Lite 2.5 Preview (alt name)
+      'gemini-2.0-flash',           // 5. Flash 2.0
+      'gemini-2.0-flash-lite',      // 6. Flash-Lite 2.0
+      'gemini-2.0-flash-lite-preview-02-05', // 6b. Flash-Lite 2.0 Preview
+      'gemini-1.5-flash',           // 7. Flash 1.5 (Last resort)
+    ];
   }
 
   let lastError: unknown = null;
