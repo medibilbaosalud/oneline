@@ -518,15 +518,33 @@ export function coercePov(value: string | null): YearStoryOptions['pov'] {
 
 
 async function generateWithRetry(model: any, prompt: any, retries = 3, delay = 1000) {
+  const modelName = model?.model || 'unknown';
+  console.log(`[RETRY] Starting generateWithRetry for model: ${modelName}, retries: ${retries}`);
+
   for (let i = 0; i < retries; i++) {
     try {
-      return await model.generateContent(prompt);
+      console.log(`[RETRY] Attempt ${i + 1}/${retries} for ${modelName}...`);
+      const result = await model.generateContent(prompt);
+      console.log(`[RETRY] ✅ Success on attempt ${i + 1} for ${modelName}`);
+      return result;
     } catch (error: any) {
-      if (error.message?.includes('429') || error.message?.includes('Resource exhausted')) {
-        if (i === retries - 1) throw error;
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      const errorMsg = error.message || String(error);
+      console.error(`[RETRY] ❌ Attempt ${i + 1}/${retries} failed for ${modelName}: ${errorMsg.slice(0, 300)}`);
+
+      const isRetryable = errorMsg.includes('429') || errorMsg.includes('Resource exhausted') || errorMsg.includes('RESOURCE_EXHAUSTED');
+
+      if (isRetryable) {
+        if (i === retries - 1) {
+          console.error(`[RETRY] All ${retries} retries exhausted for ${modelName}. Throwing.`);
+          throw error;
+        }
+        const waitTime = delay * Math.pow(2, i);
+        console.log(`[RETRY] Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
+
+      console.error(`[RETRY] Non-retryable error for ${modelName}. Throwing immediately.`);
       throw error;
     }
   }
