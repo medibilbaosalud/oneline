@@ -575,8 +575,10 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
 
   // FALLBACK MECHANISM:
   // We prioritize the specific preview model requested by the user.
+  // We also add 'gemini-2.0-flash-exp' as the user provided a working example with it.
   const modelsToTry = [
     { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Explicit user request
+    { name: 'gemini-2.0-flash-exp', version: 'v1beta' },                      // User provided example
     { name: 'gemini-2.0-flash', version: 'v1beta' },                          // Standard fallback
   ];
 
