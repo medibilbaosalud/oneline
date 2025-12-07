@@ -308,12 +308,72 @@ export default function StoryGenerator({
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const marginX = 56;
-      const marginY = 64;
+      const marginX = 50;
+      const marginY = 50;
       const maxWidth = pageWidth - marginX * 2;
       let cursorY = marginY;
-      const lineHeight = 18;
+      const lineHeight = 20;
 
+      // ========== COVER PAGE ==========
+      // Dark gradient background simulation (solid color since jsPDF doesn't support gradients)
+      pdf.setFillColor(15, 15, 35); // Dark navy
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+
+      // Cover image (if available)
+      if (imageData) {
+        try {
+          const imgWidth = pageWidth - 100;
+          const imgHeight = imgWidth; // Square image
+          const imgX = (pageWidth - imgWidth) / 2;
+          const imgY = 80;
+
+          // Add the image
+          pdf.addImage(
+            `data:image/png;base64,${imageData}`,
+            "PNG",
+            imgX,
+            imgY,
+            imgWidth,
+            imgHeight
+          );
+          cursorY = imgY + imgHeight + 40;
+        } catch (imgErr) {
+          console.warn("Could not add image to PDF:", imgErr);
+          cursorY = 120;
+        }
+      } else {
+        cursorY = 200;
+      }
+
+      // App title
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(32);
+      pdf.setTextColor(255, 255, 255);
+      pdf.text("OneLine", pageWidth / 2, cursorY, { align: "center", baseline: "top" });
+      cursorY += 40;
+
+      // Story subtitle
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(14);
+      pdf.setTextColor(180, 180, 200);
+      const dateLine = from && to ? `${from} → ${to}` : "Your personal story";
+      pdf.text(dateLine, pageWidth / 2, cursorY, { align: "center", baseline: "top" });
+      cursorY += 30;
+
+      // Decorative line
+      pdf.setDrawColor(100, 100, 150);
+      pdf.setLineWidth(0.5);
+      pdf.line(pageWidth / 2 - 60, cursorY, pageWidth / 2 + 60, cursorY);
+
+      // ========== CONTENT PAGES ==========
+      pdf.addPage();
+      cursorY = marginY;
+
+      // Light background for content
+      pdf.setFillColor(252, 252, 255);
+      pdf.rect(0, 0, pageWidth, pageHeight, "F");
+
+      // Parse story into segments
       const segmentsByParagraph = story
         .replace(/\r/g, "")
         .split(/\n\s*\n/)
@@ -321,33 +381,32 @@ export default function StoryGenerator({
         .filter(Boolean)
         .map((para) => parseSegments(para));
 
-      pdf.setFont("times", "bold");
-      pdf.setFontSize(20);
-      pdf.setTextColor(28, 34, 78);
-      pdf.text("OneLine Story", marginX, cursorY, { baseline: "top" });
-      cursorY += 22;
+      // Story header on content page
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.setTextColor(30, 30, 60);
+      pdf.text("Your Story", marginX, cursorY, { baseline: "top" });
+      cursorY += 30;
 
-      pdf.setFont("times", "italic");
+      // Subtle divider
+      pdf.setDrawColor(200, 200, 220);
+      pdf.setLineWidth(0.5);
+      pdf.line(marginX, cursorY, marginX + 100, cursorY);
+      cursorY += 20;
+
+      // Body text settings
       pdf.setFontSize(12);
-      pdf.setTextColor(90, 96, 122);
-      const dateLine = from && to ? `Range: ${from} → ${to}` : "Private recap";
-      pdf.text(dateLine, marginX, cursorY, { baseline: "top" });
-      cursorY += 12;
-
-      pdf.setDrawColor(144, 153, 180);
-      pdf.setLineWidth(0.6);
-      pdf.line(marginX, cursorY, pageWidth - marginX, cursorY);
-      cursorY += 18;
-
-      pdf.setFontSize(13);
-      pdf.setTextColor(26, 26, 26);
+      pdf.setTextColor(40, 40, 50);
 
       const ensureSpace = (additional: number) => {
         if (cursorY + additional > pageHeight - marginY) {
           pdf.addPage();
+          // Light background for new page
+          pdf.setFillColor(252, 252, 255);
+          pdf.rect(0, 0, pageWidth, pageHeight, "F");
           cursorY = marginY;
-          pdf.setFontSize(13);
-          pdf.setTextColor(26, 26, 26);
+          pdf.setFontSize(12);
+          pdf.setTextColor(40, 40, 50);
         }
       };
 
@@ -357,11 +416,9 @@ export default function StoryGenerator({
 
         segments.forEach((segment) => {
           const words = segment.text.split(/\s+/).filter(Boolean);
-          if (words.length === 0) {
-            return;
-          }
+          if (words.length === 0) return;
 
-          pdf.setFont("times", segment.bold ? "bold" : "normal");
+          pdf.setFont("helvetica", segment.bold ? "bold" : "normal");
 
           words.forEach((word) => {
             const spacer = cursorX === marginX ? "" : " ";
@@ -385,16 +442,26 @@ export default function StoryGenerator({
       segmentsByParagraph.forEach((segments, idx) => {
         writeParagraph(segments);
         if (idx < segmentsByParagraph.length - 1) {
-          cursorY += 6;
+          cursorY += 10; // Paragraph spacing
         }
       });
+
+      // Footer on last page
+      pdf.setFontSize(9);
+      pdf.setTextColor(150, 150, 170);
+      pdf.text(
+        "Generated with OneLine • Your personal diary companion",
+        pageWidth / 2,
+        pageHeight - 30,
+        { align: "center", baseline: "top" }
+      );
 
       pdf.save("oneline-story.pdf");
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Export failed. Please retry after allowing downloads.");
     }
-  }, [from, story, to]);
+  }, [from, imageData, story, to]);
 
   useEffect(() => {
     const signature = JSON.stringify({
