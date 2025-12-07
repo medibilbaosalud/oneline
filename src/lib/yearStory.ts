@@ -534,9 +534,13 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
  */
 export async function generateImagePrompt(story: string): Promise<string> {
   try {
+    console.log("Generating image prompt from story...");
     // Use the Lite model as per user preference for fast text tasks
     const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.0-flash-lite-preview-02-05' });
-    if (!model) return '';
+    if (!model) {
+      console.warn("Failed to load model for image prompt generation.");
+      return 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
+    }
 
     const response = await generateWithRetry(model, {
       contents: [{
@@ -548,17 +552,18 @@ export async function generateImagePrompt(story: string): Promise<string> {
           Return ONLY the prompt text.
           
           Story:
-          ${story.slice(0, 10000)}` // Send a good chunk but not necessarily everything if it's huge
+          ${story.slice(0, 10000)}`
         }]
       }],
       generationConfig: {},
     });
 
     const prompt = extractStoryText(response);
-    return prompt || '';
+    console.log("Generated image prompt:", prompt);
+    return prompt || 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
   } catch (error) {
     console.error("Failed to generate image prompt:", error);
-    return '';
+    return 'A creative, abstract, and cinematic cover image representing a personal journey, with moody lighting and no text.';
   }
 }
 
@@ -567,8 +572,7 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   if (!apiKey || !imagePrompt) return null;
 
   // FALLBACK MECHANISM:
-  // The user provided specific documentation showing 'gemini-2.0-flash-preview-image-generation'.
-  // The documentation also shows 'responseModalities' (camelCase) in the JSON payload.
+  // We prioritize the specific preview model requested by the user, then fallbacks.
   const modelsToTry = [
     { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Explicit user request
     { name: 'gemini-2.0-flash', version: 'v1beta' },                          // Standard fallback
@@ -588,7 +592,7 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
             parts: [{ text: imagePrompt }]
           }],
           generationConfig: {
-            responseModalities: ["IMAGE"], // CamelCase as per user screenshot
+            responseModalities: ["IMAGE"], // CamelCase as per documentation
           }
         })
       });
@@ -600,7 +604,7 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
       }
 
       const data = await response.json();
-      // Robustly check for image data in candidates
+      // Check for image data in candidates
       const candidates = data?.candidates || [];
       for (const candidate of candidates) {
         for (const part of candidate?.content?.parts || []) {
