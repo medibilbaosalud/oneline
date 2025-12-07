@@ -181,6 +181,7 @@ export default function StoryGenerator({
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
   const [audioData, setAudioData] = useState<string | null>(null);
+  const [audioMimeType, setAudioMimeType] = useState<string>("audio/mp3");
   const [imageData, setImageData] = useState<string | null>(null);
   const formattedStory = useMemo(() => (story ? formatStoryBlocks(story) : []), [story]);
   const [loadingPhrase, setLoadingPhrase] = useState<string | null>(null);
@@ -521,7 +522,7 @@ export default function StoryGenerator({
       });
 
       const json = (await res.json().catch(() => null)) as
-        | { story?: string; audioBase64?: string; imageBase64?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
+        | { story?: string; audioBase64?: string; audioMimeType?: string; imageBase64?: string; error?: string; message?: string; usageUnits?: number; remainingUnits?: number; dailyLimit?: number }
         | null;
       if (!res.ok) {
         const message = json?.message || json?.error || res.statusText || "Failed to generate story";
@@ -542,7 +543,10 @@ export default function StoryGenerator({
       setStory(storyText);
 
       // Set audio and image if available
-      if (json?.audioBase64) setAudioData(json.audioBase64);
+      if (json?.audioBase64) {
+        setAudioData(json.audioBase64);
+        setAudioMimeType(json.audioMimeType || 'audio/mp3'); // Fallback to mp3 if missing
+      }
       if (json?.imageBase64) setImageData(json.imageBase64);
 
       if (json?.usageUnits != null && json?.remainingUnits != null && json?.dailyLimit != null) {

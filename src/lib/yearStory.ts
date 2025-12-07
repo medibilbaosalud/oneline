@@ -460,7 +460,7 @@ async function generateWithRetry(model: any, prompt: any, retries = 3, delay = 1
   }
 }
 
-export async function generateStoryAudio(text: string): Promise<string | null> {
+export async function generateStoryAudio(text: string): Promise<{ data: string; mimeType: string } | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
@@ -471,7 +471,8 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
   const modelsToTry = [
     { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' }, // Primary choice from user screenshot
     { name: 'gemini-2.5-flash-tts', version: 'v1beta' },         // Standard v1beta
-    { name: 'gemini-2.5-flash-tts', version: 'v1alpha' }         // Legacy/Experimental v1alpha
+    { name: 'gemini-2.5-flash-tts', version: 'v1alpha' },        // Legacy/Experimental v1alpha
+    { name: 'gemini-2.0-flash-exp', version: 'v1alpha' }         // Fallback to 2.0 exp which is also multimodal
   ];
 
   for (const model of modelsToTry) {
@@ -508,7 +509,10 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
         for (const part of candidate?.content?.parts || []) {
           if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
             console.log(`Audio generation successful with ${model.name}`);
-            return part.inlineData.data;
+            return {
+              data: part.inlineData.data,
+              mimeType: part.inlineData.mimeType
+            };
           }
         }
       }

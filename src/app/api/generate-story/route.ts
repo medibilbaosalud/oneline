@@ -142,6 +142,7 @@ export async function POST(req: NextRequest) {
 
     let imageBase64: string | null = null;
     let audioBase64: string | null = null;
+    let audioMimeType: string | null = null;
 
     try {
       // 1. Generate Image Prompt (using text model)
