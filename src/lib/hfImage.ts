@@ -66,8 +66,8 @@ export async function generateImageSDXL(prompt: string): Promise<string | null> 
         // We normalize it to a Buffer to easily convert to base64.
         let buffer: Buffer;
 
-        if (result instanceof Blob) {
-            const arrayBuffer = await result.arrayBuffer();
+        if ((result as any) instanceof Blob) {
+            const arrayBuffer = await (result as Blob).arrayBuffer();
             buffer = Buffer.from(arrayBuffer);
         } else if (result instanceof Uint8Array) {
             buffer = Buffer.from(result);
