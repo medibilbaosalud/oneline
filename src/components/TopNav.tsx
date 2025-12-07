@@ -18,7 +18,7 @@ function NavLink({ href, label, onClick }: NavLinkProps) {
   const active = pathname === href || pathname?.startsWith(href + '/');
   const base = 'rounded-md px-3 py-2 text-sm transition';
   return (
-    <a
+    <Link
       href={href}
       onClick={onClick}
       className={
@@ -28,7 +28,7 @@ function NavLink({ href, label, onClick }: NavLinkProps) {
       }
     >
       {label}
-    </a>
+    </Link>
   );
 }
 
@@ -50,12 +50,12 @@ export default function TopNav() {
       <nav className="mx-auto flex h-12 max-w-6xl items-center justify-between px-3">
         {/* Brand + Desktop nav */}
         <div className="flex items-center gap-2">
-          <a
+          <Link
             href="/"
             className="rounded-md px-2 py-1 text-sm font-semibold text-white hover:bg-neutral-800/60"
           >
             OneLine
-          </a>
+          </Link>
           <div className="ml-2 hidden gap-1 md:flex">
             <NavLink href="/today" label="Today" />
             <NavLink href="/history" label="History" />
