@@ -474,7 +474,7 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
     { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' }, // Primary choice from user screenshot
     { name: 'gemini-2.5-flash-tts', version: 'v1beta' },         // Standard v1beta
     { name: 'gemini-2.5-flash-tts', version: 'v1alpha' },        // Legacy/Experimental v1alpha
-    { name: 'gemini-2.0-flash-exp', version: 'v1alpha' }         // Fallback to 2.0 exp which is also multimodal
+    { name: 'gemini-2.0-flash-exp', version: 'v1beta' }          // Fallback to 2.0 exp (v1beta)
   ];
 
   for (const model of modelsToTry) {

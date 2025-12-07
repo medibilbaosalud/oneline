@@ -149,16 +149,26 @@ export async function POST(req: NextRequest) {
       const imagePrompt = await generateImagePrompt(story);
 
       // 2. Generate Audio and Image in parallel (using the optimized prompt for image)
-      const results = await Promise.all([
+      const results = await Promise.allSettled([
         generateStoryAudio(story),
         imagePrompt ? generateStoryImage(imagePrompt) : Promise.resolve(null)
       ]);
 
-      if (results[0]) {
-        audioBase64 = results[0].data;
-        audioMimeType = results[0].mimeType;
+      const audioResult = results[0];
+      const imageResult = results[1];
+
+      if (audioResult.status === 'fulfilled' && audioResult.value) {
+        audioBase64 = audioResult.value.data;
+        audioMimeType = audioResult.value.mimeType;
+      } else if (audioResult.status === 'rejected') {
+        console.error("Audio generation failed:", audioResult.reason);
       }
-      imageBase64 = results[1];
+
+      if (imageResult.status === 'fulfilled' && imageResult.value) {
+        imageBase64 = imageResult.value;
+      } else if (imageResult.status === 'rejected') {
+        console.error("Image generation failed:", imageResult.reason);
+      }
     } catch (e) {
       console.error("Error generating multimedia assets:", e);
       // Do not fail the whole request if assets fail
