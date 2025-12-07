@@ -16,6 +16,8 @@ type SummaryItem = {
   imageUrl?: string;
 };
 
+type PeriodFilter = "all" | "weekly" | "monthly" | "yearly";
+
 export default function SummaryHistory() {
   const { dataKey } = useVault();
   const [userId, setUserId] = useState<string | null>(null);
@@ -23,6 +25,10 @@ export default function SummaryHistory() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
 
   useEffect(() => {
     (async () => {
@@ -64,6 +70,28 @@ export default function SummaryHistory() {
     };
   }, [dataKey, ready, userId]);
 
+  // Filtered items based on search and period
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      // Period filter
+      if (periodFilter !== "all" && item.period?.toLowerCase() !== periodFilter) {
+        return false;
+      }
+
+      // Text search (case insensitive)
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesText = item.text.toLowerCase().includes(query);
+        const matchesDate = item.from?.includes(query) || item.to?.includes(query);
+        if (!matchesText && !matchesDate) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [items, searchQuery, periodFilter]);
+
   async function handleDelete(id: string) {
     if (!userId) return;
     const confirmed = window.confirm("Delete this saved summary? This cannot be undone.");
@@ -93,6 +121,61 @@ export default function SummaryHistory() {
         </div>
       </header>
 
+      {/* Search and Filter Bar */}
+      {ready && !loading && items.length > 0 && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search stories..."
+              className="w-full rounded-xl border border-white/10 bg-neutral-900/80 py-2.5 pl-10 pr-4 text-sm text-white placeholder-neutral-500 outline-none ring-indigo-500/50 transition focus:border-indigo-500/50 focus:ring-2"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Period Filter */}
+          <select
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value as PeriodFilter)}
+            className="rounded-xl border border-white/10 bg-neutral-900/80 px-4 py-2.5 text-sm text-white outline-none ring-indigo-500/50 transition focus:border-indigo-500/50 focus:ring-2"
+          >
+            <option value="all">All periods</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+
+          {/* Results count */}
+          <span className="text-xs text-neutral-500">
+            {filteredItems.length} of {items.length} stories
+          </span>
+        </div>
+      )}
+
       {!ready && (
         <div className="rounded-2xl border border-white/10 bg-neutral-950/70 p-5 text-sm text-neutral-300">
           Unlock your vault to view saved summaries.
@@ -115,9 +198,15 @@ export default function SummaryHistory() {
         </div>
       )}
 
-      {ready && !loading && !error && items.length > 0 && (
+      {ready && !loading && !error && items.length > 0 && filteredItems.length === 0 && (
+        <div className="rounded-2xl border border-white/10 bg-neutral-950/70 p-5 text-sm text-neutral-300">
+          No stories match your search. Try different keywords or filters.
+        </div>
+      )}
+
+      {ready && !loading && !error && filteredItems.length > 0 && (
         <div className="space-y-3">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <article
               key={item.id}
               className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 via-indigo-900/10 to-black p-5 shadow-lg shadow-indigo-950/40"
