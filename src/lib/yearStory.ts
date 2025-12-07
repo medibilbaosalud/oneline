@@ -440,46 +440,62 @@ export async function generateYearStory(
       lastError = error;
 
       const message = error instanceof Error ? error.message : String(error);
-      const isQuotaError = message.includes('429') || message.includes('quota') || message.includes('Too Many Requests');
+      const isQuotaError = message.includes('429') || message.includes('quota') || message.includes('Too Many Requests') || message.includes('RESOURCE_EXHAUSTED');
+      const isModelNotFound = message.includes('404') || message.includes('not found') || message.includes('NOT_FOUND');
+      const isServerError = message.includes('500') || message.includes('503') || message.includes('INTERNAL');
 
-      // If it's NOT a quota error and NOT a model loading error, it might be a prompt issue, so maybe don't retry?
-      // But for safety, we'll try the next model if it's a system/API error.
-      // If it's a safety block, switching models might not help, but worth a shot if policies differ.
-
+      // BULLETPROOF: Continue to next model on ANY API-level error
       if (isQuotaError) {
-        console.log(`Quota exceeded for ${modelName}, failing over to next model...`);
+        console.log(`[STORY] Quota exceeded for ${modelName}, trying next model...`);
         continue;
       }
 
-      // For other errors, we might also want to continue, but let's be careful not to loop forever on bad prompts.
-      // For now, we treat most errors as "try next model" to be robust.
+      if (isModelNotFound) {
+        console.log(`[STORY] Model ${modelName} not found (404), trying next model...`);
+        continue;
+      }
+
+      if (isServerError) {
+        console.log(`[STORY] Server error for ${modelName}, trying next model...`);
+        continue;
+      }
+
+      // For safety blocks or prompt issues, also try next model (different models have different policies)
+      console.log(`[STORY] Other error for ${modelName}, trying next model anyway...`);
+      continue;
     }
   }
 
   // If we exhausted all models, handle the error or return a fallback
+  console.error(`[STORY] ❌ ALL ${modelsToTry.length} MODELS FAILED. Last error:`, lastError);
+
   const message = lastError instanceof Error ? lastError.message : 'Failed to generate year story';
   const lowered = message.toLowerCase();
   const hitTokenLimit = lowered.includes('max_tokens') || lowered.includes('empty story');
 
-  // Retry once with a tighter feed window when Gemini signals token limits (using the primary model strategy again? or just failing)
-  // Since we already tried multiple models, maybe we just fail here unless we want to recurse with a smaller feed.
+  // Retry once with a tighter feed window when Gemini signals token limits
   if (attempt === 0 && hitTokenLimit) {
+    console.log(`[STORY] Retrying with tighter feed window...`);
     return generateYearStory(entries, from, to, options, modelConfig, 1);
   }
 
-  // If we really failed everything, return a stub so the UI doesn't crash, or throw.
-  // The original code returned a stub if !model.
-  const combined = entries
-    .map((entry) => `[${ymd(entry.day ?? entry.created_at ?? new Date())}] ${entry.content}`)
-    .join(' ');
-  const excerpt = combined.length > 1500 ? `${combined.slice(0, 1500)}…` : combined;
+  // Provide accurate error messages based on the actual error type
+  const lastErrorStr = String(lastError);
 
-  // If it was a quota error specifically that killed all attempts
-  if (String(lastError).includes('429')) {
-    throw new Error("Daily quota exceeded for all available models. Please try again tomorrow.");
+  if (lastErrorStr.includes('404') || lastErrorStr.includes('NOT_FOUND')) {
+    throw new Error(`Modelos no disponibles. Por favor contacta soporte. (${modelsToTry.length} modelos probados)`);
   }
 
-  throw new Error(message);
+  if (lastErrorStr.includes('429') || lastErrorStr.includes('quota') || lastErrorStr.includes('RESOURCE_EXHAUSTED')) {
+    throw new Error("Cuota diaria agotada en todos los modelos. Por favor intenta mañana.");
+  }
+
+  if (lastErrorStr.includes('500') || lastErrorStr.includes('503') || lastErrorStr.includes('INTERNAL')) {
+    throw new Error("Error temporal del servidor de Google. Por favor intenta de nuevo en unos minutos.");
+  }
+
+  // Generic error with the actual message for debugging
+  throw new Error(`Error de generación: ${message.slice(0, 200)}`);
 }
 
 export function coerceTone(value: string | null): YearStoryOptions['tone'] {
