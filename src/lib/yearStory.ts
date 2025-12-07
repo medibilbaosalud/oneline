@@ -534,8 +534,8 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
  */
 export async function generateImagePrompt(story: string): Promise<string> {
   try {
-    // Use the standard model logic (Flash 2.5 -> 2.0) for this text task
-    const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.5-flash' });
+    // Use the Lite model as per user preference for fast text tasks
+    const model = await loadGenerativeModel({ mode: 'standard', modelName: 'gemini-2.0-flash-lite-preview-02-05' });
     if (!model) return '';
 
     const response = await generateWithRetry(model, {
