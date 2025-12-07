@@ -153,11 +153,11 @@ export default function SummaryHistory() {
 
               {/* Cover Image */}
               {item.imageUrl && (
-                <div className="relative mt-4 overflow-hidden rounded-xl">
+                <div className="relative mt-4 flex justify-center overflow-hidden rounded-xl bg-black/20">
                   <img
                     src={item.imageUrl}
                     alt="Story cover"
-                    className="h-48 w-full object-cover"
+                    className="max-h-80 w-auto max-w-full rounded-xl object-contain"
                     loading="lazy"
                   />
                   <div className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70">
