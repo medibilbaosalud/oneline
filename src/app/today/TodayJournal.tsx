@@ -16,6 +16,7 @@ import FeedbackForm from '@/components/FeedbackForm';
 import { SpeechToText } from '@/components/SpeechToText';
 import StreakDashboard from '@/components/engagement/StreakDashboard';
 import { recordDailyEntry } from '@/lib/streakService';
+import MoodSelector, { type MoodScore } from '@/components/engagement/MoodSelector';
 
 type StreakData = {
   current: number;
@@ -100,6 +101,7 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
   const [authed, setAuthed] = useState(false);
   const todayString = useMemo(() => ymdUTC(), []);
   const [selectedDay, setSelectedDay] = useState(todayString);
+  const [selectedMood, setSelectedMood] = useState<MoodScore | null>(null);
   const isToday = selectedDay === todayString;
   const yesterdayString = useMemo(() => {
     const d = new Date();
@@ -410,7 +412,7 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
         const supabase = supabaseBrowser();
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.id && isToday) {
-          recordDailyEntry(user.id).catch(() => { });
+          recordDailyEntry(user.id, selectedMood ?? undefined).catch(() => { });
         }
         setTimeout(() => setMsg(null), 1500);
       }
@@ -662,6 +664,15 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                   >
                     Clear Text
                   </motion.button>
+
+                  {/* Mood Selector - inline */}
+                  {isToday && (
+                    <div className="flex items-center gap-2 rounded-xl bg-neutral-800/50 px-3 py-1.5">
+                      <span className="text-xs text-neutral-500">Mood:</span>
+                      <MoodSelector value={selectedMood} onChange={setSelectedMood} compact />
+                    </div>
+                  )}
+
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     type="button"
