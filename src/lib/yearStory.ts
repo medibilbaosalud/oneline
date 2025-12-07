@@ -352,9 +352,11 @@ async function loadGenerativeModel(config: StoryModelConfig) {
   // Advanced: Gemini 2.5 Pro
   // Standard: Gemini 2.5 Flash -> Gemini 2.0 Flash (fallback)
   // NEVER use 1.5
-  const modelNames = config.mode === 'advanced'
-    ? ['gemini-2.5-pro']
-    : ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+  // If a specific model name is requested (e.g. for image prompts), prioritize it.
+  const modelNames = config.modelName
+    ? [config.modelName]
+    : (config.mode === 'advanced' ? ['gemini-2.5-pro'] : ['gemini-2.5-flash', 'gemini-2.0-flash']);
 
   for (const name of modelNames) {
     try {
@@ -572,11 +574,10 @@ export async function generateStoryImage(imagePrompt: string): Promise<string | 
   if (!apiKey || !imagePrompt) return null;
 
   // FALLBACK MECHANISM:
-  // We prioritize the specific preview model requested by the user, then fallbacks.
+  // We prioritize the specific preview model requested by the user.
   const modelsToTry = [
     { name: 'gemini-2.0-flash-preview-image-generation', version: 'v1beta' }, // Explicit user request
     { name: 'gemini-2.0-flash', version: 'v1beta' },                          // Standard fallback
-    { name: 'gemini-2.0-flash-exp', version: 'v1beta' }                       // Experimental fallback
   ];
 
   for (const model of modelsToTry) {
