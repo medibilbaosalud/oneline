@@ -349,7 +349,7 @@ async function loadGenerativeModel(config: StoryModelConfig) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const modelNames = config.mode === 'advanced'
     ? ['gemini-2.0-pro-exp-02-05', 'gemini-1.5-pro']
-    : ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    : ['gemini-1.5-flash', 'gemini-2.0-flash'];
 
   for (const name of modelNames) {
     try {
