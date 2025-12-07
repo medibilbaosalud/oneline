@@ -606,7 +606,7 @@ export default function StoryGenerator({
             const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
 
             const wavBytes = addWavHeader(bytes, sampleRate, 1); // Mono
-            const blob = new Blob([wavBytes], { type: 'audio/wav' });
+            const blob = new Blob([wavBytes as any], { type: 'audio/wav' });
             const url = URL.createObjectURL(blob);
             setAudioUrl(url);
             setAudioMimeType('audio/wav'); // Treat as wav for download
