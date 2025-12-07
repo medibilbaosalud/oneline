@@ -487,7 +487,7 @@ export async function generateYearStory(
   }
 
   if (lastErrorStr.includes('429') || lastErrorStr.includes('quota') || lastErrorStr.includes('RESOURCE_EXHAUSTED')) {
-    throw new Error("Daily quota exceeded for all models. Please try again tomorrow.");
+    throw new Error("Google API quota exceeded. All models are rate-limited. Please wait a few minutes and try again.");
   }
 
   if (lastErrorStr.includes('500') || lastErrorStr.includes('503') || lastErrorStr.includes('INTERNAL')) {
