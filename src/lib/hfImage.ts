@@ -70,11 +70,11 @@ export async function generateImageSDXL(prompt: string): Promise<string | null> 
             const arrayBuffer = await (result as unknown as Blob).arrayBuffer();
             buffer = Buffer.from(arrayBuffer);
         } else if ((result as any) instanceof Uint8Array) {
-            buffer = Buffer.from(result);
+            buffer = Buffer.from(result as unknown as Uint8Array);
         } else {
             // Handle streaming response (unlikely but safe)
             const chunks: Uint8Array[] = [];
-            for await (const chunk of result as AsyncIterable<Uint8Array>) {
+            for await (const chunk of result as unknown as AsyncIterable<Uint8Array>) {
                 chunks.push(chunk);
             }
             buffer = Buffer.concat(chunks);
