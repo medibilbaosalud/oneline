@@ -13,6 +13,7 @@ type SummaryItem = {
   to?: string;
   period?: string;
   text: string;
+  imageUrl?: string;
 };
 
 export default function SummaryHistory() {
@@ -150,6 +151,21 @@ export default function SummaryHistory() {
                 </button>
               </div>
 
+              {/* Cover Image */}
+              {item.imageUrl && (
+                <div className="relative mt-4 overflow-hidden rounded-xl">
+                  <img
+                    src={item.imageUrl}
+                    alt="Story cover"
+                    className="h-48 w-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/70">
+                    Cover
+                  </div>
+                </div>
+              )}
+
               <div className="relative mt-3 space-y-2 font-serif text-[16px] leading-relaxed text-zinc-50">
                 {item.text
                   .trim()
@@ -158,9 +174,10 @@ export default function SummaryHistory() {
                     <p
                       key={idx}
                       className="rounded-xl bg-white/5 px-4 py-3 text-[16px] leading-[1.6] shadow-inner shadow-black/10 ring-1 ring-white/5"
-                    >
-                      {para}
-                    </p>
+                      dangerouslySetInnerHTML={{
+                        __html: para.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                      }}
+                    />
                   ))}
               </div>
             </article>
