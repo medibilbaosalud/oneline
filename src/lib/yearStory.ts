@@ -508,7 +508,7 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
       for (const candidate of candidates) {
         for (const part of candidate?.content?.parts || []) {
           if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
-            console.log(`Audio generation successful with ${model.name}`);
+            console.log(`Audio generation successful with ${model.name}, mime: ${part.inlineData.mimeType}, length: ${part.inlineData.data.length}`);
             return {
               data: part.inlineData.data,
               mimeType: part.inlineData.mimeType
