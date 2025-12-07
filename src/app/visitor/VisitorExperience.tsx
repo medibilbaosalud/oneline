@@ -246,11 +246,11 @@ function SummariesPreview() {
         <div className="rounded-2xl border border-white/10 bg-black/30 p-5 text-sm text-neutral-300">
           <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Monthly quota</p>
           <p className="mt-2 leading-relaxed">
-            The production app shows how many summaries remain (10 per month), refreshes after each run, and never sends data without consent.
+            The production app shows how many summaries remain (50 per month), refreshes after each run, and never sends data without consent.
           </p>
           <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-4">
             <p className="text-sm font-medium text-white">Remaining summaries this month</p>
-            <p className="mt-3 text-3xl font-semibold text-white">7 / 10</p>
+            <p className="mt-3 text-3xl font-semibold text-white">35 / 50</p>
             <div className="mt-3 h-2 rounded-full bg-white/10">
               <div className="h-full rounded-full bg-indigo-400" style={{ width: '70%' }} />
             </div>

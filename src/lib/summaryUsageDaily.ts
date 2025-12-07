@@ -18,7 +18,7 @@ export type SummaryMinuteUsageRow = {
   tokens_used: number;
 };
 
-export const DAILY_LIMIT_UNITS = 30;
+export const DAILY_LIMIT_UNITS = 40;
 export const WEEKLY_LIMIT_UNITS = 56;
 export const MONTHLY_LIMIT_UNITS = 240;
 
