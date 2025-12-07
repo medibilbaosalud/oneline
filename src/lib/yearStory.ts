@@ -381,51 +381,94 @@ export async function generateYearStory(
   const trimmedFeed = limitFeed(feed, feedLimit);
   const prompt = buildYearStoryPrompt(trimmedFeed, from, to, options, trimmedFeed.length);
 
-  try {
-    const model = await loadGenerativeModel({
-      mode: modelConfig?.mode ?? 'standard',
-      modelName: modelConfig?.modelName ?? 'gemini-2.5-flash',
-    });
-    if (!model) {
-      const combined = entries
-        .map((entry) => `[${ymd(entry.day ?? entry.created_at ?? new Date())}] ${entry.content}`)
-        .join(' ');
-      const excerpt = combined.length > 1500 ? `${combined.slice(0, 1500)}…` : combined;
-      return {
-        story: `### Your ${from.slice(0, 4)} in review\n\n${excerpt}\n\n---\n*Add GEMINI_API_KEY to unlock rich narratives.*`,
-        wordCount: excerpt.split(/\s+/).length,
-        tokenUsage: { totalTokenCount: 0 },
-      };
-    }
+  // Determine the list of models to try
+  const requestedModel = modelConfig?.modelName;
+  const mode = modelConfig?.mode ?? 'standard';
 
-    const response = await generateWithRetry(model, {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {},
-    });
-
-    const story = extractStoryText(response);
-    if (!story) {
-      const blockMessage = describeBlockedResponse(response);
-      throw new Error(blockMessage ?? 'Model returned an empty story. Please try a shorter range or tweak the content.');
-    }
-
-    return {
-      story,
-      wordCount: story.split(/\s+/).length,
-      tokenUsage: response?.response?.usageMetadata ?? { totalTokenCount: 0 },
-    };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to generate year story';
-    const lowered = message.toLowerCase();
-    const hitTokenLimit = lowered.includes('max_tokens') || lowered.includes('empty story');
-
-    // Retry once with a tighter feed window when Gemini signals token limits.
-    if (attempt === 0 && hitTokenLimit) {
-      return generateYearStory(entries, from, to, options, modelConfig, 1);
-    }
-
-    throw new Error(message);
+  let modelsToTry: string[] = [];
+  if (requestedModel) {
+    modelsToTry = [requestedModel];
+  } else if (mode === 'advanced') {
+    modelsToTry = ['gemini-2.5-pro'];
+  } else {
+    // Standard mode fallbacks: 2.5 Flash -> 2.0 Flash -> 1.5 Flash (last resort)
+    modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
   }
+
+  let lastError: unknown = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Attempting story generation with model: ${modelName}`);
+      const model = await loadGenerativeModel({
+        mode: mode,
+        modelName: modelName,
+      });
+
+      if (!model) continue;
+
+      const response = await generateWithRetry(model, {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {},
+      });
+
+      const story = extractStoryText(response);
+      if (!story) {
+        const blockMessage = describeBlockedResponse(response);
+        throw new Error(blockMessage ?? 'Model returned an empty story.');
+      }
+
+      return {
+        story,
+        wordCount: story.split(/\s+/).length,
+        tokenUsage: response?.response?.usageMetadata ?? { totalTokenCount: 0 },
+      };
+
+    } catch (error: unknown) {
+      console.warn(`Story generation failed with ${modelName}:`, error);
+      lastError = error;
+
+      const message = error instanceof Error ? error.message : String(error);
+      const isQuotaError = message.includes('429') || message.includes('quota') || message.includes('Too Many Requests');
+
+      // If it's NOT a quota error and NOT a model loading error, it might be a prompt issue, so maybe don't retry?
+      // But for safety, we'll try the next model if it's a system/API error.
+      // If it's a safety block, switching models might not help, but worth a shot if policies differ.
+
+      if (isQuotaError) {
+        console.log(`Quota exceeded for ${modelName}, failing over to next model...`);
+        continue;
+      }
+
+      // For other errors, we might also want to continue, but let's be careful not to loop forever on bad prompts.
+      // For now, we treat most errors as "try next model" to be robust.
+    }
+  }
+
+  // If we exhausted all models, handle the error or return a fallback
+  const message = lastError instanceof Error ? lastError.message : 'Failed to generate year story';
+  const lowered = message.toLowerCase();
+  const hitTokenLimit = lowered.includes('max_tokens') || lowered.includes('empty story');
+
+  // Retry once with a tighter feed window when Gemini signals token limits (using the primary model strategy again? or just failing)
+  // Since we already tried multiple models, maybe we just fail here unless we want to recurse with a smaller feed.
+  if (attempt === 0 && hitTokenLimit) {
+    return generateYearStory(entries, from, to, options, modelConfig, 1);
+  }
+
+  // If we really failed everything, return a stub so the UI doesn't crash, or throw.
+  // The original code returned a stub if !model.
+  const combined = entries
+    .map((entry) => `[${ymd(entry.day ?? entry.created_at ?? new Date())}] ${entry.content}`)
+    .join(' ');
+  const excerpt = combined.length > 1500 ? `${combined.slice(0, 1500)}…` : combined;
+
+  // If it was a quota error specifically that killed all attempts
+  if (String(lastError).includes('429')) {
+    throw new Error("Daily quota exceeded for all available models. Please try again tomorrow.");
+  }
+
+  throw new Error(message);
 }
 
 export function coerceTone(value: string | null): YearStoryOptions['tone'] {
