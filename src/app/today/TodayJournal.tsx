@@ -17,6 +17,8 @@ import { SpeechToText } from '@/components/SpeechToText';
 import StreakDashboard from '@/components/engagement/StreakDashboard';
 import { recordDailyEntry } from '@/lib/streakService';
 import MoodSelector, { type MoodScore } from '@/components/engagement/MoodSelector';
+import ReflectionModal from '@/components/engagement/ReflectionModal';
+import { useReflection } from '@/hooks/useReflection';
 
 type StreakData = {
   current: number;
@@ -102,6 +104,12 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
   const todayString = useMemo(() => ymdUTC(), []);
   const [selectedDay, setSelectedDay] = useState(todayString);
   const [selectedMood, setSelectedMood] = useState<MoodScore | null>(null);
+
+  // Reflection system
+  const { pendingReflection, generateReflection, markAsViewed } = useReflection();
+  const [showAnticipationModal, setShowAnticipationModal] = useState(false);
+  const [showRevealModal, setShowRevealModal] = useState(false);
+
   const isToday = selectedDay === todayString;
   const yesterdayString = useMemo(() => {
     const d = new Date();
@@ -139,6 +147,13 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
     const pref = localStorage.getItem('oneline_local_mode');
     if (pref === 'true') setLocalMode(true);
   }, []);
+
+  // Show reveal modal when there's a pending reflection
+  useEffect(() => {
+    if (pendingReflection && !showRevealModal) {
+      setShowRevealModal(true);
+    }
+  }, [pendingReflection]);
 
   const toggleLocalMode = () => {
     const newValue = !localMode;
@@ -413,6 +428,13 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.id && isToday) {
           recordDailyEntry(user.id, selectedMood ?? undefined).catch(() => { });
+
+          // Generate reflection for tomorrow (only for today's entries)
+          generateReflection(text, todayString).then((success) => {
+            if (success) {
+              setShowAnticipationModal(true);
+            }
+          }).catch(() => { });
         }
         setTimeout(() => setMsg(null), 1500);
       }
@@ -773,6 +795,25 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           </div>
         </div>
       </VaultGate>
+
+      {/* Reflection Modals */}
+      <ReflectionModal
+        isOpen={showAnticipationModal}
+        onClose={() => setShowAnticipationModal(false)}
+        reflection={null}
+        mode="anticipation"
+      />
+      <ReflectionModal
+        isOpen={showRevealModal}
+        onClose={() => {
+          setShowRevealModal(false);
+          if (pendingReflection) {
+            markAsViewed(pendingReflection.date);
+          }
+        }}
+        reflection={pendingReflection}
+        mode="reveal"
+      />
     </motion.div >
   );
 }
