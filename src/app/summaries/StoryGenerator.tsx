@@ -962,7 +962,7 @@ export default function StoryGenerator({
               </button>
             </div>
 
-            {(imageData || audioData) && (
+            {(imageData || audioUrl) && (
               <div className="mb-8 grid gap-6 sm:grid-cols-2">
                 {imageData && (
                   <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl transition hover:border-white/20">
