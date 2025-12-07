@@ -155,6 +155,50 @@ type EntryPayload = {
   content?: string | null;
 };
 
+function addWavHeader(samples: Uint8Array, sampleRate: number, numChannels: number): Uint8Array {
+  const buffer = new ArrayBuffer(44 + samples.length);
+  const view = new DataView(buffer);
+
+  // RIFF identifier
+  writeString(view, 0, 'RIFF');
+  // file length
+  view.setUint32(4, 36 + samples.length, true);
+  // RIFF type
+  writeString(view, 8, 'WAVE');
+  // format chunk identifier
+  writeString(view, 12, 'fmt ');
+  // format chunk length
+  view.setUint32(16, 16, true);
+  // sample format (raw)
+  view.setUint16(20, 1, true);
+  // channel count
+  view.setUint16(22, numChannels, true);
+  // sample rate
+  view.setUint32(24, sampleRate, true);
+  // byte rate (sample rate * block align)
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  // block align (channel count * bytes per sample)
+  view.setUint16(32, numChannels * 2, true);
+  // bits per sample
+  view.setUint16(34, 16, true);
+  // data chunk identifier
+  writeString(view, 36, 'data');
+  // data chunk length
+  view.setUint32(40, samples.length, true);
+
+  // Write the PCM samples
+  const bytes = new Uint8Array(buffer);
+  bytes.set(samples, 44);
+
+  return bytes;
+}
+
+function writeString(view: DataView, offset: number, string: string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
 export default function StoryGenerator({
   initialOptions,
   initialPreset,
@@ -180,7 +224,7 @@ export default function StoryGenerator({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<string>("");
-  const [audioData, setAudioData] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string>("audio/mp3");
   const [imageData, setImageData] = useState<string | null>(null);
   const formattedStory = useMemo(() => (story ? formatStoryBlocks(story) : []), [story]);
@@ -544,9 +588,38 @@ export default function StoryGenerator({
 
       // Set audio and image if available
       if (json?.audioBase64) {
-        setAudioData(json.audioBase64);
-        setAudioMimeType(json.audioMimeType || 'audio/mp3');
-        console.log("Audio received:", json.audioMimeType, "Length:", json.audioBase64.length);
+        const mime = json.audioMimeType || 'audio/mp3';
+        console.log("Audio received:", mime, "Length:", json.audioBase64.length);
+
+        // Handle raw PCM (L16) by converting to WAV
+        if (mime.toLowerCase().includes('l16') || mime.toLowerCase().includes('pcm')) {
+          try {
+            const binaryString = window.atob(json.audioBase64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // Parse sample rate from mime type or default to 24000
+            const rateMatch = mime.match(/rate=(\d+)/);
+            const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+
+            const wavBytes = addWavHeader(bytes, sampleRate, 1); // Mono
+            const blob = new Blob([wavBytes], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            setAudioUrl(url);
+            setAudioMimeType('audio/wav'); // Treat as wav for download
+          } catch (e) {
+            console.error("Error converting PCM to WAV:", e);
+            // Fallback to raw data if conversion fails
+            setAudioUrl(`data:${mime};base64,${json.audioBase64}`);
+            setAudioMimeType(mime);
+          }
+        } else {
+          setAudioUrl(`data:${mime};base64,${json.audioBase64}`);
+          setAudioMimeType(mime);
+        }
       }
       if (json?.imageBase64) setImageData(json.imageBase64);
 
@@ -900,7 +973,7 @@ export default function StoryGenerator({
                     </div>
                   </div>
                 )}
-                {audioData && (
+                {audioUrl && (
                   <div className="flex flex-col justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-900/20 to-purple-900/20 p-6 backdrop-blur-sm">
                     <div className="mb-4 flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400">
@@ -914,10 +987,10 @@ export default function StoryGenerator({
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <audio controls src={`data:${audioMimeType};base64,${audioData}`} className="w-full accent-indigo-500" />
+                      <audio controls src={audioUrl} className="w-full accent-indigo-500" />
                       <a
-                        href={`data:${audioMimeType};base64,${audioData}`}
-                        download={`story-audio.${audioMimeType.split('/')[1] || 'mp3'}`}
+                        href={audioUrl}
+                        download={`story-audio.${audioMimeType.includes('wav') ? 'wav' : audioMimeType.split('/')[1] || 'mp3'}`}
                         className="text-center text-xs text-indigo-300 hover:text-indigo-200 hover:underline"
                       >
                         Download Audio File
