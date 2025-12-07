@@ -45,7 +45,11 @@ function formatStoryBlocks(story: string) {
     .filter(Boolean)
     .map((block) => {
       const escaped = escapeHtml(block);
-      return escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br />");
+      // Support both *text* and **text** for bold
+      return escaped
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<strong>$1</strong>")
+        .replace(/\n/g, "<br />");
     });
 }
 
@@ -56,7 +60,8 @@ function ymd(d: Date) {
 
 function parseSegments(paragraph: string): TextSegment[] {
   const segments: TextSegment[] = [];
-  const pattern = /\*\*(.+?)\*\*/g;
+  // Support both **text** and *text* for bold
+  const pattern = /\*\*(.+?)\*\*|(?<!\*)\*([^*]+)\*(?!\*)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -64,7 +69,11 @@ function parseSegments(paragraph: string): TextSegment[] {
     if (match.index > lastIndex) {
       segments.push({ text: paragraph.slice(lastIndex, match.index), bold: false });
     }
-    segments.push({ text: match[1], bold: true });
+    // match[1] is for **text**, match[2] is for *text*
+    const boldText = match[1] || match[2];
+    if (boldText) {
+      segments.push({ text: boldText, bold: true });
+    }
     lastIndex = match.index + match[0].length;
   }
 

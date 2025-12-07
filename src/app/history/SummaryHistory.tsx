@@ -175,7 +175,9 @@ export default function SummaryHistory() {
                       key={idx}
                       className="rounded-xl bg-white/5 px-4 py-3 text-[16px] leading-[1.6] shadow-inner shadow-black/10 ring-1 ring-white/5"
                       dangerouslySetInnerHTML={{
-                        __html: para.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        __html: para
+                          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<strong>$1</strong>')
                       }}
                     />
                   ))}
