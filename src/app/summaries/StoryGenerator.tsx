@@ -414,12 +414,17 @@ export default function StoryGenerator({
       // Highlights are always on now; keep the saved preference for payload completeness.
       setNotes(initialOptions.notes ?? "");
       setLanguage(initialOptions.language ?? "en");
+      // Default to true if not present in initialOptions (backward compatibility)
+      setIncludeImage(true);
+      setIncludeAudio(true);
     } else {
       setLength("medium");
       setTone("auto");
       setPov("auto");
       setNotes("");
       setLanguage("en");
+      setIncludeImage(true);
+      setIncludeAudio(true);
     }
 
     if (initialRange) {

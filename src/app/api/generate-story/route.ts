@@ -144,29 +144,46 @@ export async function POST(req: NextRequest) {
     let audioBase64: string | null = null;
     let audioMimeType: string | null = null;
 
+    const includeImage = body.options?.includeImage !== false; // Default to true
+    const includeAudio = body.options?.includeAudio !== false; // Default to true
+
     try {
-      // 1. Generate Image Prompt (using text model)
-      const imagePrompt = await generateImagePrompt(story);
+      // 1. Generate Image Prompt (using text model) - ONLY if image is requested
+      let imagePrompt = null;
+      if (includeImage) {
+        imagePrompt = await generateImagePrompt(story);
+      }
 
       // 2. Generate Audio and Image in parallel (using the optimized prompt for image)
-      const results = await Promise.allSettled([
-        generateStoryAudio(story),
-        imagePrompt ? generateStoryImage(imagePrompt) : Promise.resolve(null)
-      ]);
+      const tasks = [];
+
+      if (includeAudio) {
+        tasks.push(generateStoryAudio(story));
+      } else {
+        tasks.push(Promise.resolve(null)); // Placeholder for audio result
+      }
+
+      if (includeImage && imagePrompt) {
+        tasks.push(generateStoryImage(imagePrompt));
+      } else {
+        tasks.push(Promise.resolve(null)); // Placeholder for image result
+      }
+
+      const results = await Promise.allSettled(tasks);
 
       const audioResult = results[0];
       const imageResult = results[1];
 
-      if (audioResult.status === 'fulfilled' && audioResult.value) {
+      if (includeAudio && audioResult.status === 'fulfilled' && audioResult.value) {
         audioBase64 = audioResult.value.data;
         audioMimeType = audioResult.value.mimeType;
-      } else if (audioResult.status === 'rejected') {
+      } else if (includeAudio && audioResult.status === 'rejected') {
         console.error("Audio generation failed:", audioResult.reason);
       }
 
-      if (imageResult.status === 'fulfilled' && imageResult.value) {
+      if (includeImage && imageResult.status === 'fulfilled' && imageResult.value) {
         imageBase64 = imageResult.value;
-      } else if (imageResult.status === 'rejected') {
+      } else if (includeImage && imageResult.status === 'rejected') {
         console.error("Image generation failed:", imageResult.reason);
       }
     } catch (e) {
