@@ -484,7 +484,7 @@ export async function generateStoryAudio(text: string): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `Read this story aloud. Return ONLY the audio data, no text.\n\n${text.slice(0, 4000)}` }]
+            parts: [{ text: text.slice(0, 40000) }]
           }],
           generationConfig: {
             response_modalities: ["AUDIO"],
