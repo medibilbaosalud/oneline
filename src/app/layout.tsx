@@ -55,7 +55,7 @@ export default function RootLayout({
           {children}
           <InstallPrompt />
         </Providers>
-        <script dangerouslySetInnerHTML={{ __html: `console.log("VERSION: v2025-12-08-ENGAGEMENT")` }} />
+        <script dangerouslySetInnerHTML={{ __html: `console.log("VERSION: v2025-12-08-AUTH-FIX")` }} />
       </body>
     </html>
   );
