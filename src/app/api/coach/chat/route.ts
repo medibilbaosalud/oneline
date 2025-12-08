@@ -225,27 +225,44 @@ ${weekComparison ? `- Comparación semanal: ${weekComparison}` : ""}
 - Días con registro de ánimo: ${moodsWithScore.length}`;
 
         // If user shares entries, fetch recent entries metadata
-        // NOTE: Entries are encrypted end-to-end. The server CANNOT read the content.
-        // We can only see: creation date, whether it exists, starred status
+        // NOTE: Entries are encrypted end-to-end (content_cipher + iv).
+        // The 'content' field may be empty. We can see: dates, count, starred status.
         if (shareEntries) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: entries } = await (supabase as any)
-                .from("journal")  // Correct table name
-                .select("day, content, starred, created_at")
+            const { data: entries, error: entriesError } = await (supabase as any)
+                .from("journal")
+                .select("day, content, content_cipher, starred, created_at")
                 .eq("user_id", user.id)
                 .order("day", { ascending: false })
-                .limit(20);
+                .limit(30);
+
+            console.log("[Coach] Entry query result:", {
+                userId: user.id,
+                entriesFound: entries?.length ?? 0,
+                error: entriesError?.message,
+                sampleEntry: entries?.[0] ? {
+                    day: entries[0].day,
+                    hasContent: !!entries[0].content,
+                    hasCipher: !!entries[0].content_cipher,
+                    contentLength: entries[0].content?.length || 0
+                } : null
+            });
 
             if (entries && entries.length > 0) {
-                // Check if any entries have unencrypted content (rare, legacy entries)
+                // Check if entries have unencrypted content (legacy) OR encrypted content
+                const hasAnyEntries = entries.length > 0;
                 const readableEntries = entries.filter((e: { content?: string | null }) =>
                     e.content && e.content.length > 0 && e.content.length < 2000
                 );
+                const encryptedEntries = entries.filter((e: { content_cipher?: string | null }) =>
+                    e.content_cipher && e.content_cipher.length > 0
+                );
 
+                // If there are readable (unencrypted) entries, show them
                 if (readableEntries.length > 0) {
                     contextSummary += `
 
-📝 ENTRADAS LEGIBLES (el usuario te ha dado acceso):`;
+📝 READABLE ENTRIES (user granted access):`;
                     for (const entry of readableEntries.slice(0, 5)) {
                         const star = entry.starred ? "⭐ " : "";
                         const content = entry.content || "";
@@ -257,15 +274,18 @@ ${star}[${entry.day}]: ${content.slice(0, 400)}${content.length > 400 ? "..." : 
                 // Always show entry dates so Coach knows writing history
                 contextSummary += `
 
-📅 HISTORIAL DE ESCRITURA (últimos 20 días con entradas):`;
-                const entryDates = entries.map((e: { day: string }) => e.day).join(", ");
-                contextSummary += `
-Fechas con entradas: ${entryDates}
-Total reciente: ${entries.length} entradas`;
+📅 JOURNAL HISTORY (user granted access):
+- Total entries found: ${entries.length}
+- Readable entries: ${readableEntries.length}
+- Encrypted entries: ${encryptedEntries.length}
+- Entry dates: ${entries.map((e: { day: string }) => e.day).slice(0, 15).join(", ")}${entries.length > 15 ? "..." : ""}
+- Latest entry: ${entries[0]?.day || "none"}
+- User HAS been writing in their journal.`;
+
             } else {
                 contextSummary += `
 
-📝 NOTA: El usuario te ha dado acceso pero no tiene entradas recientes en la base de datos.`;
+📝 NOTE: User granted access but has no journal entries in the database yet.`;
             }
         }
 

@@ -34,6 +34,7 @@ export default function CoachPage() {
     const [shareEntries, setShareEntries] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const [accessToast, setAccessToast] = useState<string | null>(null); // Shows access reminder on entry
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -51,6 +52,10 @@ export default function CoachPage() {
                     setHasConsent(true);
                     setShareEntries(true);
                     showWelcome();
+
+                    // Show reminder toast that we have access
+                    setAccessToast("📖 Full Access enabled - I can see your journal history");
+                    setTimeout(() => setAccessToast(null), 4000); // Hide after 4 seconds
                 } else {
                     // If NO consent or only METADATA logic, ask again (as requested)
                     setShowConsentModal(true);
@@ -253,6 +258,20 @@ export default function CoachPage() {
 
     return (
         <div className="flex h-screen flex-col pt-12">
+            {/* Access Toast - shows briefly when entering with Full Access */}
+            <AnimatePresence>
+                {accessToast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -50 }}
+                        className="fixed top-16 left-1/2 z-50 -translate-x-1/2 rounded-full bg-emerald-500/90 px-4 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm"
+                    >
+                        {accessToast}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Consent Modal - Initial access configuration */}
             <AnimatePresence>
                 {showConsentModal && (
