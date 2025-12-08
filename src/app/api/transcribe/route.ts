@@ -1,68 +1,64 @@
+// src/app/api/transcribe/route.ts
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { transcribeWithGroq } from "@/lib/groqClient";
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { NextResponse } from 'next/server';
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-export async function POST(request: Request) {
+export const runtime = "nodejs";
+
+export async function POST(req: Request) {
     try {
-        const formData = await request.formData();
-        const audioFile = formData.get('audio') as Blob;
+        // Verify auth
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const token = authHeader.replace("Bearer ", "");
+
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+        if (authError || !user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Get form data with audio file
+        const formData = await req.formData();
+        const audioFile = formData.get("audio") as File | null;
+        const language = formData.get("language") as string | null;
 
         if (!audioFile) {
-            return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
+            return NextResponse.json({ error: "Audio file required" }, { status: 400 });
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            return NextResponse.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 });
+        // Check file size (max 25MB for Groq)
+        if (audioFile.size > 25 * 1024 * 1024) {
+            return NextResponse.json({ error: "File too large (max 25MB)" }, { status: 400 });
         }
 
-        const genAI = new GoogleGenerativeAI(apiKey);
+        // Transcribe with Groq Whisper cascade
+        const { text, modelUsed } = await transcribeWithGroq(audioFile, {
+            language: language ?? undefined,
+            prompt: "Transcription of a personal journal entry or reflection.",
+        });
 
-        const arrayBuffer = await audioFile.arrayBuffer();
-        const base64Audio = Buffer.from(arrayBuffer).toString('base64');
+        return NextResponse.json({
+            text,
+            modelUsed,
+        });
 
-        // Robust fallback chain:
-        // 1. Gemini 2.5 Flash: Best quality (Experimental)
-        // 2. Gemini 2.0 Flash: High limits & speed (Stable)
-        // 3. Gemini 1.5 Flash: Old reliable fallback
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-        let lastError = null;
+    } catch (error) {
+        console.error("[Transcribe API] Error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-        for (const modelName of modelsToTry) {
-            try {
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent([
-                    {
-                        inlineData: {
-                            mimeType: audioFile.type || 'audio/webm',
-                            data: base64Audio
-                        }
-                    },
-                    { text: "Transcribe this audio exactly as spoken. Do not add any commentary. Return only the text." }
-                ]);
-
-                const text = result.response.text();
-                if (!text) throw new Error('Empty response');
-
-                return NextResponse.json({ text });
-            } catch (error: any) {
-                console.warn(`Model ${modelName} failed:`, error.message);
-                lastError = error;
-                // Continue to next model
-            }
-        }
-
-        // If we get here, all models failed
-        console.error('All transcription models failed');
         return NextResponse.json(
-            { error: "Lo siento, los servicios de IA están saturados en este momento. Por favor, inténtalo de nuevo en unos segundos." },
-            { status: 503 }
-        );
-
-    } catch (error: any) {
-        console.error('Transcription error:', error);
-        return NextResponse.json(
-            { error: "Error al procesar el audio. Por favor, verifica tu conexión." },
+            {
+                error: errorMessage.includes("GROQ_API_KEY")
+                    ? "Transcription service not configured"
+                    : "Failed to transcribe audio"
+            },
             { status: 500 }
         );
     }

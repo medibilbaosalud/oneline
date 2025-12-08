@@ -554,20 +554,27 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  // FALLBACK MECHANISM:
-  // The user reported issues with specific model names and API versions.
-  // We iterate through a list of likely candidates, including "Preview" versions and both v1beta/v1alpha endpoints.
-  // This ensures we find a working configuration without manual intervention.
+  // Analyze the story to detect mood and create better narration instructions
+  const moodAnalysis = analyzeStoryMood(text);
+
+  // Create enhanced prompt with narration style instructions
+  const narratorInstructions = buildNarrationInstructions(moodAnalysis);
+  const enhancedText = `${narratorInstructions}\n\n---\n\n${text.slice(0, 38000)}`;
+
+  // FALLBACK MECHANISM for TTS models
   const modelsToTry = [
-    { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' }, // Primary choice from user screenshot
-    { name: 'gemini-2.5-flash-tts', version: 'v1beta' },         // Standard v1beta
-    { name: 'gemini-2.5-flash-tts', version: 'v1alpha' },        // Legacy/Experimental v1alpha
-    { name: 'gemini-2.0-flash-exp', version: 'v1beta' }          // Fallback to 2.0 exp (v1beta)
+    { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' },
+    { name: 'gemini-2.5-flash-tts', version: 'v1beta' },
+    { name: 'gemini-2.5-flash-tts', version: 'v1alpha' },
+    { name: 'gemini-2.0-flash-exp', version: 'v1beta' }
   ];
+
+  // Choose voice based on detected mood
+  const voiceName = selectVoiceForMood(moodAnalysis.dominantMood);
 
   for (const model of modelsToTry) {
     try {
-      console.log(`Attempting audio generation with model: ${model.name} (${model.version})`);
+      console.log(`Attempting audio generation with model: ${model.name} (${model.version}), voice: ${voiceName}`);
       const url = `https://generativelanguage.googleapis.com/${model.version}/models/${model.name}:generateContent?key=${apiKey}`;
 
       const response = await fetch(url, {
@@ -575,12 +582,12 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: text.slice(0, 40000) }]
+            parts: [{ text: enhancedText }]
           }],
           generationConfig: {
             response_modalities: ["AUDIO"],
             speech_config: {
-              voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } }
+              voice_config: { prebuilt_voice_config: { voice_name: voiceName } }
             }
           }
         })
@@ -589,16 +596,15 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
       if (!response.ok) {
         const errorText = await response.text();
         console.warn(`Audio gen failed with ${model.name}:`, response.status, errorText);
-        continue; // Try next model in the list
+        continue;
       }
 
       const data = await response.json();
-      // Robustly check for audio data in candidates
       const candidates = data?.candidates || [];
       for (const candidate of candidates) {
         for (const part of candidate?.content?.parts || []) {
           if (part?.inlineData?.mimeType?.startsWith('audio') && part?.inlineData?.data) {
-            console.log(`Audio generation successful with ${model.name}, mime: ${part.inlineData.mimeType}, length: ${part.inlineData.data.length}`);
+            console.log(`Audio generation successful with ${model.name}, voice: ${voiceName}, mime: ${part.inlineData.mimeType}`);
             return {
               data: part.inlineData.data,
               mimeType: part.inlineData.mimeType
@@ -615,6 +621,144 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
 
   console.error("All audio generation attempts failed.");
   return null;
+}
+
+/**
+ * Analyze story text to detect emotional tone and mood
+ */
+function analyzeStoryMood(text: string): {
+  dominantMood: 'hopeful' | 'melancholic' | 'energetic' | 'reflective' | 'neutral';
+  intensity: 'low' | 'medium' | 'high';
+  hasStruggles: boolean;
+  hasTriumphs: boolean;
+} {
+  const lowerText = text.toLowerCase();
+
+  // Positive indicators
+  const hopefulWords = ['hope', 'better', 'progress', 'happy', 'joy', 'excited', 'grateful', 'love', 'success', 'achieved', 'alegría', 'feliz', 'ilusión', 'logré', 'bien'];
+  const energeticWords = ['energy', 'excited', 'motivated', 'amazing', 'incredible', 'emocionado', 'increíble', 'genial', 'brutal'];
+
+  // Negative indicators
+  const melancholicWords = ['sad', 'miss', 'lost', 'difficult', 'hard', 'struggle', 'triste', 'difícil', 'dolor', 'extraño', 'perdí'];
+  const struggleWords = ['anxiety', 'stress', 'overwhelmed', 'tired', 'exhausted', 'ansiedad', 'estrés', 'agotado', 'cansado'];
+
+  // Reflective indicators
+  const reflectiveWords = ['realize', 'understand', 'learned', 'notice', 'pattern', 'me di cuenta', 'aprendí', 'entendí', 'reflexión'];
+
+  let hopefulScore = hopefulWords.filter(w => lowerText.includes(w)).length;
+  let melancholicScore = melancholicWords.filter(w => lowerText.includes(w)).length;
+  let energeticScore = energeticWords.filter(w => lowerText.includes(w)).length;
+  let reflectiveScore = reflectiveWords.filter(w => lowerText.includes(w)).length;
+
+  const hasStruggles = struggleWords.some(w => lowerText.includes(w)) || melancholicScore > 2;
+  const hasTriumphs = hopefulScore > 2 || energeticScore > 1;
+
+  // Determine dominant mood
+  let dominantMood: 'hopeful' | 'melancholic' | 'energetic' | 'reflective' | 'neutral' = 'neutral';
+  const maxScore = Math.max(hopefulScore, melancholicScore, energeticScore, reflectiveScore);
+
+  if (maxScore === 0) {
+    dominantMood = 'neutral';
+  } else if (hopefulScore === maxScore) {
+    dominantMood = 'hopeful';
+  } else if (melancholicScore === maxScore) {
+    dominantMood = 'melancholic';
+  } else if (energeticScore === maxScore) {
+    dominantMood = 'energetic';
+  } else {
+    dominantMood = 'reflective';
+  }
+
+  // Determine intensity
+  const totalIntensity = hopefulScore + melancholicScore + energeticScore;
+  const intensity: 'low' | 'medium' | 'high' = totalIntensity < 3 ? 'low' : totalIntensity < 8 ? 'medium' : 'high';
+
+  return { dominantMood, intensity, hasStruggles, hasTriumphs };
+}
+
+/**
+ * Build narration style instructions based on mood analysis
+ */
+function buildNarrationInstructions(mood: ReturnType<typeof analyzeStoryMood>): string {
+  const baseStyle = `[NARRATION STYLE INSTRUCTIONS - For the AI voice to read naturally]
+Read this as a personal, intimate story - like someone sharing their genuine experiences with a close friend.`;
+
+  let moodInstructions = '';
+
+  switch (mood.dominantMood) {
+    case 'hopeful':
+      moodInstructions = `
+Tone: Warm and gently optimistic. Let hope shine through without being overly cheerful.
+Pacing: Moderate, with slight lifts at positive moments.
+Voice: Sincere, like sharing good news with someone who cares.`;
+      break;
+    case 'melancholic':
+      moodInstructions = `
+Tone: Tender and empathetic. Honor the sadness without dramatizing it.
+Pacing: Slower, with thoughtful pauses at emotional moments.
+Voice: Soft and contemplative, like a quiet conversation late at night.`;
+      break;
+    case 'energetic':
+      moodInstructions = `
+Tone: Animated but grounded. Let enthusiasm come through naturally.
+Pacing: Slightly faster, with dynamic variation.
+Voice: Engaged and alive, like telling an exciting story to a friend.`;
+      break;
+    case 'reflective':
+      moodInstructions = `
+Tone: Thoughtful and introspective. Convey the weight of self-discovery.
+Pacing: Measured, with pauses for realizations to land.
+Voice: Wise but humble, like sharing hard-won insights.`;
+      break;
+    default:
+      moodInstructions = `
+Tone: Natural and conversational. Adapt to the content as it unfolds.
+Pacing: Varied and organic.
+Voice: Authentic and relatable.`;
+  }
+
+  let emotionalGuidance = '';
+  if (mood.hasStruggles && mood.hasTriumphs) {
+    emotionalGuidance = `
+This story contains both challenges and victories. Let the voice journey through both - acknowledging the hard parts with gravity, and the wins with quiet pride.`;
+  } else if (mood.hasStruggles) {
+    emotionalGuidance = `
+This story touches on difficult experiences. Read with compassion - not pity, but genuine understanding.`;
+  } else if (mood.hasTriumphs) {
+    emotionalGuidance = `
+This story celebrates growth and achievement. Let warmth and genuine happiness come through.`;
+  }
+
+  const intensityNote = mood.intensity === 'high'
+    ? `This is an emotionally intense narrative. Honor that depth without overdramatizing.`
+    : mood.intensity === 'low'
+      ? `This is a quieter narrative. Keep the voice intimate and understated.`
+      : '';
+
+  return `${baseStyle}
+${moodInstructions}
+${emotionalGuidance}
+${intensityNote}
+
+[END OF INSTRUCTIONS - Begin reading the story below]`;
+}
+
+/**
+ * Select the most appropriate voice based on story mood
+ */
+function selectVoiceForMood(mood: 'hopeful' | 'melancholic' | 'energetic' | 'reflective' | 'neutral'): string {
+  // Gemini TTS voices - choosing based on mood
+  // Available voices: Aoede, Charon, Fenrir, Kore, Puck
+  switch (mood) {
+    case 'hopeful':
+    case 'energetic':
+      return 'Aoede'; // Warm, slightly upbeat
+    case 'melancholic':
+    case 'reflective':
+      return 'Kore'; // Softer, more contemplative
+    default:
+      return 'Aoede'; // Default to warm voice
+  }
 }
 
 /**

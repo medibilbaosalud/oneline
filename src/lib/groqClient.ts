@@ -1,14 +1,22 @@
 // src/lib/groqClient.ts
 import Groq from "groq-sdk";
 
-// Model priority cascade - ordered by preference
-// llama-3.1-8b-instant: 14.4K req/day - high volume, fast
-// llama-3.3-70b-versatile: 1K req/day - best quality
-// llama-4-maverick: 1K req/day - good middle ground
-const MODEL_CASCADE = [
-    "llama-3.1-8b-instant",      // Primary: high volume (14.4K/day)
-    "llama-3.3-70b-versatile",   // Fallback: best quality (1K/day)
+// Model priority cascade - ordered by INTELLIGENCE (best first)
+// llama-3.3-70b-versatile: Best quality, 70B params (1K req/day)
+// llama-3.1-8b-instant: Fast, good quality (14.4K req/day)
+// llama-4-maverick: Alternative with large context
+const CHAT_MODEL_CASCADE = [
+    "llama-3.3-70b-versatile",   // Primary: best intelligence
+    "llama-3.1-8b-instant",      // Fallback: high volume
     "meta-llama/llama-4-maverick-17b-128e-instruct", // Last resort
+] as const;
+
+// Whisper model cascade for transcription
+// whisper-large-v3-turbo: Faster, same quality
+// whisper-large-v3: Fallback
+const WHISPER_MODEL_CASCADE = [
+    "whisper-large-v3-turbo",
+    "whisper-large-v3",
 ] as const;
 
 type GroqMessage = {
@@ -18,6 +26,11 @@ type GroqMessage = {
 
 type ChatResult = {
     reply: string;
+    modelUsed: string;
+};
+
+type TranscriptionResult = {
+    text: string;
     modelUsed: string;
 };
 
@@ -35,7 +48,7 @@ function getGroqClient(): Groq {
 }
 
 /**
- * Chat with Groq using a cascade of models.
+ * Chat with Groq using a cascade of models (best intelligence first).
  * Tries each model in order until one succeeds.
  */
 export async function chatWithGroq(
@@ -48,7 +61,7 @@ export async function chatWithGroq(
     const client = getGroqClient();
     const errors: { model: string; error: string }[] = [];
 
-    for (const model of MODEL_CASCADE) {
+    for (const model of CHAT_MODEL_CASCADE) {
         try {
             const response = await client.chat.completions.create({
                 model,
@@ -65,25 +78,49 @@ export async function chatWithGroq(
             return { reply, modelUsed: model };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.warn(`[Groq] Model ${model} failed:`, errorMessage);
+            console.warn(`[Groq Chat] Model ${model} failed:`, errorMessage);
             errors.push({ model, error: errorMessage });
-
-            // Check if it's a rate limit error - if so, try next model
-            const isRateLimit = errorMessage.toLowerCase().includes("rate") ||
-                errorMessage.toLowerCase().includes("limit") ||
-                errorMessage.toLowerCase().includes("429");
-
-            if (!isRateLimit && !errorMessage.toLowerCase().includes("model")) {
-                // If it's not a rate limit or model error, it might be a real problem
-                // Still try next model but log it
-                console.error(`[Groq] Non-rate-limit error for ${model}:`, errorMessage);
-            }
         }
     }
 
-    // All models failed
-    console.error("[Groq] All models failed:", errors);
+    console.error("[Groq Chat] All models failed:", errors);
     throw new Error("All Groq models are unavailable. Please try again later.");
 }
 
-export type { GroqMessage, ChatResult };
+/**
+ * Transcribe audio using Groq's Whisper models.
+ * Cascade: whisper-large-v3-turbo → whisper-large-v3
+ */
+export async function transcribeWithGroq(
+    audioFile: File | Blob,
+    options?: {
+        language?: string;
+        prompt?: string;
+    }
+): Promise<TranscriptionResult> {
+    const client = getGroqClient();
+    const errors: { model: string; error: string }[] = [];
+
+    for (const model of WHISPER_MODEL_CASCADE) {
+        try {
+            const response = await client.audio.transcriptions.create({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                file: audioFile as any,
+                model,
+                language: options?.language,
+                prompt: options?.prompt,
+            });
+
+            return { text: response.text, modelUsed: model };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[Groq Whisper] Model ${model} failed:`, errorMessage);
+            errors.push({ model, error: errorMessage });
+        }
+    }
+
+    console.error("[Groq Whisper] All models failed:", errors);
+    throw new Error("Transcription service unavailable. Please try again.");
+}
+
+export type { GroqMessage, ChatResult, TranscriptionResult };
