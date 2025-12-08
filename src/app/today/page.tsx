@@ -7,6 +7,7 @@ import {
 } from '@/lib/summaryPreferences';
 import FeedbackBanner from '@/components/FeedbackBanner';
 import NotificationPrompt from '@/components/NotificationPrompt';
+import WhatsNewModal from '@/components/WhatsNewModal';
 
 export const metadata = { title: 'Today — OneLine' };
 export const dynamic = 'force-dynamic';
@@ -53,6 +54,7 @@ export default async function TodayPage() {
         <FeedbackBanner />
         <TodayJournal initialEntryLimit={entryLimit} />
         <NotificationPrompt />
+        <WhatsNewModal />
       </div>
     </main>
   );

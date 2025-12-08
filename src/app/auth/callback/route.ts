@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,9 +9,9 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const cookieStore = await cookies();
 
-  // Use type assertion for compatibility
+  // Use createServerComponentClient for Next.js 15 compatibility
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createRouteHandlerClient({
+  const supabase = createServerComponentClient({
     cookies: () => cookieStore as any
   });
 
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const cookieStore = await cookies();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = createRouteHandlerClient({
+  const supabase = createServerComponentClient({
     cookies: () => cookieStore as any
   });
 
