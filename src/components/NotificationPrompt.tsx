@@ -9,6 +9,18 @@ type NotificationPromptProps = {
     onClose?: () => void;
 };
 
+// Helper to convert VAPID key to Uint8Array
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
 export default function NotificationPrompt({ onClose }: NotificationPromptProps) {
     const [permission, setPermission] = useState<NotificationPermission>("default");
     const [loading, setLoading] = useState(false);
@@ -17,28 +29,22 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Check if notifications are supported and current permission
-        if ("Notification" in window) {
+        if (typeof window !== "undefined" && "Notification" in window) {
             setPermission(Notification.permission);
         }
-
-        // Check if already dismissed
         const wasDismissed = localStorage.getItem("notification_prompt_dismissed");
         if (wasDismissed) setDismissed(true);
-
-        // Check if already subscribed
         checkSubscription();
     }, []);
 
     async function checkSubscription() {
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-
         try {
             const registration = await navigator.serviceWorker.ready;
-            const subscription = await registration.pushManager.getSubscription();
-            if (subscription) setSubscribed(true);
+            const sub = await registration.pushManager.getSubscription();
+            if (sub) setSubscribed(true);
         } catch {
-            // Ignore errors
+            // Ignore
         }
     }
 
@@ -47,17 +53,15 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
         setError(null);
 
         try {
-            // Request permission
             const perm = await Notification.requestPermission();
             setPermission(perm);
 
             if (perm !== "granted") {
-                setError("Permission denied. Enable notifications in browser settings.");
+                setError("Permission denied. Enable in browser settings.");
                 setLoading(false);
                 return;
             }
 
-            // Get VAPID key from environment
             const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
             if (!vapidKey) {
                 setError("Push notifications not configured.");
@@ -65,16 +69,17 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                 return;
             }
 
-            // Get service worker registration
             const registration = await navigator.serviceWorker.ready;
+            const keyArray = urlBase64ToUint8Array(vapidKey);
 
-            // Subscribe to push
-            const subscription = await registration.pushManager.subscribe({
+            // Subscribe to push manager
+            const pushSubscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidKey),
+                // Type assertion needed for TypeScript compatibility
+                applicationServerKey: keyArray as unknown as BufferSource,
             });
 
-            // Send subscription to server
+            // Get auth session
             const supabase = supabaseBrowser();
             const { data: { session } } = await supabase.auth.getSession();
 
@@ -84,13 +89,14 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                 return;
             }
 
+            // Send subscription to server
             const response = await fetch("/api/push/subscribe", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session.access_token}`,
+                    Authorization: `Bearer ${session.access_token}`,
                 },
-                body: JSON.stringify(subscription.toJSON()),
+                body: JSON.stringify(pushSubscription.toJSON()),
             });
 
             if (!response.ok) {
@@ -112,13 +118,8 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
         onClose?.();
     }
 
-    // Don't show if not supported, already subscribed, or dismissed
-    if (!("Notification" in window) || subscribed || dismissed) {
-        return null;
-    }
-
-    // Don't show if already granted but not subscribed (will auto-subscribe)
-    if (permission === "denied") {
+    // Don't render if not supported, subscribed, or dismissed
+    if (typeof window === "undefined" || !("Notification" in window) || subscribed || dismissed || permission === "denied") {
         return null;
     }
 
@@ -138,13 +139,9 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                         <div className="flex-1">
                             <h3 className="font-semibold text-white">Daily Reminder</h3>
                             <p className="mt-1 text-sm text-neutral-300">
-                                Get a gentle nudge at 8pm to capture your day's thoughts.
+                                Get a gentle nudge at 8pm to capture your day&apos;s thoughts.
                             </p>
-
-                            {error && (
-                                <p className="mt-2 text-xs text-rose-400">{error}</p>
-                            )}
-
+                            {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
                             <div className="mt-3 flex gap-2">
                                 <button
                                     onClick={handleEnable}
@@ -166,16 +163,4 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
             </motion.div>
         </AnimatePresence>
     );
-}
-
-// Helper to convert VAPID key
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
 }
