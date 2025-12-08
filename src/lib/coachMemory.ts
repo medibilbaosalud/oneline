@@ -82,10 +82,12 @@ export async function saveCoachMemory(
     userId: string,
     newMessages: StoredMessage[]
 ): Promise<void> {
+    console.log("[CoachMemory] saveCoachMemory called for user:", userId, "with", newMessages.length, "messages");
+
     const supabase = supabaseAdmin();
 
     // First, load existing conversation
-    const { data: existing } = await supabase
+    const { data: existing, error: loadError } = await supabase
         .from("coach_conversations")
         .select("id, messages, summary")
         .eq("user_id", userId)
@@ -93,17 +95,24 @@ export async function saveCoachMemory(
         .limit(1)
         .single();
 
+    if (loadError && loadError.code !== 'PGRST116') {
+        // PGRST116 = no rows found, which is fine for new users
+        console.log("[CoachMemory] Load error (may be normal for new users):", loadError);
+    }
+
     let allMessages: StoredMessage[] = [];
     let existingSummary: string | null = null;
     let recordId: string | null = null;
 
     if (existing) {
         const record = existing as ConversationRecord;
-        allMessages = [...record.messages, ...newMessages];
+        allMessages = [...(record.messages || []), ...newMessages];
         existingSummary = record.summary;
         recordId = record.id;
+        console.log("[CoachMemory] Found existing record:", recordId, "with", record.messages?.length || 0, "messages");
     } else {
         allMessages = newMessages;
+        console.log("[CoachMemory] No existing record, will create new");
     }
 
     // If we have too many messages, compact older ones into summary
@@ -124,11 +133,13 @@ export async function saveCoachMemory(
         } else {
             summary = truncateSummary(compactedOld);
         }
+        console.log("[CoachMemory] Compacted", olderMessages.length, "old messages");
     }
 
     // Upsert the conversation
     if (recordId) {
-        await supabase
+        console.log("[CoachMemory] Updating existing record:", recordId);
+        const { error: updateError } = await supabase
             .from("coach_conversations")
             .update({
                 messages: messagesToKeep,
@@ -136,14 +147,27 @@ export async function saveCoachMemory(
                 updated_at: new Date().toISOString(),
             })
             .eq("id", recordId);
+
+        if (updateError) {
+            console.error("[CoachMemory] UPDATE ERROR:", updateError);
+            throw updateError;
+        }
+        console.log("[CoachMemory] Update successful");
     } else {
-        await supabase
+        console.log("[CoachMemory] Inserting new record for user:", userId);
+        const { error: insertError } = await supabase
             .from("coach_conversations")
             .insert({
                 user_id: userId,
                 messages: messagesToKeep,
                 summary: summary,
             });
+
+        if (insertError) {
+            console.error("[CoachMemory] INSERT ERROR:", insertError);
+            throw insertError;
+        }
+        console.log("[CoachMemory] Insert successful");
     }
 }
 

@@ -195,6 +195,22 @@ export default function CoachPage() {
         localStorage.setItem("coach_share_entries", String(newValue));
     }
 
+    // Finish current chat - saves automatically on backend, just clear UI
+    async function handleFinishChat() {
+        // The conversation is already saved on the backend after each exchange
+        // Just clear the UI and show a fresh welcome
+        const messageCount = messages.filter(m => m.id !== "welcome" && m.id !== "history-separator").length;
+
+        if (messageCount > 0) {
+            setAccessToast("✅ Chat saved! Starting fresh...");
+        } else {
+            setAccessToast("✨ Starting new conversation");
+        }
+
+        setTimeout(() => setAccessToast(null), 2000);
+        showWelcome();
+    }
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
@@ -519,19 +535,30 @@ export default function CoachPage() {
                             </span>
                         </button>
 
-                        {/* New Chat button */}
+                        {/* Finish Chat / New Chat button */}
                         <button
-                            onClick={() => {
-                                // Clear messages and start fresh
-                                showWelcome();
-                                setAccessToast("✨ New conversation started");
-                                setTimeout(() => setAccessToast(null), 2000);
-                            }}
-                            className="flex items-center gap-1 rounded-lg bg-indigo-600/30 px-2 py-1.5 text-xs text-indigo-300 transition hover:bg-indigo-600/50"
-                            title="Start new chat"
+                            onClick={handleFinishChat}
+                            className="flex items-center gap-1 rounded-lg bg-orange-600/30 px-2 py-1.5 text-xs text-orange-300 transition hover:bg-orange-600/50"
+                            title="Finish this chat and start fresh"
                         >
-                            ➕
-                            <span className="hidden sm:inline">New Chat</span>
+                            ✅
+                            <span className="hidden sm:inline">Finish Chat</span>
+                        </button>
+
+                        {/* Load Previous button */}
+                        <button
+                            onClick={async () => {
+                                const hadHistory = await loadChatHistory();
+                                if (!hadHistory) {
+                                    setAccessToast("📭 No previous chats found");
+                                    setTimeout(() => setAccessToast(null), 2000);
+                                }
+                            }}
+                            className="flex items-center gap-1 rounded-lg bg-neutral-700 px-2 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-600"
+                            title="Load previous conversation"
+                        >
+                            📚
+                            <span className="hidden sm:inline">Load Prev</span>
                         </button>
 
                         {/* Usage indicator */}
