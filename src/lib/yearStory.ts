@@ -550,18 +550,40 @@ async function generateWithRetry(model: any, prompt: any, retries = 3, delay = 1
   }
 }
 
+// ============================================================
+// STORY AUDIO GENERATION (TTS)
+// ============================================================
+// Converts the story text to audio using Google Gemini's TTS API.
+//
+// KEY FEATURES:
+// - Analyzes story mood to select appropriate voice and style
+// - Injects narration instructions for more human-like reading
+// - Uses model cascade for reliability
+// - Selects voice (Aoede/Kore) based on emotional tone
+//
+// MOOD ANALYSIS:
+// The story text is analyzed for emotional keywords to determine:
+// - Dominant mood: hopeful, melancholic, energetic, reflective, neutral
+// - Intensity: low, medium, high
+// - Whether story contains struggles and/or triumphs
+//
+// This information shapes HOW the text is narrated, not just WHAT is said.
+// ============================================================
 export async function generateStoryAudio(text: string): Promise<{ data: string; mimeType: string } | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
-  // Analyze the story to detect mood and create better narration instructions
+  // STEP 1: Analyze the story's emotional content
+  // This determines voice selection and narration style
   const moodAnalysis = analyzeStoryMood(text);
 
-  // Create enhanced prompt with narration style instructions
+  // STEP 2: Build narration instructions based on mood
+  // These instructions tell the TTS how to read (pacing, tone, emphasis)
   const narratorInstructions = buildNarrationInstructions(moodAnalysis);
   const enhancedText = `${narratorInstructions}\n\n---\n\n${text.slice(0, 38000)}`;
 
-  // FALLBACK MECHANISM for TTS models
+  // STEP 3: Model cascade for reliability
+  // We try multiple TTS models/versions in case some are unavailable
   const modelsToTry = [
     { name: 'gemini-2.5-flash-preview-tts', version: 'v1beta' },
     { name: 'gemini-2.5-flash-tts', version: 'v1beta' },
@@ -569,7 +591,8 @@ export async function generateStoryAudio(text: string): Promise<{ data: string; 
     { name: 'gemini-2.0-flash-exp', version: 'v1beta' }
   ];
 
-  // Choose voice based on detected mood
+  // STEP 4: Select voice based on detected mood
+  // Aoede = warmer/upbeat, Kore = softer/contemplative
   const voiceName = selectVoiceForMood(moodAnalysis.dominantMood);
 
   for (const model of modelsToTry) {

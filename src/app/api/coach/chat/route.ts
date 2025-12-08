@@ -1,12 +1,40 @@
 // src/app/api/coach/chat/route.ts
+// ============================================================
+// AI Coach API - Personalized Journaling Companion
+// ============================================================
+// This API powers the AI Coach feature, providing personalized
+// insights and reflections based on user's journaling patterns.
+//
+// FEATURES:
+// - Uses Groq's Llama models via cascade for reliability
+// - Accesses user's mood data and journaling stats (insights)
+// - Optionally reads actual journal entries (if user enables)
+// - Rate limited to 200 messages/day per user
+// - Responds in user's language automatically
+//
+// REQUIRED ENV VARS:
+// - GROQ_API_KEY: For AI chat completions
+// - SUPABASE_SERVICE_ROLE_KEY: For accessing user data
+// - NEXT_PUBLIC_SUPABASE_URL: Supabase project URL
+//
+// PRIVACY:
+// - By default, only accesses METADATA (mood scores, streaks)
+// - If shareEntries=true, reads actual journal content
+// - All data is sent to Groq for processing (see Privacy Policy)
+// ============================================================
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { chatWithGroq, type GroqMessage } from "@/lib/groqClient";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// IMPORTANT: Use SUPABASE_SERVICE_ROLE_KEY (not SUPABASE_SERVICE_KEY)
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Daily limit per user - generous thanks to Groq
+// ============================================================
+// CONFIGURATION
+// ============================================================
+// Daily limit is generous thanks to Groq's fast, cheap inference
 const DAILY_COACH_LIMIT = 200;
 
 // System prompt - warm, empathetic, but honest

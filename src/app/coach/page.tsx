@@ -246,58 +246,111 @@ export default function CoachPage() {
 
     return (
         <div className="flex h-screen flex-col pt-12">
-            {/* Consent Modal */}
+            {/* Consent Modal - Initial access configuration */}
             <AnimatePresence>
                 {showConsentModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
                     >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="w-full max-w-md rounded-2xl bg-neutral-900 p-6 shadow-xl"
+                            className="w-full max-w-lg rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 p-8 shadow-2xl border border-white/10"
                         >
-                            <div className="mb-4 flex items-center gap-3">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-2xl">
-                                    🔒
+                            {/* Header */}
+                            <div className="text-center mb-6">
+                                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-4xl shadow-lg shadow-indigo-500/30">
+                                    🧠
                                 </div>
-                                <h2 className="text-lg font-semibold text-white">Privacy Notice</h2>
+                                <h2 className="text-2xl font-bold text-white">Tu Coach Personal</h2>
+                                <p className="mt-2 text-neutral-400">¿Cómo quieres que te ayude?</p>
                             </div>
 
-                            <p className="mb-4 text-sm text-neutral-300">
-                                To provide personalized insights, the AI Coach needs access to:
-                            </p>
+                            {/* Main Question */}
+                            <div className="mb-6 text-center">
+                                <p className="text-lg text-white font-medium mb-2">
+                                    ¿Quieres que pueda leer tus entradas del diario?
+                                </p>
+                                <p className="text-sm text-neutral-400">
+                                    Esto me permite darte insights más profundos y personalizados.
+                                </p>
+                            </div>
 
-                            <ul className="mb-6 space-y-2 text-sm text-neutral-400">
-                                <li className="flex items-center gap-2">
-                                    <span className="text-emerald-400">✓</span> Your mood tracking data
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <span className="text-emerald-400">✓</span> Your journaling patterns and streaks
-                                </li>
-                                <li className="flex items-center gap-2">
-                                    <span className="text-amber-400">⚡</span> Entry metadata (not encrypted content)
-                                </li>
-                            </ul>
-
-                            <div className="flex gap-3">
+                            {/* Access Options */}
+                            <div className="space-y-3 mb-6">
+                                {/* Full Access Option */}
                                 <button
-                                    onClick={handleConsentDecline}
-                                    className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-neutral-400 transition hover:bg-neutral-800"
+                                    onClick={() => {
+                                        localStorage.setItem("coach_consent", "true");
+                                        localStorage.setItem("coach_share_entries", "true");
+                                        setHasConsent(true);
+                                        setShareEntries(true);
+                                        setShowConsentModal(false);
+                                        showWelcome();
+                                    }}
+                                    className="w-full rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/10 p-5 text-left transition hover:bg-emerald-500/20 hover:border-emerald-500"
                                 >
-                                    Decline
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-2xl">
+                                            📖
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-emerald-400 text-lg">Acceso Completo</h3>
+                                            <p className="text-sm text-neutral-300 mt-1">
+                                                Puedo leer tus entradas para darte reflexiones más profundas y conectar patrones reales en tu escritura.
+                                            </p>
+                                            <p className="text-xs text-emerald-400/70 mt-2">✨ Recomendado para insights personalizados</p>
+                                        </div>
+                                    </div>
                                 </button>
+
+                                {/* Limited Access Option */}
                                 <button
-                                    onClick={handleConsentAccept}
-                                    className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500"
+                                    onClick={() => {
+                                        localStorage.setItem("coach_consent", "true");
+                                        localStorage.setItem("coach_share_entries", "false");
+                                        setHasConsent(true);
+                                        setShareEntries(false);
+                                        setShowConsentModal(false);
+                                        showWelcome();
+                                    }}
+                                    className="w-full rounded-2xl border-2 border-white/10 bg-neutral-800/50 p-5 text-left transition hover:bg-neutral-800 hover:border-white/20"
                                 >
-                                    Allow Access
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-neutral-700 text-2xl">
+                                            🔒
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-white text-lg">Solo Metadatos</h3>
+                                            <p className="text-sm text-neutral-400 mt-1">
+                                                Solo veo tu estado de ánimo, rachas y estadísticas. Tus entradas permanecen privadas.
+                                            </p>
+                                            <p className="text-xs text-neutral-500 mt-2">🔐 Máxima privacidad</p>
+                                        </div>
+                                    </div>
                                 </button>
                             </div>
+
+                            {/* Privacy Note */}
+                            <div className="rounded-xl bg-neutral-800/50 p-4 text-center">
+                                <p className="text-xs text-neutral-500">
+                                    Puedes cambiar esta configuración en cualquier momento desde el botón en la cabecera.
+                                    <br />Los datos se procesan via <span className="text-neutral-400">Groq AI</span> según nuestra{" "}
+                                    <a href="/legal/privacy" className="text-indigo-400 underline">Política de Privacidad</a>.
+                                </p>
+                            </div>
+
+                            {/* Decline */}
+                            <button
+                                onClick={handleConsentDecline}
+                                className="mt-4 w-full text-center text-sm text-neutral-500 hover:text-neutral-300 transition"
+                            >
+                                No quiero usar el Coach
+                            </button>
                         </motion.div>
                     </motion.div>
                 )}
