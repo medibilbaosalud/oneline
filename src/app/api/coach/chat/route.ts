@@ -108,8 +108,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+
         const body = await req.json();
-        const { message, history = [], hasConsent = false, shareEntries = false } = body;
+        // entries: client-side decrypted entries sent from frontend (same pattern as StoryGenerator)
+        const { message, history = [], hasConsent = false, shareEntries = false, entries = [] } = body;
 
         if (!message || typeof message !== "string") {
             return NextResponse.json({ error: "Message required" }, { status: 400 });
@@ -224,69 +226,37 @@ export async function POST(req: Request) {
 ${weekComparison ? `- Comparación semanal: ${weekComparison}` : ""}
 - Días con registro de ánimo: ${moodsWithScore.length}`;
 
-        // If user shares entries, fetch recent entries metadata
-        // NOTE: Entries are encrypted end-to-end (content_cipher + iv).
-        // The 'content' field may be empty. We can see: dates, count, starred status.
-        if (shareEntries) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: entries, error: entriesError } = await (supabase as any)
-                .from("journal")
-                .select("day, content, content_cipher, starred, created_at")
-                .eq("user_id", user.id)
-                .order("day", { ascending: false })
-                .limit(30);
+        // If user shares entries, use decrypted entries sent from client
+        // NOTE: Entries are encrypted end-to-end. Client decrypts them before sending.
+        // This is the same pattern used by StoryGenerator.
+        if (shareEntries && Array.isArray(entries) && entries.length > 0) {
+            console.log("[Coach] Received", entries.length, "decrypted entries from client");
 
-            console.log("[Coach] Entry query result:", {
-                userId: user.id,
-                entriesFound: entries?.length ?? 0,
-                error: entriesError?.message,
-                sampleEntry: entries?.[0] ? {
-                    day: entries[0].day,
-                    hasContent: !!entries[0].content,
-                    hasCipher: !!entries[0].content_cipher,
-                    contentLength: entries[0].content?.length || 0
-                } : null
-            });
+            contextSummary += `
 
-            if (entries && entries.length > 0) {
-                // Check if entries have unencrypted content (legacy) OR encrypted content
-                const hasAnyEntries = entries.length > 0;
-                const readableEntries = entries.filter((e: { content?: string | null }) =>
-                    e.content && e.content.length > 0 && e.content.length < 2000
-                );
-                const encryptedEntries = entries.filter((e: { content_cipher?: string | null }) =>
-                    e.content_cipher && e.content_cipher.length > 0
-                );
+📝 JOURNAL ENTRIES (user granted access - decrypted client-side):`;
 
-                // If there are readable (unencrypted) entries, show them
-                if (readableEntries.length > 0) {
-                    contextSummary += `
-
-📝 READABLE ENTRIES (user granted access):`;
-                    for (const entry of readableEntries.slice(0, 5)) {
-                        const star = entry.starred ? "⭐ " : "";
-                        const content = entry.content || "";
-                        contextSummary += `
-${star}[${entry.day}]: ${content.slice(0, 400)}${content.length > 400 ? "..." : ""}`;
-                    }
-                }
-
-                // Always show entry dates so Coach knows writing history
+            // Show the most recent entries (limit to first 10 for context length)
+            for (const entry of entries.slice(0, 10)) {
+                const content = entry.content || "";
+                const day = entry.day || "unknown";
                 contextSummary += `
-
-📅 JOURNAL HISTORY (user granted access):
-- Total entries found: ${entries.length}
-- Readable entries: ${readableEntries.length}
-- Encrypted entries: ${encryptedEntries.length}
-- Entry dates: ${entries.map((e: { day: string }) => e.day).slice(0, 15).join(", ")}${entries.length > 15 ? "..." : ""}
-- Latest entry: ${entries[0]?.day || "none"}
-- User HAS been writing in their journal.`;
-
-            } else {
-                contextSummary += `
-
-📝 NOTE: User granted access but has no journal entries in the database yet.`;
+[${day}]: ${content.slice(0, 400)}${content.length > 400 ? "..." : ""}`;
             }
+
+            contextSummary += `
+
+Total entries shared: ${entries.length}
+Entry dates: ${entries.slice(0, 15).map((e: { day: string }) => e.day).join(", ")}${entries.length > 15 ? "..." : ""}
+User HAS been actively writing in their journal.`;
+
+        } else if (shareEntries) {
+            // User wants to share but no entries were provided (vault not unlocked?)
+            console.log("[Coach] shareEntries=true but no entries received from client");
+            contextSummary += `
+
+📝 NOTE: User granted entry access but no entries were provided. 
+This may mean their vault is locked or they haven't written any entries yet.`;
         }
 
         contextSummary += `

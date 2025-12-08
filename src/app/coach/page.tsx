@@ -1,9 +1,12 @@
 // src/app/coach/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { useVault } from "@/hooks/useVault";
+import { decryptText } from "@/lib/crypto";
+import VaultGate from "@/components/VaultGate";
 
 type Message = {
     id: string;
@@ -23,6 +26,7 @@ const SUGGESTED_PROMPTS = [
 const DAILY_LIMIT = 300;
 
 export default function CoachPage() {
+    const { dataKey } = useVault(); // For decrypting entries
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -34,9 +38,53 @@ export default function CoachPage() {
     const [shareEntries, setShareEntries] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-    const [accessToast, setAccessToast] = useState<string | null>(null); // Shows access reminder on entry
+    const [accessToast, setAccessToast] = useState<string | null>(null);
+    const [decryptedEntries, setDecryptedEntries] = useState<{ content: string; day: string }[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Fetch and decrypt journal entries (same pattern as StoryGenerator)
+    const loadDecryptedEntries = useCallback(async () => {
+        if (!dataKey) {
+            console.log("[Coach] No dataKey, cannot decrypt entries");
+            return [];
+        }
+
+        try {
+            const res = await fetch("/api/history?limit=30", { cache: "no-store" });
+            if (!res.ok) {
+                console.log("[Coach] Failed to fetch history:", res.status);
+                return [];
+            }
+
+            const json = await res.json();
+            const entries = json.entries || [];
+            console.log("[Coach] Fetched entries:", entries.length);
+
+            const decrypted: { content: string; day: string }[] = [];
+            for (const entry of entries) {
+                if (entry.content_cipher && entry.iv) {
+                    try {
+                        const text = await decryptText(dataKey, entry.content_cipher, entry.iv);
+                        if (text.trim()) {
+                            decrypted.push({ content: text, day: entry.day || entry.created_at?.slice(0, 10) });
+                        }
+                    } catch (e) {
+                        console.log("[Coach] Failed to decrypt entry:", entry.day, e);
+                    }
+                } else if (entry.content && entry.content.trim()) {
+                    // Unencrypted legacy entry
+                    decrypted.push({ content: entry.content, day: entry.day || entry.created_at?.slice(0, 10) });
+                }
+            }
+
+            console.log("[Coach] Decrypted entries:", decrypted.length);
+            return decrypted;
+        } catch (e) {
+            console.error("[Coach] Error loading entries:", e);
+            return [];
+        }
+    }, [dataKey]);
 
     useEffect(() => {
         async function init() {
@@ -195,6 +243,13 @@ export default function CoachPage() {
                 throw new Error("Please sign in");
             }
 
+            // If user wants to share entries, decrypt them client-side first
+            let entriesToSend: { content: string; day: string }[] = [];
+            if (shareEntries && dataKey) {
+                entriesToSend = await loadDecryptedEntries();
+                console.log("[Coach] Sending", entriesToSend.length, "decrypted entries to API");
+            }
+
             const response = await fetch("/api/coach/chat", {
                 method: "POST",
                 headers: {
@@ -206,6 +261,7 @@ export default function CoachPage() {
                     history: messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
                     hasConsent: true,
                     shareEntries: shareEntries,
+                    entries: entriesToSend, // <-- NEW: Send decrypted entries from client
                 }),
             });
 
