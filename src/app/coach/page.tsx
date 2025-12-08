@@ -20,7 +20,7 @@ const SUGGESTED_PROMPTS = [
     { emoji: "💡", text: "Dame un pequeño desafío para hoy" },
 ];
 
-const DAILY_LIMIT = 50;
+const DAILY_LIMIT = 200;
 
 export default function CoachPage() {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -31,6 +31,9 @@ export default function CoachPage() {
     const [hasConsent, setHasConsent] = useState(false);
     const [showConsentModal, setShowConsentModal] = useState(false);
     const [usage, setUsage] = useState({ used: 0, limit: DAILY_LIMIT });
+    const [shareEntries, setShareEntries] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -40,10 +43,11 @@ export default function CoachPage() {
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                // Check if consent was given before
                 const savedConsent = localStorage.getItem("coach_consent");
+                const savedShareEntries = localStorage.getItem("coach_share_entries");
                 if (savedConsent === "true") {
                     setHasConsent(true);
+                    setShareEntries(savedShareEntries === "true");
                     showWelcome();
                 } else {
                     setShowConsentModal(true);
@@ -77,9 +81,78 @@ export default function CoachPage() {
         setError("Coach needs access to your data to provide insights");
     }
 
+    function toggleShareEntries() {
+        const newValue = !shareEntries;
+        setShareEntries(newValue);
+        localStorage.setItem("coach_share_entries", String(newValue));
+    }
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    // Voice recording
+    async function startRecording() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            const chunks: Blob[] = [];
+
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                stream.getTracks().forEach(track => track.stop());
+                await transcribeAudio(blob);
+            };
+
+            recorder.start();
+            setMediaRecorder(recorder);
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            setError("Could not access microphone");
+        }
+    }
+
+    function stopRecording() {
+        if (mediaRecorder) {
+            mediaRecorder.stop();
+            setMediaRecorder(null);
+            setIsRecording(false);
+        }
+    }
+
+    async function transcribeAudio(blob: Blob) {
+        setLoading(true);
+        try {
+            const supabase = supabaseBrowser();
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session?.access_token) throw new Error("Please sign in");
+
+            const formData = new FormData();
+            formData.append("audio", blob, "recording.webm");
+
+            const response = await fetch("/api/transcribe", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: formData,
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Transcription failed");
+
+            if (data.text) {
+                setInput((prev) => prev + (prev ? " " : "") + data.text);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Transcription failed");
+        } finally {
+            setLoading(false);
+        }
+    }
 
     async function handleSubmit(e?: React.FormEvent) {
         e?.preventDefault();
@@ -120,6 +193,7 @@ export default function CoachPage() {
                     message: userMessage.content,
                     history: messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
                     hasConsent: true,
+                    shareEntries: shareEntries,
                 }),
             });
 
@@ -133,7 +207,6 @@ export default function CoachPage() {
                 throw new Error(data.error || "Failed to get response");
             }
 
-            // Update usage
             if (data.usage) {
                 setUsage(data.usage);
             }
@@ -242,12 +315,30 @@ export default function CoachPage() {
                             <p className="text-xs text-neutral-400">Your personal companion</p>
                         </div>
                     </div>
-                    {/* Usage indicator */}
-                    <div className="text-right text-xs text-neutral-400">
-                        <span className={usage.used >= usage.limit ? "text-rose-400" : ""}>
-                            {usage.used}/{usage.limit}
-                        </span>
-                        <span className="block text-[10px]">today</span>
+
+                    {/* Share Entries Toggle */}
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={toggleShareEntries}
+                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${shareEntries
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                : "bg-neutral-800 text-neutral-400 border border-white/10"
+                                }`}
+                            title={shareEntries ? "Coach can read your entries" : "Coach only sees metadata"}
+                        >
+                            {shareEntries ? "📖" : "🔒"}
+                            <span className="hidden sm:inline">
+                                {shareEntries ? "Full Access" : "Metadata Only"}
+                            </span>
+                        </button>
+
+                        {/* Usage indicator */}
+                        <div className="text-right text-xs text-neutral-400">
+                            <span className={usage.used >= usage.limit ? "text-rose-400" : ""}>
+                                {usage.used}/{usage.limit}
+                            </span>
+                            <span className="block text-[10px]">today</span>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -322,6 +413,28 @@ export default function CoachPage() {
             <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-neutral-950 p-4 pb-6">
                 <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
                     <div className="flex gap-2">
+                        {/* Microphone Button */}
+                        <button
+                            type="button"
+                            onClick={isRecording ? stopRecording : startRecording}
+                            disabled={loading}
+                            className={`rounded-xl px-3 py-3 transition ${isRecording
+                                ? "bg-rose-600 text-white animate-pulse"
+                                : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                                } disabled:opacity-50`}
+                            title={isRecording ? "Stop recording" : "Voice input"}
+                        >
+                            {isRecording ? (
+                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                                </svg>
+                            ) : (
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                </svg>
+                            )}
+                        </button>
+
                         <textarea
                             ref={inputRef}
                             value={input}

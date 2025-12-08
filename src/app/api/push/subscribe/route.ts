@@ -1,9 +1,13 @@
 // src/app/api/push/subscribe/route.ts
+// Handles Web Push notification subscriptions (subscribe/unsubscribe)
+// Uses VAPID for authentication with push services
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
+// IMPORTANT: Must be SUPABASE_SERVICE_ROLE_KEY (not SUPABASE_SERVICE_KEY)
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST(req: Request) {
     try {
