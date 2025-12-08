@@ -45,12 +45,19 @@ export default function CoachPage() {
             if (user) {
                 const savedConsent = localStorage.getItem("coach_consent");
                 const savedShareEntries = localStorage.getItem("coach_share_entries");
-                if (savedConsent === "true") {
+
+                // If user previously granted FULL ACCESS, don't ask again
+                if (savedConsent === "true" && savedShareEntries === "true") {
                     setHasConsent(true);
-                    setShareEntries(savedShareEntries === "true");
+                    setShareEntries(true);
                     showWelcome();
                 } else {
+                    // If NO consent or only METADATA logic, ask again (as requested)
                     setShowConsentModal(true);
+
+                    // But if they are physically in metadata mode from before, strict defaults
+                    setHasConsent(false);
+                    setShareEntries(false);
                 }
             } else {
                 setError("Please sign in to use the AI Coach");
@@ -266,17 +273,17 @@ export default function CoachPage() {
                                 <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-4xl shadow-lg shadow-indigo-500/30">
                                     🧠
                                 </div>
-                                <h2 className="text-2xl font-bold text-white">Tu Coach Personal</h2>
-                                <p className="mt-2 text-neutral-400">¿Cómo quieres que te ayude?</p>
+                                <h2 className="text-2xl font-bold text-white">Your Personal Coach</h2>
+                                <p className="mt-2 text-neutral-400">How should I help you today?</p>
                             </div>
 
                             {/* Main Question */}
                             <div className="mb-6 text-center">
                                 <p className="text-lg text-white font-medium mb-2">
-                                    ¿Quieres que pueda leer tus entradas del diario?
+                                    Should I read your journal entries?
                                 </p>
                                 <p className="text-sm text-neutral-400">
-                                    Esto me permite darte insights más profundos y personalizados.
+                                    Reading them allows me to give deeper, personalized insights.
                                 </p>
                             </div>
 
@@ -299,11 +306,12 @@ export default function CoachPage() {
                                             📖
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-emerald-400 text-lg">Acceso Completo</h3>
+                                            <h3 className="font-semibold text-emerald-400 text-lg">Read My Entries</h3>
                                             <p className="text-sm text-neutral-300 mt-1">
-                                                Puedo leer tus entradas para darte reflexiones más profundas y conectar patrones reales en tu escritura.
+                                                I can analyze your writing to find patterns and offer deep reflections.
+                                                <span className="block text-xs opacity-70 mt-1">(Note: I cannot read encrypted end-to-end entries yet)</span>
                                             </p>
-                                            <p className="text-xs text-emerald-400/70 mt-2">✨ Recomendado para insights personalizados</p>
+                                            <p className="text-xs text-emerald-400/70 mt-2">✨ Recommended for best insights</p>
                                         </div>
                                     </div>
                                 </button>
@@ -311,8 +319,11 @@ export default function CoachPage() {
                                 {/* Limited Access Option */}
                                 <button
                                     onClick={() => {
-                                        localStorage.setItem("coach_consent", "true");
-                                        localStorage.setItem("coach_share_entries", "false");
+                                        // User chose NO/Limited. DON'T save persistence so we ask again next time.
+                                        localStorage.removeItem("coach_consent");
+                                        localStorage.removeItem("coach_share_entries");
+
+                                        // Set temporary session state
                                         setHasConsent(true);
                                         setShareEntries(false);
                                         setShowConsentModal(false);
@@ -325,11 +336,11 @@ export default function CoachPage() {
                                             🔒
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-white text-lg">Solo Metadatos</h3>
+                                            <h3 className="font-semibold text-white text-lg">Metadata Only</h3>
                                             <p className="text-sm text-neutral-400 mt-1">
-                                                Solo veo tu estado de ánimo, rachas y estadísticas. Tus entradas permanecen privadas.
+                                                I only see your mood scores, streaks, and habits. Your writing stays private.
                                             </p>
-                                            <p className="text-xs text-neutral-500 mt-2">🔐 Máxima privacidad</p>
+                                            <p className="text-xs text-neutral-500 mt-2">🔐 Maximum privacy</p>
                                         </div>
                                     </div>
                                 </button>
@@ -338,9 +349,9 @@ export default function CoachPage() {
                             {/* Privacy Note */}
                             <div className="rounded-xl bg-neutral-800/50 p-4 text-center">
                                 <p className="text-xs text-neutral-500">
-                                    Puedes cambiar esta configuración en cualquier momento desde el botón en la cabecera.
-                                    <br />Los datos se procesan via <span className="text-neutral-400">Groq AI</span> según nuestra{" "}
-                                    <a href="/legal/privacy" className="text-indigo-400 underline">Política de Privacidad</a>.
+                                    You can change this setting anytime from the header.
+                                    <br />Data processed via <span className="text-neutral-400">Groq AI</span> per our{" "}
+                                    <a href="/legal/privacy" className="text-indigo-400 underline">Privacy Policy</a>.
                                 </p>
                             </div>
 
@@ -349,7 +360,7 @@ export default function CoachPage() {
                                 onClick={handleConsentDecline}
                                 className="mt-4 w-full text-center text-sm text-neutral-500 hover:text-neutral-300 transition"
                             >
-                                No quiero usar el Coach
+                                I don't want to use Coach
                             </button>
                         </motion.div>
                     </motion.div>
@@ -369,19 +380,19 @@ export default function CoachPage() {
                         </div>
                     </div>
 
-                    {/* Share Entries Toggle */}
-                    <div className="flex items-center gap-4">
+                    {/* Access Level Indicator - click to change */}
+                    <div className="flex items-center gap-3">
                         <button
-                            onClick={toggleShareEntries}
-                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition ${shareEntries
-                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                : "bg-neutral-800 text-neutral-400 border border-white/10"
+                            onClick={() => setShowConsentModal(true)}
+                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition ${shareEntries
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : "bg-neutral-800 text-neutral-400"
                                 }`}
-                            title={shareEntries ? "Coach can read your entries" : "Coach only sees metadata"}
+                            title="Change access level"
                         >
-                            {shareEntries ? "📖" : "🔒"}
+                            {shareEntries ? "📅" : "🔒"}
                             <span className="hidden sm:inline">
-                                {shareEntries ? "Full Access" : "Metadata Only"}
+                                {shareEntries ? "With History" : "Metadata Only"}
                             </span>
                         </button>
 
@@ -390,7 +401,7 @@ export default function CoachPage() {
                             <span className={usage.used >= usage.limit ? "text-rose-400" : ""}>
                                 {usage.used}/{usage.limit}
                             </span>
-                            <span className="block text-[10px]">today</span>
+                            <span className="block text-[10px]">hoy</span>
                         </div>
                     </div>
                 </div>

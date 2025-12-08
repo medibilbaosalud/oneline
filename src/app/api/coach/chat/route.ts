@@ -224,29 +224,48 @@ export async function POST(req: Request) {
 ${weekComparison ? `- Comparación semanal: ${weekComparison}` : ""}
 - Días con registro de ánimo: ${moodsWithScore.length}`;
 
-        // If user shares entries, fetch recent entries content
+        // If user shares entries, fetch recent entries metadata
+        // NOTE: Entries are encrypted end-to-end. The server CANNOT read the content.
+        // We can only see: creation date, whether it exists, starred status
         if (shareEntries) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data: entries } = await (supabase as any)
-                .from("journal_entries")
-                .select("day, content, starred")
+                .from("journal")  // Correct table name
+                .select("day, content, starred, created_at")
                 .eq("user_id", user.id)
                 .order("day", { ascending: false })
-                .limit(10);
+                .limit(20);
 
             if (entries && entries.length > 0) {
-                contextSummary += `
+                // Check if any entries have unencrypted content (rare, legacy entries)
+                const readableEntries = entries.filter((e: { content?: string | null }) =>
+                    e.content && e.content.length > 0 && e.content.length < 2000
+                );
 
-📝 ÚLTIMAS ENTRADAS DEL DIARIO (el usuario te ha dado acceso):`;
-                for (const entry of entries) {
-                    const star = entry.starred ? "⭐ " : "";
-                    // Entries might be encrypted - only include if they look like readable text
-                    const content = entry.content || "";
-                    if (content && !content.startsWith("U2F") && content.length < 2000) {
+                if (readableEntries.length > 0) {
+                    contextSummary += `
+
+📝 ENTRADAS LEGIBLES (el usuario te ha dado acceso):`;
+                    for (const entry of readableEntries.slice(0, 5)) {
+                        const star = entry.starred ? "⭐ " : "";
+                        const content = entry.content || "";
                         contextSummary += `
-${star}[${entry.day}]: ${content.slice(0, 500)}${content.length > 500 ? "..." : ""}`;
+${star}[${entry.day}]: ${content.slice(0, 400)}${content.length > 400 ? "..." : ""}`;
                     }
                 }
+
+                // Always show entry dates so Coach knows writing history
+                contextSummary += `
+
+📅 HISTORIAL DE ESCRITURA (últimos 20 días con entradas):`;
+                const entryDates = entries.map((e: { day: string }) => e.day).join(", ");
+                contextSummary += `
+Fechas con entradas: ${entryDates}
+Total reciente: ${entries.length} entradas`;
+            } else {
+                contextSummary += `
+
+📝 NOTA: El usuario te ha dado acceso pero no tiene entradas recientes en la base de datos.`;
             }
         }
 
