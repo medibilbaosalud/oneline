@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Daily limit per user
 const DAILY_COACH_LIMIT = 20;
@@ -111,8 +111,8 @@ export async function POST(req: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Use the cheaper, faster model
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+        // Use gemini-1.5-flash (cheaper than pro, confirmed working)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const systemContext = `You are a warm, insightful journaling coach for the OneLine app.
 You have access to the user's journaling patterns and mood data.
