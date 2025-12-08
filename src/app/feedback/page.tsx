@@ -13,19 +13,16 @@ export default function FeedbackPage() {
 
     // Form data
     const [overallRating, setOverallRating] = useState<number | null>(null);
-    const [improvements, setImprovements] = useState<string>("");
+    const [noticedImprovement, setNoticedImprovement] = useState<string | null>(null);
     const [favoriteFeature, setFavoriteFeature] = useState<string>("");
-    const [whyUseOneLine, setWhyUseOneLine] = useState<string>("");
-    const [futureWishes, setFutureWishes] = useState<string>("");
+    const [triedCoach, setTriedCoach] = useState<boolean | null>(null);
+    const [coachRating, setCoachRating] = useState<number | null>(null);
+    const [coachInterest, setCoachInterest] = useState<string | null>(null);
+    const [oneImprovement, setOneImprovement] = useState<string>("");
     const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
 
-    // Check if user has already submitted feedback recently
     useEffect(() => {
         async function checkPreviousFeedback() {
-            const supabase = supabaseBrowser();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
             const lastFeedback = localStorage.getItem("last_feedback_date");
             if (lastFeedback) {
                 const daysSince = (Date.now() - new Date(lastFeedback).getTime()) / (1000 * 60 * 60 * 24);
@@ -47,12 +44,14 @@ export default function FeedbackPage() {
             await supabase.from("user_overall_feedback").insert({
                 user_id: user.id,
                 overall_rating: overallRating,
-                improvements: improvements.trim() || null,
+                noticed_improvement: noticedImprovement,
                 favorite_feature: favoriteFeature.trim() || null,
-                why_use_oneline: whyUseOneLine.trim() || null,
-                future_wishes: futureWishes.trim() || null,
+                tried_coach: triedCoach,
+                coach_rating: coachRating,
+                coach_interest: coachInterest,
+                one_improvement: oneImprovement.trim() || null,
                 would_recommend: wouldRecommend,
-                app_version: "2.0",
+                app_version: "2.1",
             });
 
             localStorage.setItem("last_feedback_date", new Date().toISOString());
@@ -109,14 +108,14 @@ export default function FeedbackPage() {
             <p className="text-5xl mb-4">👋</p>
             <h1 className="text-2xl font-bold text-white mb-3">We&apos;d love to hear from you!</h1>
             <p className="text-neutral-400 mb-6">
-                You&apos;re one of OneLine&apos;s earliest users, and your opinion really matters to us.
-                This will only take 1-2 minutes.
+                You&apos;re one of OneLine&apos;s earliest users, and your voice shapes our future.
+                This takes about 1 minute.
             </p>
             <button
                 onClick={() => setStep(1)}
                 className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition"
             >
-                Sure, I&apos;ll share my thoughts! ✨
+                Let&apos;s do it! ✨
             </button>
             <p className="mt-4 text-sm text-neutral-500">
                 <Link href="/today" className="hover:underline">Maybe later</Link>
@@ -132,8 +131,8 @@ export default function FeedbackPage() {
                         key={rating}
                         onClick={() => setOverallRating(rating)}
                         className={`w-14 h-14 rounded-xl text-2xl transition ${overallRating === rating
-                            ? "bg-indigo-600 scale-110"
-                            : "bg-neutral-800 hover:bg-neutral-700"
+                                ? "bg-indigo-600 scale-110"
+                                : "bg-neutral-800 hover:bg-neutral-700"
                             }`}
                     >
                         {rating === 1 ? "😔" : rating === 2 ? "😕" : rating === 3 ? "😐" : rating === 4 ? "🙂" : "😍"}
@@ -153,17 +152,59 @@ export default function FeedbackPage() {
             </button>
         </motion.div>,
 
-        // Step 2: Favorite feature
+        // Step 2: Noticed improvement?
+        <motion.div key="improvement" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <p className="text-lg text-white mb-4 text-center">Have you noticed OneLine getting better lately?</p>
+            <p className="text-sm text-neutral-500 mb-4 text-center">We&apos;ve been working hard on new features!</p>
+            <div className="flex justify-center gap-4 mb-6">
+                <button
+                    onClick={() => setNoticedImprovement("no")}
+                    className={`px-6 py-4 rounded-xl text-lg transition ${noticedImprovement === "no"
+                            ? "bg-neutral-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        }`}
+                >
+                    👎 No
+                </button>
+                <button
+                    onClick={() => setNoticedImprovement("not_sure")}
+                    className={`px-6 py-4 rounded-xl text-lg transition ${noticedImprovement === "not_sure"
+                            ? "bg-amber-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        }`}
+                >
+                    🤷 Not sure
+                </button>
+                <button
+                    onClick={() => setNoticedImprovement("yes")}
+                    className={`px-6 py-4 rounded-xl text-lg transition ${noticedImprovement === "yes"
+                            ? "bg-emerald-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        }`}
+                >
+                    👍 Yes!
+                </button>
+            </div>
+            <button
+                onClick={() => setStep(3)}
+                disabled={noticedImprovement === null}
+                className="w-full py-3 rounded-xl bg-indigo-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 transition"
+            >
+                Next
+            </button>
+        </motion.div>,
+
+        // Step 3: Favorite feature
         <motion.div key="favorite" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <p className="text-lg text-white mb-4">What&apos;s your favorite thing about OneLine?</p>
             <div className="space-y-2 mb-6">
-                {["The daily journaling", "AI Coach", "Year Stories", "Privacy & encryption", "The simple design", "Seeing my streaks"].map(option => (
+                {["Daily journaling", "AI Coach 🤖", "Insights & patterns", "Year Stories", "Privacy & encryption", "The simple design", "Streaks & momentum"].map(option => (
                     <button
                         key={option}
                         onClick={() => setFavoriteFeature(option)}
                         className={`w-full p-3 rounded-xl text-left transition ${favoriteFeature === option
-                            ? "bg-indigo-600 text-white"
-                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                                ? "bg-indigo-600 text-white"
+                                : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
                             }`}
                     >
                         {option}
@@ -171,7 +212,7 @@ export default function FeedbackPage() {
                 ))}
             </div>
             <button
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 disabled={!favoriteFeature}
                 className="w-full py-3 rounded-xl bg-indigo-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 transition"
             >
@@ -179,69 +220,113 @@ export default function FeedbackPage() {
             </button>
         </motion.div>,
 
-        // Step 3: Why use OneLine
-        <motion.div key="why" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <p className="text-lg text-white mb-4">Why do you keep using OneLine?</p>
-            <p className="text-sm text-neutral-500 mb-3">Be as honest as you want — this helps us a lot!</p>
-            <textarea
-                value={whyUseOneLine}
-                onChange={(e) => setWhyUseOneLine(e.target.value)}
-                placeholder="It helps me remember my days... / I like reflecting on my thoughts... / The encryption makes me feel safe..."
-                className="w-full h-28 p-4 rounded-xl bg-neutral-800 text-white placeholder-neutral-500 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-                onClick={() => setStep(4)}
-                className="w-full mt-4 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition"
-            >
-                {whyUseOneLine.trim() ? "Next" : "Skip"}
-            </button>
-        </motion.div>,
+        // Step 4: AI Coach experience
+        <motion.div key="coach" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <p className="text-lg text-white mb-4 text-center">Have you tried the AI Coach?</p>
+            <div className="flex justify-center gap-4 mb-6">
+                <button
+                    onClick={() => { setTriedCoach(false); setCoachRating(null); }}
+                    className={`px-8 py-4 rounded-xl text-lg transition ${triedCoach === false
+                            ? "bg-neutral-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        }`}
+                >
+                    Not yet
+                </button>
+                <button
+                    onClick={() => { setTriedCoach(true); setCoachInterest(null); }}
+                    className={`px-8 py-4 rounded-xl text-lg transition ${triedCoach === true
+                            ? "bg-indigo-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        }`}
+                >
+                    Yes! 🤖
+                </button>
+            </div>
 
-        // Step 4: Improvements
-        <motion.div key="improve" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <p className="text-lg text-white mb-4">What could be better?</p>
-            <p className="text-sm text-neutral-500 mb-3">We&apos;re always improving. Your ideas shape OneLine&apos;s future.</p>
-            <textarea
-                value={improvements}
-                onChange={(e) => setImprovements(e.target.value)}
-                placeholder="I wish there was... / It would be nice if... / Sometimes I struggle with..."
-                className="w-full h-28 p-4 rounded-xl bg-neutral-800 text-white placeholder-neutral-500 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            {/* Sub-question based on answer */}
+            {triedCoach === true && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+                    <p className="text-sm text-neutral-400 mb-3 text-center">How useful was it?</p>
+                    <div className="flex justify-center gap-2">
+                        {[1, 2, 3, 4, 5].map(rating => (
+                            <button
+                                key={rating}
+                                onClick={() => setCoachRating(rating)}
+                                className={`w-12 h-12 rounded-lg text-xl transition ${coachRating === rating
+                                        ? "bg-indigo-600 scale-110"
+                                        : "bg-neutral-800 hover:bg-neutral-700"
+                                    }`}
+                            >
+                                {rating === 1 ? "😕" : rating === 2 ? "😐" : rating === 3 ? "🙂" : rating === 4 ? "😊" : "🤩"}
+                            </button>
+                        ))}
+                    </div>
+                </motion.div>
+            )}
+
+            {triedCoach === false && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
+                    <p className="text-sm text-neutral-400 mb-3 text-center">Would you like to try it?</p>
+                    <div className="flex justify-center gap-3">
+                        <button
+                            onClick={() => setCoachInterest("curious")}
+                            className={`px-4 py-2 rounded-lg text-sm transition ${coachInterest === "curious"
+                                    ? "bg-indigo-600 text-white"
+                                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                                }`}
+                        >
+                            Curious to try! ✨
+                        </button>
+                        <button
+                            onClick={() => setCoachInterest("not_interested")}
+                            className={`px-4 py-2 rounded-lg text-sm transition ${coachInterest === "not_interested"
+                                    ? "bg-neutral-600 text-white"
+                                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                                }`}
+                        >
+                            Not really
+                        </button>
+                    </div>
+                </motion.div>
+            )}
+
             <button
                 onClick={() => setStep(5)}
-                className="w-full mt-4 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition"
+                disabled={triedCoach === null || (triedCoach === true && coachRating === null) || (triedCoach === false && coachInterest === null)}
+                className="w-full mt-6 py-3 rounded-xl bg-indigo-600 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-500 transition"
             >
-                {improvements.trim() ? "Next" : "Skip"}
+                Next
             </button>
         </motion.div>,
 
-        // Step 5: Future wishes
-        <motion.div key="future" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <p className="text-lg text-white mb-4">What would you love to see in OneLine?</p>
-            <p className="text-sm text-neutral-500 mb-3">Dream big! What features would make OneLine perfect for you?</p>
+        // Step 5: One improvement (focused)
+        <motion.div key="improve" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <p className="text-lg text-white mb-2">What&apos;s ONE thing you wish OneLine did better?</p>
+            <p className="text-sm text-neutral-500 mb-4">Be specific — this helps us prioritize!</p>
             <textarea
-                value={futureWishes}
-                onChange={(e) => setFutureWishes(e.target.value)}
-                placeholder="A mobile app... / Tags for entries... / Weekly insights..."
-                className="w-full h-28 p-4 rounded-xl bg-neutral-800 text-white placeholder-neutral-500 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={oneImprovement}
+                onChange={(e) => setOneImprovement(e.target.value)}
+                placeholder="I wish it had... / It would be better if... / Sometimes I struggle with..."
+                className="w-full h-24 p-4 rounded-xl bg-neutral-800 text-white placeholder-neutral-500 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
                 onClick={() => setStep(6)}
                 className="w-full mt-4 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition"
             >
-                {futureWishes.trim() ? "Next" : "Skip"}
+                {oneImprovement.trim() ? "Next" : "Skip"}
             </button>
         </motion.div>,
 
-        // Step 6: Recommend
+        // Step 6: Recommend (NPS)
         <motion.div key="recommend" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <p className="text-lg text-white mb-6 text-center">Would you recommend OneLine to a friend?</p>
             <div className="flex gap-4 justify-center mb-6">
                 <button
                     onClick={() => setWouldRecommend(true)}
                     className={`px-8 py-4 rounded-xl text-lg transition ${wouldRecommend === true
-                        ? "bg-emerald-600 text-white scale-105"
-                        : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                            ? "bg-emerald-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
                         }`}
                 >
                     Yes! 👍
@@ -249,8 +334,8 @@ export default function FeedbackPage() {
                 <button
                     onClick={() => setWouldRecommend(false)}
                     className={`px-8 py-4 rounded-xl text-lg transition ${wouldRecommend === false
-                        ? "bg-neutral-600 text-white scale-105"
-                        : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                            ? "bg-neutral-600 text-white scale-105"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
                         }`}
                 >
                     Not yet
@@ -275,7 +360,7 @@ export default function FeedbackPage() {
                         {[1, 2, 3, 4, 5, 6].map(s => (
                             <div
                                 key={s}
-                                className={`w-8 h-1 rounded-full ${s <= step ? "bg-indigo-500" : "bg-neutral-800"}`}
+                                className={`w-8 h-1 rounded-full transition-colors ${s <= step ? "bg-indigo-500" : "bg-neutral-800"}`}
                             />
                         ))}
                     </div>
