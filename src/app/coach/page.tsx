@@ -197,19 +197,56 @@ export default function CoachPage() {
         localStorage.setItem("coach_share_entries", String(newValue));
     }
 
-    // Finish current chat - saves automatically on backend, just clear UI
+    // Finish current chat - call API to summarize and save to user profile
     async function handleFinishChat() {
-        // The conversation is already saved on the backend after each exchange
-        // Just clear the UI and show a fresh welcome
         const messageCount = messages.filter(m => m.id !== "welcome" && m.id !== "history-separator").length;
 
-        if (messageCount > 0) {
-            setAccessToast("✅ Chat saved! Starting fresh...");
-        } else {
+        if (messageCount === 0) {
             setAccessToast("✨ Starting new conversation");
+            setTimeout(() => setAccessToast(null), 2000);
+            showWelcome();
+            return;
         }
 
-        setTimeout(() => setAccessToast(null), 2000);
+        setAccessToast("💭 Saving insights...");
+
+        try {
+            const supabase = supabaseBrowser();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                setAccessToast("⚠️ Session expired");
+                setTimeout(() => setAccessToast(null), 2000);
+                return;
+            }
+
+            // Call finish API to summarize and store insights
+            const res = await fetch("/api/coach/finish", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                    messages: messages.map(m => ({
+                        role: m.role,
+                        content: m.content,
+                    })),
+                }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                console.log("[Coach] Chat finished, summary saved:", data);
+                setAccessToast(`✅ Insights saved! (${data.totalChats} total chats)`);
+            } else {
+                setAccessToast("✅ Chat finished");
+            }
+        } catch (e) {
+            console.error("[Coach] Failed to finish chat:", e);
+            setAccessToast("✅ Chat finished");
+        }
+
+        setTimeout(() => setAccessToast(null), 3000);
         showWelcome();
     }
 

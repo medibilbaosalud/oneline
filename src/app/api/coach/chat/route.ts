@@ -39,8 +39,14 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const DAILY_COACH_LIMIT = 300;
 
 // System prompt - warm, empathetic, but honest
-// Returns dynamic prompt based on whether user shared entries
-function getSystemPrompt(hasEntryAccess: boolean): string {
+// Returns dynamic prompt based on whether user shared entries and their profile
+type UserProfile = {
+    display_name?: string | null;
+    accumulated_insights?: string | null;
+    total_chats?: number;
+};
+
+function getSystemPrompt(hasEntryAccess: boolean, userProfile?: UserProfile | null): string {
     const accessInfo = hasEntryAccess
         ? `## Tu nivel de acceso
 - ✅ TIENES acceso completo a las entradas del diario del usuario
@@ -50,6 +56,20 @@ function getSystemPrompt(hasEntryAccess: boolean): string {
 - 🔒 Solo tienes acceso a METADATOS (mood, rachas, estadísticas)
 - NO tienes acceso al contenido de las entradas (están encriptadas)
 - Basa tus reflexiones en los patrones de ánimo y lo que el usuario te cuente directamente`;
+
+    // Memory from past conversations
+    const memorySection = userProfile?.accumulated_insights
+        ? `## Your memory of this user (from ${userProfile.total_chats || 0} past conversations)
+${userProfile.accumulated_insights}
+
+Use this context naturally. Don't mention "I remember from our last chat" too explicitly - just apply the knowledge.`
+        : `## Memory
+This is your first conversation with this user. Get to know them!`;
+
+    // User name handling
+    const nameSection = userProfile?.display_name
+        ? `The user's name is "${userProfile.display_name}". Use it occasionally to personalize your responses.`
+        : `You don't know the user's name yet. Consider asking for it naturally during the conversation.`;
 
     return `You are the OneLine Coach, a journaling companion helping users reflect on emotional and behavioral patterns.
 
@@ -61,9 +81,13 @@ function getSystemPrompt(hasEntryAccess: boolean): string {
 
 ${accessInfo}
 
+${memorySection}
+
+${nameSection}
+
 ## How you analyze
 - Look for PATTERNS: What repeats? What emotions appear frequently?
-- Connect the dots: Relate what the user says now with patterns from their data
+- Connect the dots: Relate what the user says now with patterns from their data AND your memory
 - Ask powerful questions that invite deep reflection
 - Sometimes gently challenge: "Have you considered that maybe...?"
 
@@ -142,6 +166,18 @@ export async function POST(req: Request) {
                 limit: DAILY_COACH_LIMIT
             }, { status: 429 });
         }
+
+        // Load user profile with accumulated insights from past conversations
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: userProfile } = await (supabase as any)
+            .from("coach_user_profile")
+            .select("display_name, accumulated_insights, total_chats")
+            .eq("user_id", user.id)
+            .single();
+
+        console.log("[Coach] User profile loaded:", userProfile ?
+            `${userProfile.total_chats || 0} past chats, insights: ${(userProfile.accumulated_insights || "").slice(0, 50)}...` :
+            "No profile yet");
 
         // Gather user context - INSIGHTS data
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -265,9 +301,9 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
 [FIN DEL CONTEXTO]`;
 
         // Build messages array for Groq
-        // Pass shareEntries to system prompt so AI knows its access level
+        // Pass shareEntries and userProfile to system prompt for full context
         const messages: GroqMessage[] = [
-            { role: "system", content: getSystemPrompt(shareEntries) + "\n\n" + contextSummary },
+            { role: "system", content: getSystemPrompt(shareEntries, userProfile) + "\n\n" + contextSummary },
         ];
 
         // Add conversation history (limit to last 10 exchanges)
