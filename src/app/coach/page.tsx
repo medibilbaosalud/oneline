@@ -40,6 +40,8 @@ export default function CoachPage() {
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
     const [accessToast, setAccessToast] = useState<string | null>(null);
     const [decryptedEntries, setDecryptedEntries] = useState<{ content: string; day: string }[]>([]);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [savedChats, setSavedChats] = useState<{ id: string; updated_at: string; messageCount: number; preview: string }[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -209,6 +211,57 @@ export default function CoachPage() {
 
         setTimeout(() => setAccessToast(null), 2000);
         showWelcome();
+    }
+
+    // Load list of all saved chats
+    async function loadChatsList() {
+        try {
+            const supabase = supabaseBrowser();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+
+            const res = await fetch("/api/coach/chats", {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setSavedChats(data.chats || []);
+                setShowHistoryModal(true);
+            }
+        } catch (e) {
+            console.error("[Coach] Failed to load chats list:", e);
+        }
+    }
+
+    // Load a specific chat by ID
+    async function loadSpecificChat(chatId: string) {
+        try {
+            const supabase = supabaseBrowser();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+
+            const res = await fetch(`/api/coach/chats/${chatId}`, {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const loadedMessages: Message[] = (data.messages || []).map((m: { id: string; role: string; content: string; timestamp: string }) => ({
+                    id: m.id,
+                    role: m.role as "user" | "assistant",
+                    content: m.content,
+                    timestamp: new Date(m.timestamp),
+                }));
+
+                setMessages(loadedMessages);
+                setShowHistoryModal(false);
+                setAccessToast("📚 Previous chat loaded");
+                setTimeout(() => setAccessToast(null), 2000);
+            }
+        } catch (e) {
+            console.error("[Coach] Failed to load specific chat:", e);
+        }
     }
 
     useEffect(() => {
@@ -506,6 +559,86 @@ export default function CoachPage() {
                 )}
             </AnimatePresence>
 
+            {/* Chat History Modal */}
+            <AnimatePresence>
+                {showHistoryModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                        onClick={() => setShowHistoryModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="w-full max-w-lg max-h-[70vh] rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 shadow-2xl border border-white/10 overflow-hidden"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="p-6 border-b border-white/10">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-bold text-white">📚 Chat History</h2>
+                                    <button
+                                        onClick={() => setShowHistoryModal(false)}
+                                        className="text-neutral-400 hover:text-white text-2xl"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <p className="text-sm text-neutral-400 mt-1">Select a conversation to continue</p>
+                            </div>
+
+                            {/* Chat List */}
+                            <div className="p-4 overflow-y-auto max-h-[50vh]">
+                                {savedChats.length === 0 ? (
+                                    <div className="text-center py-8 text-neutral-500">
+                                        <p className="text-4xl mb-2">💬</p>
+                                        <p>No saved conversations yet</p>
+                                        <p className="text-sm">Your chats will appear here after you finish them</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {savedChats.map(chat => (
+                                            <button
+                                                key={chat.id}
+                                                onClick={() => loadSpecificChat(chat.id)}
+                                                className="w-full text-left p-4 rounded-xl bg-neutral-800/50 hover:bg-neutral-800 transition border border-white/5 hover:border-white/10"
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-white font-medium truncate">{chat.preview}</p>
+                                                        <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400">
+                                                            <span>💬 {chat.messageCount} messages</span>
+                                                            <span>📅 {new Date(chat.updated_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-neutral-500 text-lg">→</span>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className="p-4 border-t border-white/10">
+                                <button
+                                    onClick={() => {
+                                        setShowHistoryModal(false);
+                                        showWelcome();
+                                    }}
+                                    className="w-full py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition"
+                                >
+                                    ➕ Start New Chat
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Header */}
             <header className="border-b border-white/10 bg-neutral-950/95 px-4 py-3 backdrop-blur-sm">
                 <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
@@ -547,18 +680,12 @@ export default function CoachPage() {
 
                         {/* Load Previous button */}
                         <button
-                            onClick={async () => {
-                                const hadHistory = await loadChatHistory();
-                                if (!hadHistory) {
-                                    setAccessToast("📭 No previous chats found");
-                                    setTimeout(() => setAccessToast(null), 2000);
-                                }
-                            }}
+                            onClick={loadChatsList}
                             className="flex items-center gap-1 rounded-lg bg-neutral-700 px-2 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-600"
-                            title="Load previous conversation"
+                            title="View chat history"
                         >
                             📚
-                            <span className="hidden sm:inline">Load Prev</span>
+                            <span className="hidden sm:inline">History</span>
                         </button>
 
                         {/* Usage indicator */}
