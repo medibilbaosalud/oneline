@@ -149,13 +149,29 @@ export async function POST(req: Request) {
             console.log("[Coach Finish] Profile updated successfully");
         }
 
-        // Update conversation summary if we have an ID
-        if (conversationId) {
-            await supabase
+        // Update coach_conversations summary
+        // Find the latest conversation for this user and update its summary
+        const { data: latestConversation } = await supabase
+            .from("coach_conversations")
+            .select("id")
+            .eq("user_id", user.id)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .single();
+
+        if (latestConversation) {
+            const { error: convError } = await supabase
                 .from("coach_conversations")
                 .update({ summary })
-                .eq("id", conversationId)
-                .eq("user_id", user.id);
+                .eq("id", latestConversation.id);
+
+            if (convError) {
+                console.error("[Coach Finish] Conversation summary update error:", convError);
+            } else {
+                console.log("[Coach Finish] Conversation summary updated for:", latestConversation.id);
+            }
+        } else {
+            console.log("[Coach Finish] No conversation found to update summary");
         }
 
         return NextResponse.json({

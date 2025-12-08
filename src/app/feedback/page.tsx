@@ -44,7 +44,7 @@ export default function FeedbackPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            await supabase.from("user_feedback").insert({
+            await supabase.from("user_overall_feedback").insert({
                 user_id: user.id,
                 overall_rating: overallRating,
                 improvements: improvements.trim() || null,
@@ -132,8 +132,8 @@ export default function FeedbackPage() {
                         key={rating}
                         onClick={() => setOverallRating(rating)}
                         className={`w-14 h-14 rounded-xl text-2xl transition ${overallRating === rating
-                                ? "bg-indigo-600 scale-110"
-                                : "bg-neutral-800 hover:bg-neutral-700"
+                            ? "bg-indigo-600 scale-110"
+                            : "bg-neutral-800 hover:bg-neutral-700"
                             }`}
                     >
                         {rating === 1 ? "😔" : rating === 2 ? "😕" : rating === 3 ? "😐" : rating === 4 ? "🙂" : "😍"}
@@ -162,8 +162,8 @@ export default function FeedbackPage() {
                         key={option}
                         onClick={() => setFavoriteFeature(option)}
                         className={`w-full p-3 rounded-xl text-left transition ${favoriteFeature === option
-                                ? "bg-indigo-600 text-white"
-                                : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                            ? "bg-indigo-600 text-white"
+                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
                             }`}
                     >
                         {option}
@@ -240,8 +240,8 @@ export default function FeedbackPage() {
                 <button
                     onClick={() => setWouldRecommend(true)}
                     className={`px-8 py-4 rounded-xl text-lg transition ${wouldRecommend === true
-                            ? "bg-emerald-600 text-white scale-105"
-                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        ? "bg-emerald-600 text-white scale-105"
+                        : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
                         }`}
                 >
                     Yes! 👍
@@ -249,8 +249,8 @@ export default function FeedbackPage() {
                 <button
                     onClick={() => setWouldRecommend(false)}
                     className={`px-8 py-4 rounded-xl text-lg transition ${wouldRecommend === false
-                            ? "bg-neutral-600 text-white scale-105"
-                            : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        ? "bg-neutral-600 text-white scale-105"
+                        : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
                         }`}
                 >
                     Not yet

@@ -5,6 +5,8 @@ import {
   coerceSummaryPreferences,
   entryLimitFor,
 } from '@/lib/summaryPreferences';
+import FeedbackBanner from '@/components/FeedbackBanner';
+import NotificationPrompt from '@/components/NotificationPrompt';
 
 export const metadata = { title: 'Today — OneLine' };
 export const dynamic = 'force-dynamic';
@@ -48,7 +50,9 @@ export default async function TodayPage() {
             })}
           </h1>
         </header>
+        <FeedbackBanner />
         <TodayJournal initialEntryLimit={entryLimit} />
+        <NotificationPrompt />
       </div>
     </main>
   );
