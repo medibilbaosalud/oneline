@@ -86,6 +86,49 @@ export default function CoachPage() {
         }
     }, [dataKey]);
 
+    // Load previous chat history from server
+    const loadChatHistory = useCallback(async () => {
+        try {
+            const supabase = supabaseBrowser();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+
+            const res = await fetch("/api/coach/history", {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.messages && data.messages.length > 0) {
+                    // Convert saved messages to our Message type
+                    const loadedMessages: Message[] = data.messages.map((m: { id: string; role: string; content: string; timestamp: string }) => ({
+                        id: m.id,
+                        role: m.role as "user" | "assistant",
+                        content: m.content,
+                        timestamp: new Date(m.timestamp),
+                    }));
+
+                    // Add a separator message to show history was loaded
+                    const separator: Message = {
+                        id: "history-separator",
+                        role: "assistant",
+                        content: "📚 *Previous conversation loaded*\n\nI remember our past chats! Feel free to continue where we left off, or start a new topic.",
+                        timestamp: new Date(),
+                    };
+
+                    setMessages([...loadedMessages, separator]);
+                    setAccessToast("💬 Previous conversation loaded");
+                    setTimeout(() => setAccessToast(null), 3000);
+                    return true;
+                }
+            }
+            return false;
+        } catch (e) {
+            console.error("[Coach] Failed to load chat history:", e);
+            return false;
+        }
+    }, []);
+
     useEffect(() => {
         async function init() {
             const supabase = supabaseBrowser();
@@ -99,11 +142,16 @@ export default function CoachPage() {
                 if (savedConsent === "true" && savedShareEntries === "true") {
                     setHasConsent(true);
                     setShareEntries(true);
-                    showWelcome();
+
+                    // Try to load previous chat history
+                    const hadHistory = await loadChatHistory();
+                    if (!hadHistory) {
+                        showWelcome();
+                    }
 
                     // Show reminder toast that we have access
                     setAccessToast("📖 Full Access enabled - I can see your journal history");
-                    setTimeout(() => setAccessToast(null), 4000); // Hide after 4 seconds
+                    setTimeout(() => setAccessToast(null), 4000);
                 } else {
                     // If NO consent or only METADATA logic, ask again (as requested)
                     setShowConsentModal(true);
@@ -118,7 +166,7 @@ export default function CoachPage() {
             setInitializing(false);
         }
         init();
-    }, []);
+    }, [loadChatHistory]);
 
     function showWelcome() {
         setMessages([{
@@ -456,10 +504,10 @@ export default function CoachPage() {
                     </div>
 
                     {/* Access Level Indicator - click to change */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={() => setShowConsentModal(true)}
-                            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition ${shareEntries
+                            className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition ${shareEntries
                                 ? "bg-emerald-500/20 text-emerald-400"
                                 : "bg-neutral-800 text-neutral-400"
                                 }`}
@@ -471,12 +519,27 @@ export default function CoachPage() {
                             </span>
                         </button>
 
+                        {/* New Chat button */}
+                        <button
+                            onClick={() => {
+                                // Clear messages and start fresh
+                                showWelcome();
+                                setAccessToast("✨ New conversation started");
+                                setTimeout(() => setAccessToast(null), 2000);
+                            }}
+                            className="flex items-center gap-1 rounded-lg bg-indigo-600/30 px-2 py-1.5 text-xs text-indigo-300 transition hover:bg-indigo-600/50"
+                            title="Start new chat"
+                        >
+                            ➕
+                            <span className="hidden sm:inline">New Chat</span>
+                        </button>
+
                         {/* Usage indicator */}
                         <div className="text-right text-xs text-neutral-400">
                             <span className={usage.used >= usage.limit ? "text-rose-400" : ""}>
                                 {usage.used}/{usage.limit}
                             </span>
-                            <span className="block text-[10px]">hoy</span>
+                            <span className="block text-[10px]">today</span>
                         </div>
                     </div>
                 </div>

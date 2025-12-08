@@ -298,6 +298,18 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
                 count: currentCount + 1,
             }, { onConflict: "user_id,usage_date" });
 
+        // Save conversation to memory for persistence
+        try {
+            await saveCoachMemory(user.id, [
+                { role: "user", content: message, timestamp: new Date().toISOString() },
+                { role: "assistant", content: reply, timestamp: new Date().toISOString() },
+            ]);
+            console.log("[Coach] Conversation saved to memory");
+        } catch (memoryError) {
+            console.error("[Coach] Failed to save memory:", memoryError);
+            // Don't fail the request if memory save fails
+        }
+
         return NextResponse.json({
             response: reply,
             modelUsed,
