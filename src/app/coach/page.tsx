@@ -13,11 +13,13 @@ type Message = {
 };
 
 const SUGGESTED_PROMPTS = [
-    { emoji: "🔍", text: "What patterns do you see in my entries?" },
-    { emoji: "💭", text: "How have I been feeling this week?" },
-    { emoji: "🌟", text: "What's something positive from my recent writing?" },
-    { emoji: "🎯", text: "What should I focus on based on my journal?" },
+    { emoji: "🔍", text: "What patterns do you see in my journaling?" },
+    { emoji: "💭", text: "How have I been feeling lately?" },
+    { emoji: "🌟", text: "What are my strengths based on my entries?" },
+    { emoji: "🎯", text: "What should I focus on next?" },
 ];
+
+const DAILY_LIMIT = 20;
 
 export default function CoachPage() {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -25,22 +27,26 @@ export default function CoachPage() {
     const [loading, setLoading] = useState(false);
     const [initializing, setInitializing] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [hasConsent, setHasConsent] = useState(false);
+    const [showConsentModal, setShowConsentModal] = useState(false);
+    const [usage, setUsage] = useState({ used: 0, limit: DAILY_LIMIT });
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        // Check auth and show welcome message
         async function init() {
             const supabase = supabaseBrowser();
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                setMessages([{
-                    id: "welcome",
-                    role: "assistant",
-                    content: "Hi! I'm your OneLine Coach. 🌟\n\nI've read through your journal entries and I'm here to help you reflect on your journey. Ask me anything about patterns, emotions, or insights from your writing.",
-                    timestamp: new Date(),
-                }]);
+                // Check if consent was given before
+                const savedConsent = localStorage.getItem("coach_consent");
+                if (savedConsent === "true") {
+                    setHasConsent(true);
+                    showWelcome();
+                } else {
+                    setShowConsentModal(true);
+                }
             } else {
                 setError("Please sign in to use the AI Coach");
             }
@@ -49,13 +55,39 @@ export default function CoachPage() {
         init();
     }, []);
 
+    function showWelcome() {
+        setMessages([{
+            id: "welcome",
+            role: "assistant",
+            content: "Hi! I'm your OneLine Coach. 🌟\n\nI can see your journaling patterns and mood data to help you reflect. Ask me anything about your journey!",
+            timestamp: new Date(),
+        }]);
+    }
+
+    function handleConsentAccept() {
+        localStorage.setItem("coach_consent", "true");
+        setHasConsent(true);
+        setShowConsentModal(false);
+        showWelcome();
+    }
+
+    function handleConsentDecline() {
+        setShowConsentModal(false);
+        setError("Coach needs access to your data to provide insights");
+    }
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
     async function handleSubmit(e?: React.FormEvent) {
         e?.preventDefault();
-        if (!input.trim() || loading) return;
+        if (!input.trim() || loading || !hasConsent) return;
+
+        if (usage.used >= usage.limit) {
+            setError(`Daily limit reached (${usage.limit} messages). Try again tomorrow!`);
+            return;
+        }
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -81,19 +113,29 @@ export default function CoachPage() {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session.access_token}`,
+                    Authorization: `Bearer ${session.access_token}`,
                 },
                 body: JSON.stringify({
                     message: userMessage.content,
                     history: messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+                    hasConsent: true,
                 }),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error("Failed to get response");
+                if (data.limitReached) {
+                    setError(`Daily limit reached (${data.limit} messages)`);
+                    return;
+                }
+                throw new Error(data.error || "Failed to get response");
             }
 
-            const data = await response.json();
+            // Update usage
+            if (data.usage) {
+                setUsage(data.usage);
+            }
 
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
@@ -130,21 +172,87 @@ export default function CoachPage() {
 
     return (
         <div className="flex h-screen flex-col pt-12">
+            {/* Consent Modal */}
+            <AnimatePresence>
+                {showConsentModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="w-full max-w-md rounded-2xl bg-neutral-900 p-6 shadow-xl"
+                        >
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 text-2xl">
+                                    🔒
+                                </div>
+                                <h2 className="text-lg font-semibold text-white">Privacy Notice</h2>
+                            </div>
+
+                            <p className="mb-4 text-sm text-neutral-300">
+                                To provide personalized insights, the AI Coach needs access to:
+                            </p>
+
+                            <ul className="mb-6 space-y-2 text-sm text-neutral-400">
+                                <li className="flex items-center gap-2">
+                                    <span className="text-emerald-400">✓</span> Your mood tracking data
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-emerald-400">✓</span> Your journaling patterns and streaks
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-amber-400">⚡</span> Entry metadata (not encrypted content)
+                                </li>
+                            </ul>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleConsentDecline}
+                                    className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-neutral-400 transition hover:bg-neutral-800"
+                                >
+                                    Decline
+                                </button>
+                                <button
+                                    onClick={handleConsentAccept}
+                                    className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500"
+                                >
+                                    Allow Access
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Header */}
             <header className="border-b border-white/10 bg-neutral-950/95 px-4 py-3 backdrop-blur-sm">
-                <div className="mx-auto flex max-w-2xl items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-xl">
-                        🧠
+                <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-xl">
+                            🧠
+                        </div>
+                        <div>
+                            <h1 className="font-semibold text-white">AI Coach</h1>
+                            <p className="text-xs text-neutral-400">Your personal companion</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="font-semibold text-white">AI Coach</h1>
-                        <p className="text-xs text-neutral-400">Your personal journaling companion</p>
+                    {/* Usage indicator */}
+                    <div className="text-right text-xs text-neutral-400">
+                        <span className={usage.used >= usage.limit ? "text-rose-400" : ""}>
+                            {usage.used}/{usage.limit}
+                        </span>
+                        <span className="block text-[10px]">today</span>
                     </div>
                 </div>
             </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 pb-20">
                 <div className="mx-auto max-w-2xl space-y-4">
                     <AnimatePresence>
                         {messages.map((message) => (
@@ -193,9 +301,9 @@ export default function CoachPage() {
             </div>
 
             {/* Suggested prompts */}
-            {messages.length <= 1 && (
+            {messages.length <= 1 && hasConsent && (
                 <div className="border-t border-white/10 bg-neutral-950/50 px-4 py-3">
-                    <div className="mx-auto flex max-w-2xl flex-wrap gap-2">
+                    <div className="mx-auto flex max-w-2xl flex-wrap justify-center gap-2">
                         {SUGGESTED_PROMPTS.map((prompt) => (
                             <button
                                 key={prompt.text}
@@ -210,7 +318,7 @@ export default function CoachPage() {
             )}
 
             {/* Input */}
-            <div className="border-t border-white/10 bg-neutral-950 p-4">
+            <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-neutral-950 p-4 pb-6">
                 <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
                     <div className="flex gap-2">
                         <textarea
@@ -225,11 +333,12 @@ export default function CoachPage() {
                             }}
                             placeholder="Ask me anything about your journal..."
                             rows={1}
-                            className="flex-1 resize-none rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-sm text-white placeholder-neutral-500 focus:border-indigo-500 focus:outline-none"
+                            disabled={!hasConsent || usage.used >= usage.limit}
+                            className="flex-1 resize-none rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-sm text-white placeholder-neutral-500 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
                         />
                         <button
                             type="submit"
-                            disabled={!input.trim() || loading}
+                            disabled={!input.trim() || loading || !hasConsent}
                             className="rounded-xl bg-indigo-600 px-4 py-3 text-white transition hover:bg-indigo-500 disabled:opacity-50"
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

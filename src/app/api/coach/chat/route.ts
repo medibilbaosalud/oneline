@@ -6,6 +6,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
 
+// Daily limit per user
+const DAILY_COACH_LIMIT = 20;
+
 export async function POST(req: Request) {
     try {
         const authHeader = req.headers.get("authorization");
@@ -22,35 +25,47 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { message, history = [] } = body;
+        const { message, history = [], hasConsent = false } = body;
 
         if (!message) {
             return NextResponse.json({ error: "Message required" }, { status: 400 });
         }
 
-        // Load user's recent journal entries for context
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        // Check if user has given consent to read entries
+        if (!hasConsent) {
+            return NextResponse.json({
+                error: "Consent required",
+                needsConsent: true
+            }, { status: 403 });
+        }
 
-        const { data: entries } = await supabase
-            .from("journal_entries")
-            .select("entry_date, content_cipher, iv")
+        // Check daily usage limit
+        const today = new Date().toISOString().slice(0, 10);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: usage } = await (supabase as any)
+            .from("coach_usage")
+            .select("count")
             .eq("user_id", user.id)
-            .gte("entry_date", thirtyDaysAgo.slice(0, 10))
-            .order("entry_date", { ascending: false })
-            .limit(20);
+            .eq("usage_date", today)
+            .single();
 
-        // Note: Entries are encrypted. The coach works on metadata and patterns.
-        // For full content access, user would need to decrypt on client side.
-        // For now, we'll use aggregate patterns.
+        const currentCount = usage?.count ?? 0;
+        if (currentCount >= DAILY_COACH_LIMIT) {
+            return NextResponse.json({
+                error: "Daily limit reached",
+                limitReached: true,
+                limit: DAILY_COACH_LIMIT
+            }, { status: 429 });
+        }
 
-        // Get mood history
+        // Get mood history (this is what we can read - not encrypted)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: moods } = await (supabase as any)
             .from("user_daily_activity")
             .select("activity_date, mood_score, entries_count")
             .eq("user_id", user.id)
-            .gte("activity_date", thirtyDaysAgo.slice(0, 10))
-            .order("activity_date", { ascending: false });
+            .order("activity_date", { ascending: false })
+            .limit(30);
 
         // Get streak info
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,26 +75,34 @@ export async function POST(req: Request) {
             .eq("user_id", user.id)
             .single();
 
-        // Build context
-        const entryCount = entries?.length ?? 0;
+        // Get entry count (metadata only - no content)
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { count: entryCount } = await supabase
+            .from("journal_entries")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .gte("entry_date", thirtyDaysAgo.slice(0, 10));
+
+        // Build context from non-encrypted data
         const moodData = moods ?? [];
-        const avgMood = moodData.length > 0
-            ? moodData.reduce((sum: number, m: { mood_score?: number }) => sum + (m.mood_score ?? 0), 0) / moodData.filter((m: { mood_score?: number }) => m.mood_score).length
+        const moodsWithScore = moodData.filter((m: { mood_score?: number }) => m.mood_score);
+        const avgMood = moodsWithScore.length > 0
+            ? moodsWithScore.reduce((sum: number, m: { mood_score?: number }) => sum + (m.mood_score ?? 0), 0) / moodsWithScore.length
             : 0;
 
-        const moodTrend = moodData.length >= 4
+        const moodTrend = moodsWithScore.length >= 4
             ? (() => {
-                const recent = moodData.slice(0, Math.floor(moodData.length / 2)).filter((m: { mood_score?: number }) => m.mood_score);
-                const earlier = moodData.slice(Math.floor(moodData.length / 2)).filter((m: { mood_score?: number }) => m.mood_score);
+                const mid = Math.floor(moodsWithScore.length / 2);
+                const recent = moodsWithScore.slice(0, mid);
+                const earlier = moodsWithScore.slice(mid);
                 const recentAvg = recent.reduce((s: number, m: { mood_score?: number }) => s + (m.mood_score ?? 0), 0) / recent.length;
                 const earlierAvg = earlier.reduce((s: number, m: { mood_score?: number }) => s + (m.mood_score ?? 0), 0) / earlier.length;
                 return recentAvg > earlierAvg ? "improving" : recentAvg < earlierAvg ? "declining" : "stable";
             })()
             : "unknown";
 
-        // Calculate writing consistency
-        const daysWithEntries = new Set(entries?.map(e => e.entry_date)).size;
-        const consistency = entryCount > 0 ? Math.round((daysWithEntries / 30) * 100) : 0;
+        const daysWithEntries = moodData.filter((m: { entries_count?: number }) => (m.entries_count ?? 0) > 0).length;
+        const consistency = Math.round((daysWithEntries / 30) * 100);
 
         // Generate response with Gemini
         const apiKey = process.env.GEMINI_API_KEY;
@@ -88,30 +111,30 @@ export async function POST(req: Request) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Use the cheaper, faster model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
-        const systemContext = `You are a warm, insightful journaling coach for the OneLine app. 
-You have access to the user's journaling patterns and mood data (but not their actual encrypted entries).
+        const systemContext = `You are a warm, insightful journaling coach for the OneLine app.
+You have access to the user's journaling patterns and mood data.
+Note: Journal entries are encrypted for privacy, so you can only see metadata patterns.
 
 USER CONTEXT:
-- Journal entries in last 30 days: ${entryCount}
+- Entries in last 30 days: ${entryCount ?? 0}
 - Current streak: ${streak?.current_streak ?? 0} days
-- Longest streak ever: ${streak?.longest_streak ?? 0} days
-- Total lifetime entries: ${streak?.total_entries ?? 0}
-- Writing consistency: ${consistency}% of days
-- Average mood (1-5 scale): ${avgMood > 0 ? avgMood.toFixed(1) : "Not tracked yet"}
+- Longest streak: ${streak?.longest_streak ?? 0} days
+- Total entries: ${streak?.total_entries ?? 0}
+- Consistency: ${consistency}% of days
+- Average mood (1-5): ${avgMood > 0 ? avgMood.toFixed(1) : "Not tracked"}
 - Mood trend: ${moodTrend}
-- Days with mood tracking: ${moodData.filter((m: { mood_score?: number }) => m.mood_score).length}
+- Days with mood data: ${moodsWithScore.length}
 
 GUIDELINES:
 - Be warm, encouraging, and insightful
-- Reference their actual data (streak, mood patterns, consistency)
-- Offer actionable suggestions when appropriate
-- Keep responses concise but meaningful (2-4 paragraphs max)
-- Use emojis sparingly for warmth
-- If they haven't journaled much, gently encourage them
-- Never be preachy or condescending
-- Acknowledge their efforts and progress`;
+- Reference their actual data (streak, mood patterns)
+- Keep responses concise (2-3 paragraphs max)
+- Use emojis sparingly
+- Gently encourage if they haven't journaled much
+- Never be preachy`;
 
         const conversationHistory = history.map((msg: { role: string; content: string }) =>
             `${msg.role === 'user' ? 'User' : 'Coach'}: ${msg.content}`
@@ -119,14 +142,30 @@ GUIDELINES:
 
         const prompt = `${systemContext}
 
-${conversationHistory ? `CONVERSATION SO FAR:\n${conversationHistory}\n\n` : ''}User: ${message}
+${conversationHistory ? `CONVERSATION:\n${conversationHistory}\n\n` : ''}User: ${message}
 
 Coach:`;
 
         const result = await model.generateContent(prompt);
         const response = result.response.text();
 
-        return NextResponse.json({ response });
+        // Increment usage count
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+            .from("coach_usage")
+            .upsert({
+                user_id: user.id,
+                usage_date: today,
+                count: currentCount + 1,
+            }, { onConflict: "user_id,usage_date" });
+
+        return NextResponse.json({
+            response,
+            usage: {
+                used: currentCount + 1,
+                limit: DAILY_COACH_LIMIT,
+            }
+        });
 
     } catch (error) {
         console.error("[Coach API] Error:", error);
