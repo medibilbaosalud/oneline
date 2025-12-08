@@ -13,13 +13,14 @@ type Message = {
 };
 
 const SUGGESTED_PROMPTS = [
-    { emoji: "🔍", text: "What patterns do you see in my journaling?" },
-    { emoji: "💭", text: "How have I been feeling lately?" },
-    { emoji: "🌟", text: "What are my strengths based on my entries?" },
-    { emoji: "🎯", text: "What should I focus on next?" },
+    { emoji: "🔍", text: "¿Qué patrones ves en mi escritura?" },
+    { emoji: "💭", text: "¿Cómo me he sentido últimamente?" },
+    { emoji: "🌟", text: "¿Qué fortalezas ves en mí?" },
+    { emoji: "🎯", text: "¿En qué debería enfocarme?" },
+    { emoji: "💡", text: "Dame un pequeño desafío para hoy" },
 ];
 
-const DAILY_LIMIT = 20;
+const DAILY_LIMIT = 50;
 
 export default function CoachPage() {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -264,8 +265,8 @@ export default function CoachPage() {
                             >
                                 <div
                                     className={`max-w-[85%] rounded-2xl px-4 py-3 ${message.role === "user"
-                                            ? "bg-indigo-600 text-white"
-                                            : "bg-neutral-800/80 text-neutral-100"
+                                        ? "bg-indigo-600 text-white"
+                                        : "bg-neutral-800/80 text-neutral-100"
                                         }`}
                                 >
                                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
