@@ -575,10 +575,21 @@ export default function CoachPage() {
                                 </button>
                             </div>
 
+                            {/* Ethical Disclaimer */}
+                            <div className="rounded-xl bg-amber-900/20 border border-amber-700/30 p-4 mb-4">
+                                <p className="text-xs text-amber-200/80 text-center">
+                                    ⚠️ <strong>This is an AI, not a professional.</strong>
+                                    <br />
+                                    The Coach does <strong>not</strong> replace doctors, psychologists, or therapists.
+                                    <br />
+                                    If you're in crisis, please seek professional help.
+                                </p>
+                            </div>
+
                             {/* Privacy Note */}
                             <div className="rounded-xl bg-neutral-800/50 p-4 text-center">
                                 <p className="text-xs text-neutral-500">
-                                    You can change this setting anytime from the header.
+                                    You can change settings anytime from the header.
                                     <br />Data processed via <span className="text-neutral-400">Groq AI</span> per our{" "}
                                     <a href="/legal/privacy" className="text-indigo-400 underline">Privacy Policy</a>.
                                 </p>
