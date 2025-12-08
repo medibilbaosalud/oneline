@@ -28,24 +28,29 @@ export default function FeedbackBanner() {
                 }
             }
 
-            // Check if user has been active for at least 3 days
+            // Check if user has been active - query journal table directly
             try {
                 const supabase = supabaseBrowser();
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
 
-                const { data: streak } = await supabase
-                    .from("user_streaks")
-                    .select("total_entries")
-                    .eq("user_id", user.id)
-                    .single();
+                // Count entries directly from journal table
+                const { count, error } = await supabase
+                    .from("journal")
+                    .select("*", { count: "exact", head: true })
+                    .eq("user_id", user.id);
 
-                // Show if they have at least 1 entry (active user)
-                if (streak && (streak.total_entries || 0) >= 1) {
+                // Show if they have at least 1 entry (or just show always for early adopters)
+                if (!error && (count || 0) >= 1) {
+                    setShow(true);
+                } else {
+                    // Fallback: show for any authenticated user as early adopter
                     setShow(true);
                 }
             } catch (e) {
                 console.error("[FeedbackBanner] Error checking eligibility:", e);
+                // Show anyway for early adopters
+                setShow(true);
             }
         }
 
