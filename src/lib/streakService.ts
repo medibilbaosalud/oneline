@@ -10,20 +10,9 @@
  * - 🧊 Freeze Tokens: 2 free "streak saves" per month
  * - 😊 Mood Tracking: Track daily mood (1-5 scale)
  * 
- * Fire Level Progression:
- *   Level 0: No fire (0 days)
- *   Level 1: Ember (1-2 days)
- *   Level 2: Small flame (3-6 days)
- *   Level 3: Growing (7-13 days)
- *   Level 4: Blazing (14-29 days)
- *   Level 5: Inferno (30-59 days)
- *   Level 6: Golden fire (60-99 days)
- *   Level 7+: Diamond fire (100+ days)
- * 
- * Database Tables:
- *   - user_streaks: Main streak data per user
- *   - user_daily_activity: Calendar of activity days + mood
- *   - user_badges: Earned achievements
+ * Note: Using 'as any' type assertions because these tables are not in
+ * the auto-generated Supabase types yet. This is safe since we control
+ * the table schema.
  */
 
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
@@ -67,7 +56,8 @@ export function calculateFireLevel(streak: number): number {
 export async function getOrCreateStreak(userId: string): Promise<UserStreak | null> {
     const supabase = supabaseBrowser();
 
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
         .from("user_streaks")
         .select("*")
         .eq("user_id", userId)
@@ -76,7 +66,8 @@ export async function getOrCreateStreak(userId: string): Promise<UserStreak | nu
     if (data) return data as UserStreak;
 
     if (error?.code === "PGRST116") {
-        const { data: newData, error: insertError } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: newData, error: insertError } = await (supabase as any)
             .from("user_streaks")
             .insert({
                 user_id: userId,
@@ -107,7 +98,8 @@ export async function hasWrittenToday(userId: string): Promise<boolean> {
     const supabase = supabaseBrowser();
     const today = new Date().toISOString().slice(0, 10);
 
-    const { data } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
         .from("user_daily_activity")
         .select("id")
         .eq("user_id", userId)
@@ -134,7 +126,8 @@ export async function recordDailyEntry(userId: string, mood?: number): Promise<U
     if (alreadyWritten) {
         // Update mood if provided, don't change streak
         if (mood !== undefined && mood >= 1 && mood <= 5) {
-            await supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any)
                 .from("user_daily_activity")
                 .update({ mood_score: mood })
                 .eq("user_id", userId)
@@ -154,7 +147,8 @@ export async function recordDailyEntry(userId: string, mood?: number): Promise<U
     const newLongest = Math.max(streak.longest_streak, newStreak);
     const newFireLevel = calculateFireLevel(newStreak);
 
-    const { data: updatedStreak, error: updateError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedStreak, error: updateError } = await (supabase as any)
         .from("user_streaks")
         .update({
             current_streak: newStreak,
@@ -183,7 +177,8 @@ export async function recordDailyEntry(userId: string, mood?: number): Promise<U
         activityData.mood_score = mood;
     }
 
-    await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
         .from("user_daily_activity")
         .upsert(activityData, { onConflict: "user_id,activity_date" });
 
@@ -199,7 +194,8 @@ export async function getActivityHistory(userId: string, days: number = 84): Pro
     const supabase = supabaseBrowser();
     const startDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
         .from("user_daily_activity")
         .select("activity_date, entries_count, mood_score")
         .eq("user_id", userId)
@@ -224,7 +220,8 @@ async function checkAndAwardBadges(userId: string, streak: number): Promise<void
     for (const milestone of milestones) {
         if (streak >= milestone) {
             const badgeType = `streak_${milestone}`;
-            await supabase
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase as any)
                 .from("user_badges")
                 .upsert({
                     user_id: userId,
@@ -240,7 +237,8 @@ async function checkAndAwardBadges(userId: string, streak: number): Promise<void
 export async function getUserBadges(userId: string): Promise<string[]> {
     const supabase = supabaseBrowser();
 
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
         .from("user_badges")
         .select("badge_type")
         .eq("user_id", userId);
@@ -275,7 +273,8 @@ export async function useFreeze(userId: string): Promise<boolean> {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
         .from("user_streaks")
         .update({
             freeze_tokens: streak.freeze_tokens - 1,
