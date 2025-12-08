@@ -7,6 +7,7 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
 import VaultGate from "@/components/VaultGate";
+import CoachOnboarding from "@/components/CoachOnboarding";
 
 type Message = {
     id: string;
@@ -41,6 +42,8 @@ export default function CoachPage() {
     const [accessToast, setAccessToast] = useState<string | null>(null);
     const [decryptedEntries, setDecryptedEntries] = useState<{ content: string; day: string }[]>([]);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [shouldStartNewChat, setShouldStartNewChat] = useState(false);
+
     const [savedChats, setSavedChats] = useState<{ id: string; updated_at: string; messageCount: number; preview: string }[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -201,7 +204,6 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
         setShareEntries(newValue);
         localStorage.setItem("coach_share_entries", String(newValue));
     }
-
     // Finish current chat - call API to summarize and save to user profile
     async function handleFinishChat() {
         const messageCount = messages.filter(m => m.id !== "welcome" && m.id !== "history-separator").length;
@@ -210,6 +212,7 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
             setAccessToast("✨ Starting new conversation");
             setTimeout(() => setAccessToast(null), 2000);
             showWelcome();
+            setShouldStartNewChat(true);
             return;
         }
 
@@ -249,10 +252,11 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
         } catch (e) {
             console.error("[Coach] Failed to finish chat:", e);
             setAccessToast("✅ Chat finished");
+        } finally {
+            setTimeout(() => setAccessToast(null), 3000);
+            showWelcome();
+            setShouldStartNewChat(true);
         }
-
-        setTimeout(() => setAccessToast(null), 3000);
-        showWelcome();
     }
 
     // Load list of all saved chats
@@ -421,6 +425,7 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                     hasConsent: true,
                     shareEntries: shareEntries,
                     entries: entriesToSend, // <-- NEW: Send decrypted entries from client
+                    forceNewChat: shouldStartNewChat,
                 }),
             });
 
@@ -436,6 +441,10 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
 
             if (data.usage) {
                 setUsage(data.usage);
+            }
+
+            if (shouldStartNewChat) {
+                setShouldStartNewChat(false);
             }
 
             const assistantMessage: Message = {
@@ -871,6 +880,7 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                     </div>
                 </form>
             </div>
+            <CoachOnboarding onComplete={() => { }} />
         </div>
     );
 }

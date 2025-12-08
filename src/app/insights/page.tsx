@@ -8,6 +8,7 @@ import { getActivityHistory, getOrCreateStreak } from "@/lib/streakService";
 import MoodTrends from "@/components/insights/MoodTrends";
 import WritingPatterns from "@/components/insights/WritingPatterns";
 import StreakSummary from "@/components/insights/StreakSummary";
+import InsightsOnboarding from "@/components/InsightsOnboarding";
 
 type MoodData = { date: string; mood: number };
 type ActivityData = { date: string; count: number };
@@ -153,6 +154,7 @@ export default function InsightsPage() {
                     </motion.div>
                 )}
             </div>
+            <InsightsOnboarding onComplete={() => { }} />
         </motion.div>
     );
 }

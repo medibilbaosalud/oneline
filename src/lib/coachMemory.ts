@@ -75,44 +75,51 @@ export async function loadCoachMemory(userId: string): Promise<{
 }
 
 /**
- * Save messages to the user's conversation history.
- * If history is too long, older messages are summarized.
+ * Save new messages to the user's conversation history.
+ * Handles compaction of old messages into summaries.
+ * @param forceNew - If true, always creates a new conversation (used after Finish Chat)
  */
 export async function saveCoachMemory(
     userId: string,
-    newMessages: StoredMessage[]
+    newMessages: StoredMessage[],
+    forceNew: boolean = false
 ): Promise<void> {
-    console.log("[CoachMemory] saveCoachMemory called for user:", userId, "with", newMessages.length, "messages");
+    console.log("[CoachMemory] saveCoachMemory called for user:", userId, "with", newMessages.length, "messages", forceNew ? "(FORCE NEW)" : "");
 
     const supabase = supabaseAdmin();
-
-    // First, load existing conversation
-    const { data: existing, error: loadError } = await supabase
-        .from("coach_conversations")
-        .select("id, messages, summary")
-        .eq("user_id", userId)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single();
-
-    if (loadError && loadError.code !== 'PGRST116') {
-        // PGRST116 = no rows found, which is fine for new users
-        console.log("[CoachMemory] Load error (may be normal for new users):", loadError);
-    }
 
     let allMessages: StoredMessage[] = [];
     let existingSummary: string | null = null;
     let recordId: string | null = null;
 
-    if (existing) {
-        const record = existing as ConversationRecord;
-        allMessages = [...(record.messages || []), ...newMessages];
-        existingSummary = record.summary;
-        recordId = record.id;
-        console.log("[CoachMemory] Found existing record:", recordId, "with", record.messages?.length || 0, "messages");
+    // If not forcing new, try to load existing conversation
+    if (!forceNew) {
+        const { data: existing, error: loadError } = await supabase
+            .from("coach_conversations")
+            .select("id, messages, summary")
+            .eq("user_id", userId)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .single();
+
+        if (loadError && loadError.code !== 'PGRST116') {
+            console.log("[CoachMemory] Load error (may be normal for new users):", loadError);
+        }
+
+        if (existing) {
+            const record = existing as ConversationRecord;
+            allMessages = [...(record.messages || []), ...newMessages];
+            existingSummary = record.summary;
+            recordId = record.id;
+            console.log("[CoachMemory] Found existing record:", recordId, "with", record.messages?.length || 0, "messages");
+        } else {
+            allMessages = newMessages;
+            console.log("[CoachMemory] No existing record, will create new");
+        }
     } else {
+        // Force new conversation
         allMessages = newMessages;
-        console.log("[CoachMemory] No existing record, will create new");
+        console.log("[CoachMemory] Force new - creating fresh conversation");
     }
 
     // If we have too many messages, compact older ones into summary
@@ -196,7 +203,7 @@ function compactMessages(messages: StoredMessage[]): string {
 
     const dateRange = getDateRange(messages);
 
-    return `[Conversación ${dateRange}] El usuario habló sobre: ${userMessages.slice(0, 300)}. Insights dados: ${assistantInsights.slice(0, 400)}.`;
+    return `[Conversation ${dateRange}] User discussed: ${userMessages.slice(0, 300)}. Key insights: ${assistantInsights.slice(0, 400)}.`;
 }
 
 /**
@@ -218,19 +225,19 @@ function truncateSummary(summary: string): string {
  * Get date range string from messages
  */
 function getDateRange(messages: StoredMessage[]): string {
-    if (messages.length === 0) return "sin fecha";
+    if (messages.length === 0) return "no date";
 
     const dates = messages
         .map(m => m.timestamp)
         .filter(Boolean)
         .map(t => new Date(t));
 
-    if (dates.length === 0) return "reciente";
+    if (dates.length === 0) return "recent";
 
     const first = dates[0];
     const last = dates[dates.length - 1];
 
-    const formatDate = (d: Date) => d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+    const formatDate = (d: Date) => d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 
     if (first.toDateString() === last.toDateString()) {
         return formatDate(first);
@@ -249,11 +256,11 @@ export function buildMemoryContext(
     let context = "";
 
     if (historySummary) {
-        context += `[HISTORIAL PREVIO - Resumen de conversaciones anteriores]\n${historySummary}\n\n`;
+        context += `[PREVIOUS HISTORY - Summary of past conversations]\n${historySummary}\n\n`;
     }
 
     if (recentMessages.length > 0) {
-        context += "[MENSAJES RECIENTES de esta conversación ya están en el historial del chat]\n";
+        context += "[RECENT MESSAGES from this conversation are already in chat history]\n";
     }
 
     return context;

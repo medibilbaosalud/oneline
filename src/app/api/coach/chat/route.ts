@@ -135,7 +135,7 @@ export async function POST(req: Request) {
 
         const body = await req.json();
         // entries: client-side decrypted entries sent from frontend (same pattern as StoryGenerator)
-        const { message, history = [], hasConsent = false, shareEntries = false, entries = [] } = body;
+        const { message, history = [], hasConsent = false, shareEntries = false, entries = [], forceNewChat = false } = body;
 
         if (!message || typeof message !== "string") {
             return NextResponse.json({ error: "Message required" }, { status: 400 });
@@ -307,7 +307,9 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
         ];
 
         // Add conversation history (limit to last 10 exchanges)
-        const recentHistory = (history as Message[]).slice(-10);
+        // If forcing new chat, ignore sent history
+        const historyToSend = forceNewChat ? [] : history;
+        const recentHistory = (historyToSend as Message[]).slice(-10);
         for (const msg of recentHistory) {
             messages.push({
                 role: msg.role === "user" ? "user" : "assistant",
@@ -339,7 +341,7 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
             await saveCoachMemory(user.id, [
                 { role: "user", content: message, timestamp: new Date().toISOString() },
                 { role: "assistant", content: reply, timestamp: new Date().toISOString() },
-            ]);
+            ], forceNewChat);
             console.log("[Coach] Conversation saved to memory");
         } catch (memoryError) {
             console.error("[Coach] Failed to save memory:", memoryError);
