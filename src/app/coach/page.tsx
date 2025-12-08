@@ -171,10 +171,15 @@ export default function CoachPage() {
     }, [loadChatHistory]);
 
     function showWelcome() {
+        // Clear ALL messages and show fresh welcome
         setMessages([{
             id: "welcome",
             role: "assistant",
-            content: "Hi! I'm your OneLine Coach. 🌟\n\nI can see your journaling patterns and mood data to help you reflect. Ask me anything about your journey!",
+            content: `Hi! I'm your OneLine AI Coach. 🌟
+
+I can see your journaling patterns and mood data to help you reflect. Ask me anything about your journey!
+
+*Note: I'm an AI and may make mistakes. I'm here to help you reflect, not to replace professional support.*`,
             timestamp: new Date(),
         }]);
     }
