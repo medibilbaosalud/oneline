@@ -58,6 +58,8 @@ export default function TopNav() {
           </Link>
           <div className="ml-2 hidden gap-1 md:flex">
             <NavLink href="/today" label="Today" />
+            <NavLink href="/insights" label="Insights" />
+            <NavLink href="/coach" label="Coach" />
             <NavLink href="/history" label="History" />
             <NavLink href="/summaries" label="Summaries" />
             <NavLink href="/settings" label="Settings" />
@@ -118,6 +120,8 @@ export default function TopNav() {
 
             <div className="flex flex-col gap-1 p-3">
               <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
+              <NavLink href="/insights" label="Insights" onClick={() => setOpen(false)} />
+              <NavLink href="/coach" label="Coach" onClick={() => setOpen(false)} />
               <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
               <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
               <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />

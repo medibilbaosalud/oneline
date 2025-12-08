@@ -179,3 +179,86 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// ====================
+// PUSH NOTIFICATIONS
+// ====================
+
+// Handle incoming push notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push received');
+
+  let data = {
+    title: 'OneLine',
+    body: 'Time to capture your thoughts ✨',
+    icon: '/icons/icon-192.svg',
+    badge: '/icons/icon-192.svg',
+    tag: 'oneline-reminder',
+    data: { url: '/today' },
+  };
+
+  // Try to parse push data
+  if (event.data) {
+    try {
+      const pushData = event.data.json();
+      data = { ...data, ...pushData };
+    } catch {
+      data.body = event.data.text() || data.body;
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    tag: data.tag,
+    data: data.data,
+    vibrate: [100, 50, 100],
+    requireInteraction: false,
+    actions: [
+      { action: 'write', title: 'Write now', icon: '/icons/icon-192.svg' },
+      { action: 'later', title: 'Later' },
+    ],
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Handle notification click
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.action);
+
+  event.notification.close();
+
+  // Handle action buttons
+  if (event.action === 'later') {
+    return;
+  }
+
+  // Default action: open the app
+  const urlToOpen = event.notification.data?.url || '/today';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Try to focus existing window
+        for (const client of windowClients) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(urlToOpen);
+            return client.focus();
+          }
+        }
+        // Open new window
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+// Handle notification close
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed');
+});
