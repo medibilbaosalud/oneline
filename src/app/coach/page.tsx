@@ -20,7 +20,7 @@ const SUGGESTED_PROMPTS = [
     { emoji: "💡", text: "Dame un pequeño desafío para hoy" },
 ];
 
-const DAILY_LIMIT = 200;
+const DAILY_LIMIT = 300;
 
 export default function CoachPage() {
     const [messages, setMessages] = useState<Message[]>([]);

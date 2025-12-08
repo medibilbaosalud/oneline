@@ -26,6 +26,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { chatWithGroq, type GroqMessage } from "@/lib/groqClient";
+import { loadCoachMemory, saveCoachMemory, buildMemoryContext } from "@/lib/coachMemory";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 // IMPORTANT: Use SUPABASE_SERVICE_ROLE_KEY (not SUPABASE_SERVICE_KEY)
@@ -35,16 +36,30 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // CONFIGURATION
 // ============================================================
 // Daily limit is generous thanks to Groq's fast, cheap inference
-const DAILY_COACH_LIMIT = 200;
+const DAILY_COACH_LIMIT = 300;
 
 // System prompt - warm, empathetic, but honest
-const SYSTEM_PROMPT = `You are the OneLine Coach, a journaling companion helping users reflect on emotional and behavioral patterns.
+// Returns dynamic prompt based on whether user shared entries
+function getSystemPrompt(hasEntryAccess: boolean): string {
+    const accessInfo = hasEntryAccess
+        ? `## Tu nivel de acceso
+- ✅ TIENES acceso completo a las entradas del diario del usuario
+- Usa el contenido de las entradas para dar reflexiones profundas y personalizadas
+- Conecta lo que el usuario te dice con lo que ha escrito en su diario`
+        : `## Tu nivel de acceso
+- 🔒 Solo tienes acceso a METADATOS (mood, rachas, estadísticas)
+- NO tienes acceso al contenido de las entradas (están encriptadas)
+- Basa tus reflexiones en los patrones de ánimo y lo que el usuario te cuente directamente`;
+
+    return `You are the OneLine Coach, a journaling companion helping users reflect on emotional and behavioral patterns.
 
 ## Your personality
 - **Warm and approachable**: You speak like a trusted friend, not a cold therapist
 - **Empathetic but honest**: You validate emotions, but also point out patterns the user might not see
 - **Direct when it matters**: If you notice something concerning or a negative pattern, say it tactfully but clearly
 - **Action-oriented**: You propose concrete reflections or small steps, not lectures
+
+${accessInfo}
 
 ## How you analyze
 - Look for PATTERNS: What repeats? What emotions appear frequently?
@@ -71,6 +86,7 @@ const SYSTEM_PROMPT = `You are the OneLine Coach, a journaling companion helping
 - Match their language naturally
 
 Remember: Use the context provided to give personalized, insightful responses.`;
+}
 
 type Message = {
     role: "user" | "assistant";
@@ -240,8 +256,9 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
 [FIN DEL CONTEXTO]`;
 
         // Build messages array for Groq
+        // Pass shareEntries to system prompt so AI knows its access level
         const messages: GroqMessage[] = [
-            { role: "system", content: SYSTEM_PROMPT + "\n\n" + contextSummary },
+            { role: "system", content: getSystemPrompt(shareEntries) + "\n\n" + contextSummary },
         ];
 
         // Add conversation history (limit to last 10 exchanges)
