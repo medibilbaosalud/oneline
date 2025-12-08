@@ -104,6 +104,28 @@ function inferPeriod(start: string, end: string): "weekly" | "monthly" | "yearly
   return "yearly";
 }
 
+/**
+ * Extract a title from story text.
+ * Takes the first sentence or first ~50 chars as a title.
+ */
+function extractTitle(story: string): string {
+  if (!story) return "Untitled Story";
+
+  // Remove markdown bold markers
+  const clean = story.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\*(.+?)\*/g, "$1").trim();
+
+  // Try to get first sentence
+  const firstSentence = clean.split(/[.!?]/)[0]?.trim();
+  if (firstSentence && firstSentence.length >= 10 && firstSentence.length <= 60) {
+    return firstSentence;
+  }
+
+  // Fallback: first 50 chars
+  const firstLine = clean.split("\n")[0]?.trim() ?? "";
+  if (firstLine.length <= 60) return firstLine || "Untitled Story";
+  return firstLine.slice(0, 57) + "...";
+}
+
 async function loadScriptWithFallback(sources: string[]) {
   let lastError: Error | null = null;
 
@@ -736,7 +758,13 @@ export default function StoryGenerator({
             console.log("[PERSIST] Upload result:", uploadedUrl);
             if (uploadedUrl) imageUrl = uploadedUrl;
           }
-          await persistSummary(uid, key, storyText, { from, to, period: inferPeriod(from, to), imageUrl });
+          await persistSummary(uid, key, storyText, {
+            from,
+            to,
+            period: inferPeriod(from, to),
+            imageUrl,
+            title: extractTitle(storyText),
+          });
           console.log("[PERSIST] Summary saved with imageUrl:", imageUrl);
         }
       } catch (persistErr) {

@@ -13,6 +13,7 @@ export type StoredSummary = {
   cipher_b64: string;
   iv_b64: string;
   imageUrl?: string;
+  title?: string;
 };
 
 type SupabaseSummaryRow = {
@@ -25,6 +26,7 @@ type SupabaseSummaryRow = {
   cipher_b64: string;
   iv_b64: string;
   image_url: string | null;
+  title: string | null;
 };
 
 /**
@@ -81,7 +83,7 @@ export async function persistSummary(
   userId: string,
   key: CryptoKey,
   story: string,
-  meta: { from?: string; to?: string; period?: string; imageUrl?: string },
+  meta: { from?: string; to?: string; period?: string; imageUrl?: string; title?: string },
 ) {
   const trimmed = story.trim();
   if (!trimmed) return;
@@ -97,10 +99,12 @@ export async function persistSummary(
     cipher_b64,
     iv_b64,
     image_url: meta.imageUrl ?? null,
+    title: meta.title ?? null,
   };
 
   // NOTE: Supabase client typing does not yet include the summary_histories table. Cast to any
   // so we can insert while keeping runtime behavior intact until generated types are added.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any).from("summary_histories").insert(payload);
 
   if (error) {
@@ -112,7 +116,7 @@ export async function loadSummaries(userId: string, key: CryptoKey) {
   const supabase = supabaseBrowser();
   const { data, error } = await supabase
     .from("summary_histories")
-    .select("id, created_at, from_date, to_date, period, cipher_b64, iv_b64, image_url")
+    .select("id, created_at, from_date, to_date, period, cipher_b64, iv_b64, image_url, title")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -122,7 +126,7 @@ export async function loadSummaries(userId: string, key: CryptoKey) {
   }
 
   const stored = (data ?? []) as SupabaseSummaryRow[];
-  const decrypted = [] as { id: string; createdAt: string; from?: string; to?: string; period?: string; text: string; imageUrl?: string }[];
+  const decrypted = [] as { id: string; createdAt: string; from?: string; to?: string; period?: string; text: string; imageUrl?: string; title?: string }[];
 
   for (const item of stored) {
     try {
@@ -135,6 +139,7 @@ export async function loadSummaries(userId: string, key: CryptoKey) {
         period: item.period ?? undefined,
         text,
         imageUrl: item.image_url ?? undefined,
+        title: item.title ?? undefined,
       });
     } catch {
       // Skip unreadable entries; they likely belong to a different vault key.
@@ -152,4 +157,3 @@ export async function deleteSummary(userId: string, id: string) {
     throw new Error(error.message || "Unable to delete this summary.");
   }
 }
-

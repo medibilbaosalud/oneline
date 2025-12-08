@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   }
 
   const next = url.searchParams.get('next');
-  const safeNext = next && next.startsWith('/') ? next : '/';
+  const safeNext = next && next.startsWith('/') ? next : '/today';
   return NextResponse.redirect(new URL(safeNext, url.origin));
 }
 
