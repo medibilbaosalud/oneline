@@ -1,3 +1,4 @@
+// TodayJournal - Last updated 2024-12-08 18:43
 'use client';
 
 // SECURITY: This client component never sends plaintext to the server; entries are encrypted locally before POSTing.
@@ -404,6 +405,7 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(payload),
+          credentials: 'include', // Ensure cookies are sent for auth
         });
 
         if (r.status === 401) {
@@ -411,7 +413,10 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           setMsg('Please sign in to save.');
           return;
         }
-        if (!r.ok) throw new Error('Failed to save');
+        if (!r.ok) {
+          console.error('[TodayJournal] Save failed:', r.status, await r.text().catch(() => 'no body'));
+          throw new Error('Failed to save');
+        }
 
         const json = (await r.json()) as { id?: string } | null;
         const newId = json?.id ?? entryId;

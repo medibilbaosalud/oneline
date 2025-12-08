@@ -40,8 +40,8 @@ export default function FeedbackBanner() {
                     .eq("user_id", user.id)
                     .single();
 
-                // Show if they have at least 3 entries (active user)
-                if (streak && (streak.total_entries || 0) >= 3) {
+                // Show if they have at least 1 entry (active user)
+                if (streak && (streak.total_entries || 0) >= 1) {
                     setShow(true);
                 }
             } catch (e) {
