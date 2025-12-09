@@ -663,12 +663,14 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                 </p>
               )}
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-6 flex items-center justify-between gap-3">
+                {/* Left side: character count */}
                 <span className={`text-sm ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-400'}`}>
                   {text.length}/{entryLimit}
                 </span>
 
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Right side: actions - always horizontal */}
+                <div className="flex items-center gap-2">
                   <AnimatePresence>
                     {msg && (
                       <motion.span
@@ -703,7 +705,7 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
 
                   {/* Mood Selector - inline */}
                   {isToday && (
-                    <div className="flex items-center gap-2 rounded-xl bg-neutral-800/50 px-3 py-1.5">
+                    <div className="hidden sm:flex items-center gap-2 rounded-xl bg-neutral-800/50 px-3 py-1.5">
                       <span className="text-xs text-neutral-500">Mood:</span>
                       <MoodSelector value={selectedMood} onChange={setSelectedMood} compact />
                     </div>
@@ -720,6 +722,14 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                   </motion.button>
                 </div>
               </div>
+
+              {/* Mood selector on mobile - separate row */}
+              {isToday && (
+                <div className="mt-3 flex sm:hidden items-center gap-2 rounded-xl bg-neutral-800/50 px-3 py-2">
+                  <span className="text-xs text-neutral-500">Mood:</span>
+                  <MoodSelector value={selectedMood} onChange={setSelectedMood} compact />
+                </div>
+              )}
             </section>
 
             <aside className="rounded-2xl border border-white/10 bg-neutral-900/40 p-5 shadow-sm">
