@@ -13,6 +13,7 @@ import type { SummaryLanguage, SummaryPreferences } from "@/lib/summaryPreferenc
 import { clearStoredPassphrase, getStoredPassphrase } from "@/lib/passphraseStorage";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
+import NotificationSettings from "@/components/NotificationSettings";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
@@ -574,9 +575,8 @@ export default function SettingsClient() {
                     <span className="sr-only">Toggle extended guidance mode</span>
                     <span
                       aria-hidden
-                      className={`pointer-events-none h-8 w-8 rounded-full bg-white shadow-[0_8px_16px_rgba(15,23,42,0.25)] transition-transform duration-200 ease-out ${
-                        extendedGuidance ? "translate-x-6" : "translate-x-0"
-                      }`}
+                      className={`pointer-events-none h-8 w-8 rounded-full bg-white shadow-[0_8px_16px_rgba(15,23,42,0.25)] transition-transform duration-200 ease-out ${extendedGuidance ? "translate-x-6" : "translate-x-0"
+                        }`}
                     />
                   </button>
                   <span className="text-sm font-medium">
@@ -621,11 +621,10 @@ export default function SettingsClient() {
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                  passphraseStored
-                    ? 'border border-emerald-400/50 bg-emerald-500/10 text-emerald-100'
-                    : 'border border-white/10 bg-white/5 text-neutral-200'
-                }`}
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${passphraseStored
+                  ? 'border border-emerald-400/50 bg-emerald-500/10 text-emerald-100'
+                  : 'border border-white/10 bg-white/5 text-neutral-200'
+                  }`}
               >
                 {passphraseStored ? 'Passphrase is stored on this device' : 'Passphrase is not stored on this device'}
               </span>
@@ -643,21 +642,28 @@ export default function SettingsClient() {
           </section>
 
           <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
-            <h2 className="text-lg font-semibold">Notifications</h2>
+            <h2 className="text-lg font-semibold">Daily Reminders</h2>
             <p className="mt-2 text-sm app-muted">
-              Trigger a quick test alert to verify the in-app bell and unread counter.
+              Get a gentle nudge to write your daily entry. We can learn your preferred time or you can set it manually.
             </p>
 
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleSendTestNotification}
-                disabled={sendingNotification}
-                className="rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sendingNotification ? "Sending…" : "Send test notification"}
-              </button>
-              <p className="text-xs app-muted">Only you can see notifications tied to your account.</p>
+            <NotificationSettings accessToken={accessToken} />
+
+            <div className="mt-6 border-t border-white/10 pt-6">
+              <h3 className="text-sm font-medium">Test Notifications</h3>
+              <p className="mt-1 text-xs app-muted">
+                Trigger a quick test alert to verify push notifications work on this device.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleSendTestNotification}
+                  disabled={sendingNotification}
+                  className="rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {sendingNotification ? "Sending…" : "Send test notification"}
+                </button>
+              </div>
             </div>
           </section>
 
