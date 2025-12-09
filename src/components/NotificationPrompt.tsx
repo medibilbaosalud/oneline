@@ -21,20 +21,60 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
     return outputArray;
 }
 
+// Cadence: Day 1, 3, 7, 14, 30 (max 5 times)
+const PROMPT_CADENCE_DAYS = [0, 2, 6, 13, 29]; // Days after first dismiss to show again
+const MAX_PROMPTS = 5;
+
+function shouldShowPrompt(): boolean {
+    if (typeof window === "undefined") return false;
+
+    const firstSeen = localStorage.getItem("notification_prompt_first_seen");
+    const dismissCount = parseInt(localStorage.getItem("notification_prompt_dismiss_count") || "0", 10);
+    const lastDismissed = localStorage.getItem("notification_prompt_dismissed_at");
+
+    // First time ever - show it
+    if (!firstSeen) {
+        localStorage.setItem("notification_prompt_first_seen", new Date().toISOString());
+        return true;
+    }
+
+    // Already accepted or max prompts reached
+    if (dismissCount >= MAX_PROMPTS) return false;
+
+    // Never dismissed - show it
+    if (!lastDismissed) return true;
+
+    // Calculate days since first seen
+    const daysSinceFirstSeen = Math.floor(
+        (Date.now() - new Date(firstSeen).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Check if we've passed the next cadence threshold
+    const nextCadenceDay = PROMPT_CADENCE_DAYS[dismissCount];
+    if (nextCadenceDay !== undefined && daysSinceFirstSeen >= nextCadenceDay) {
+        // Check if enough time since last dismiss (at least 1 day)
+        const daysSinceLastDismiss = Math.floor(
+            (Date.now() - new Date(lastDismissed).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysSinceLastDismiss >= 1;
+    }
+
+    return false;
+}
+
 export default function NotificationPrompt({ onClose }: NotificationPromptProps) {
     const [permission, setPermission] = useState<NotificationPermission>("default");
     const [loading, setLoading] = useState(false);
     const [subscribed, setSubscribed] = useState(false);
-    const [dismissed, setDismissed] = useState(false);
+    const [shouldShow, setShouldShow] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (typeof window !== "undefined" && "Notification" in window) {
             setPermission(Notification.permission);
         }
-        const wasDismissed = localStorage.getItem("notification_prompt_dismissed");
-        if (wasDismissed) setDismissed(true);
         checkSubscription();
+        setShouldShow(shouldShowPrompt());
     }, []);
 
     async function checkSubscription() {
@@ -75,7 +115,6 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
             // Subscribe to push manager
             const pushSubscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                // Type assertion needed for TypeScript compatibility
                 applicationServerKey: keyArray as unknown as BufferSource,
             });
 
@@ -89,6 +128,9 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                 return;
             }
 
+            // Get user's timezone
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
             // Send subscription to server
             const response = await fetch("/api/push/subscribe", {
                 method: "POST",
@@ -96,14 +138,22 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${session.access_token}`,
                 },
-                body: JSON.stringify(pushSubscription.toJSON()),
+                body: JSON.stringify({
+                    ...pushSubscription.toJSON(),
+                    timezone,
+                }),
             });
 
             if (!response.ok) {
                 throw new Error("Failed to save subscription");
             }
 
+            // Mark as successful - clear dismiss data
+            localStorage.removeItem("notification_prompt_dismissed_at");
+            localStorage.removeItem("notification_prompt_dismiss_count");
+
             setSubscribed(true);
+            setShouldShow(false);
         } catch (err) {
             console.error("Push subscription error:", err);
             setError("Failed to enable notifications.");
@@ -113,15 +163,22 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
     }
 
     function handleDismiss() {
-        localStorage.setItem("notification_prompt_dismissed", "true");
-        setDismissed(true);
+        // Track dismissals for cadence
+        const currentCount = parseInt(localStorage.getItem("notification_prompt_dismiss_count") || "0", 10);
+        localStorage.setItem("notification_prompt_dismiss_count", String(currentCount + 1));
+        localStorage.setItem("notification_prompt_dismissed_at", new Date().toISOString());
+
+        setShouldShow(false);
         onClose?.();
     }
 
-    // Don't render if not supported, subscribed, or dismissed
-    if (typeof window === "undefined" || !("Notification" in window) || subscribed || dismissed || permission === "denied") {
+    // Don't render if not supported, subscribed, or shouldn't show
+    if (typeof window === "undefined" || !("Notification" in window) || subscribed || !shouldShow || permission === "denied") {
         return null;
     }
+
+    const dismissCount = parseInt(localStorage.getItem("notification_prompt_dismiss_count") || "0", 10);
+    const isLastChance = dismissCount >= MAX_PROMPTS - 1;
 
     return (
         <AnimatePresence>
@@ -139,7 +196,7 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                         <div className="flex-1">
                             <h3 className="font-semibold text-white">Daily Reminder</h3>
                             <p className="mt-1 text-sm text-neutral-300">
-                                Get a gentle nudge at 8pm to capture your day&apos;s thoughts.
+                                Get a gentle nudge to capture your day&apos;s thoughts. We&apos;ll learn your preferred time.
                             </p>
                             {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
                             <div className="mt-3 flex gap-2">
@@ -154,9 +211,14 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
                                     onClick={handleDismiss}
                                     className="rounded-lg px-4 py-2 text-sm text-neutral-400 transition hover:text-white"
                                 >
-                                    Not now
+                                    {isLastChance ? "No thanks" : "Not now"}
                                 </button>
                             </div>
+                            {!isLastChance && (
+                                <p className="mt-2 text-xs text-neutral-500">
+                                    We&apos;ll remind you in a few days
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

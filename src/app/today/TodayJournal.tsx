@@ -434,6 +434,15 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
         if (user?.id && isToday) {
           recordDailyEntry(user.id, selectedMood ?? undefined).catch(() => { });
 
+          // Record writing time for smart notifications
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            fetch('/api/notifications/record-writing-time', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            }).catch(() => { }); // Fire and forget
+          }
+
           // Generate reflection for tomorrow (only for today's entries)
           generateReflection(text, todayString).then((success) => {
             if (success) {
