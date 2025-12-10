@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseRouteHandler } from "@/lib/supabaseRouteHandler";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const sb = createRouteHandlerClient({ cookies });
-  await sb.auth.signOut();
-  return NextResponse.json({ ok: true });
+  try {
+    const sb = await supabaseRouteHandler();
+    await sb.auth.signOut();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[auth/signout] error", error);
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
 }

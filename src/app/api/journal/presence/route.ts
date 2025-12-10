@@ -1,11 +1,10 @@
 // src/app/api/journal/presence/route.ts
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseRouteHandler } from '@/lib/supabaseRouteHandler';
 
 export async function GET() {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await supabaseRouteHandler();
     const {
       data: { user },
       error: userError,

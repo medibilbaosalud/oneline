@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseRouteHandler } from "@/lib/supabaseRouteHandler";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const sb = createRouteHandlerClient({ cookies });
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  return NextResponse.json(user ? { id: user.id, email: user.email } : {});
+  try {
+    const sb = await supabaseRouteHandler();
+    const {
+      data: { user },
+    } = await sb.auth.getUser();
+    return NextResponse.json(user ? { id: user.id, email: user.email } : {});
+  } catch (error) {
+    console.error("[auth/user] error", error);
+    return NextResponse.json({}, { status: 500 });
+  }
 }

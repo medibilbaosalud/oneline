@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseRouteHandler } from "@/lib/supabaseRouteHandler";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
@@ -81,7 +80,7 @@ function extractBearer(authHeader: string | null): string | null {
 }
 
 async function getClientAndUser(req: Request) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await supabaseRouteHandler();
 
   const bearer = extractBearer(req.headers.get("authorization"));
   const adminClient = bearer ? trySupabaseAdmin() : null;
@@ -90,8 +89,8 @@ async function getClientAndUser(req: Request) {
     data: { user },
     error,
   } = bearer
-    ? await supabase.auth.getUser(bearer)
-    : await supabase.auth.getUser();
+      ? await supabase.auth.getUser(bearer)
+      : await supabase.auth.getUser();
 
   if (error) {
     console.error("[settings] getUser error", error);

@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseRouteHandler } from "@/lib/supabaseRouteHandler";
 
 import {
   ENTRY_LIMIT_BASE,
@@ -27,9 +26,8 @@ function defaults(): LimitsPayload {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabase = createRouteHandlerClient({ cookies });
-
   try {
+    const supabase = await supabaseRouteHandler();
     const {
       data: { user },
       error: authError,
