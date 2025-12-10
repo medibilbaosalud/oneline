@@ -2,6 +2,18 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Handle OAuth code that landed on wrong route (should go to /auth/callback)
+  const code = searchParams.get('code');
+  if (code && pathname !== '/auth/callback') {
+    // OAuth code arrived at wrong route - redirect to callback
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = '/auth/callback';
+    // Preserve the code and any other params
+    return NextResponse.redirect(callbackUrl);
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -39,7 +51,7 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     // If user is logged in and on root, redirect to /today
-    if (user && request.nextUrl.pathname === '/') {
+    if (user && pathname === '/') {
       const url = request.nextUrl.clone();
       url.pathname = '/today';
       return NextResponse.redirect(url);
