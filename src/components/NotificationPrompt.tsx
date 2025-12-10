@@ -68,13 +68,28 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
     const [subscribed, setSubscribed] = useState(false);
     const [shouldShow, setShouldShow] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== "undefined" && "Notification" in window) {
-            setPermission(Notification.permission);
+        async function init() {
+            // Check if user is authenticated
+            const supabase = supabaseBrowser();
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                setIsAuthenticated(false);
+                return;
+            }
+
+            setIsAuthenticated(true);
+
+            if (typeof window !== "undefined" && "Notification" in window) {
+                setPermission(Notification.permission);
+            }
+            await checkSubscription();
+            setShouldShow(shouldShowPrompt());
         }
-        checkSubscription();
-        setShouldShow(shouldShowPrompt());
+        init();
     }, []);
 
     async function checkSubscription() {
@@ -172,8 +187,8 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
         onClose?.();
     }
 
-    // Don't render if not supported, subscribed, or shouldn't show
-    if (typeof window === "undefined" || !("Notification" in window) || subscribed || !shouldShow || permission === "denied") {
+    // Don't render if not authenticated, not supported, subscribed, or shouldn't show
+    if (!isAuthenticated || typeof window === "undefined" || !("Notification" in window) || subscribed || !shouldShow || permission === "denied") {
         return null;
     }
 
