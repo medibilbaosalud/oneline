@@ -1,7 +1,6 @@
 // src/lib/requireConsent.ts
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseServer } from "./supabaseServer";
 
 /**
  * Access gate for protected pages.
@@ -10,7 +9,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
  * Returns the user when the gate passes.
  */
 export async function requireConsentOrRedirect(strict: boolean = true) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth");

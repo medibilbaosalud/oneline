@@ -1,7 +1,6 @@
 // src/app/history/[day]/page.tsx
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 import {
   ENTRY_LIMIT_BASE,
@@ -15,7 +14,7 @@ type Props = { params: { day: string } };
 
 export default async function EditDayPage({ params }: Props) {
   const day = params.day; // YYYY-MM-DD
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await supabaseServer();
 
   const {
     data: { user },

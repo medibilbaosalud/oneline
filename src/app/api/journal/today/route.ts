@@ -2,8 +2,7 @@
 // SECURITY: This route never receives plaintext journal content; it stores only ciphertext + IV per user/day.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,16 +12,9 @@ function ymdUTC(d = new Date()) {
   return iso.slice(0, 10);
 }
 
-// Helper to get Supabase client with proper cookie handling for Next.js 15
-async function getSupabase() {
-  const cookieStore = await cookies();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return createServerComponentClient({ cookies: () => cookieStore as any });
-}
-
 export async function GET() {
   try {
-    const supabase = await getSupabase();
+    const supabase = await supabaseServer();
     const {
       data: { session },
       error,
@@ -52,7 +44,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await getSupabase();
+    const supabase = await supabaseServer();
     const {
       data: { session },
       error,
