@@ -15,10 +15,11 @@ export default function LoginPage() {
 
   // Redirect to /today if the user already has an active session
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
       if (data.user) router.replace('/today');
       setChecking(false);
-    });
+    })();
   }, [supabase, router]);
 
   async function onSubmit(e: React.FormEvent) {
