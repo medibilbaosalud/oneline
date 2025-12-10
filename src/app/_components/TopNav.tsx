@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import SupabaseAuthButton from './SupabaseAuthButton';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 function NavLink({
   href,
@@ -54,7 +55,7 @@ export default function TopNav() {
       setIsAuthed(!!data.session);
     })();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setIsAuthed(!!session);
     });
 
@@ -68,44 +69,44 @@ export default function TopNav() {
 
   const Sheet = open && portalRoot
     ? createPortal(
-        <div id="mobile-menu-portal" className="fixed inset-0 z-[99999] md:hidden">
-          {/* Overlay */}
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-          {/* Panel */}
-          <div className="absolute right-0 top-0 h-full w-[82%] max-w-sm bg-neutral-950/95 ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <span className="text-sm font-semibold text-white">OneLine</span>
-              <button
-                aria-label="Close menu"
-                className="rounded-md p-2 text-zinc-200 hover:bg-neutral-800/60"
-                onClick={() => setOpen(false)}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              </button>
-            </div>
+      <div id="mobile-menu-portal" className="fixed inset-0 z-[99999] md:hidden">
+        {/* Overlay */}
+        <div
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+        {/* Panel */}
+        <div className="absolute right-0 top-0 h-full w-[82%] max-w-sm bg-neutral-950/95 ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <span className="text-sm font-semibold text-white">OneLine</span>
+            <button
+              aria-label="Close menu"
+              className="rounded-md p-2 text-zinc-200 hover:bg-neutral-800/60"
+              onClick={() => setOpen(false)}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
 
-            <div className="flex flex-col gap-1 p-3">
-              <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
-              {showProtectedLinks ? (
-                <>
-                  <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
-                  <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
-                  <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
-                </>
-              ) : null}
-              <div className="mt-2 border-t border-white/10 pt-2">
-                <SupabaseAuthButton />
-              </div>
+          <div className="flex flex-col gap-1 p-3">
+            <NavLink href="/today" label="Today" onClick={() => setOpen(false)} />
+            {showProtectedLinks ? (
+              <>
+                <NavLink href="/history" label="History" onClick={() => setOpen(false)} />
+                <NavLink href="/summaries" label="Summaries" onClick={() => setOpen(false)} />
+                <NavLink href="/settings" label="Settings" onClick={() => setOpen(false)} />
+              </>
+            ) : null}
+            <div className="mt-2 border-t border-white/10 pt-2">
+              <SupabaseAuthButton />
             </div>
           </div>
-        </div>,
-        portalRoot
-      )
+        </div>
+      </div>,
+      portalRoot
+    )
     : null;
 
   return (
@@ -136,7 +137,7 @@ export default function TopNav() {
           <SupabaseAuthButton />
         </div>
 
-            {/* Mobile hamburger button */}
+        {/* Mobile hamburger button */}
         <button
           aria-label="Open menu"
           className="md:hidden rounded-md p-2 text-zinc-200 hover:bg-neutral-800/60"

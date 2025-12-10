@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 export default function SupabaseAuthButton() {
   const supabase = useMemo(() => supabaseBrowser(), []);
@@ -22,7 +23,7 @@ export default function SupabaseAuthButton() {
       setLoading(false);
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setEmail(session?.user?.email ?? null);
       router.refresh(); // refresca server components (nav, etc.)
     });

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { useVault } from "@/hooks/useVault";
 
@@ -78,7 +78,7 @@ export default function NotificationsBell() {
       }
     })();
 
-    const { data: authSubscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authSubscription } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       const uid = session?.user?.id ?? null;
       setUserId(uid);
       if (uid) {
@@ -370,11 +370,10 @@ export default function NotificationsBell() {
               return (
                 <div
                   key={note.id}
-                  className={`group w-full rounded-2xl border px-4 py-3 text-left transition ${
-                    note.is_read
+                  className={`group w-full rounded-2xl border px-4 py-3 text-left transition ${note.is_read
                       ? "border-white/5 bg-neutral-900/80"
                       : "border-indigo-400/30 bg-indigo-950/30 shadow-[0_14px_40px_-22px_rgba(99,102,241,0.9)]"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-neutral-300">
