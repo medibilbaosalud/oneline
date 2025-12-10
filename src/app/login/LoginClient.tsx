@@ -36,9 +36,10 @@ export default function LoginClient() {
 
   // If already authenticated, redirect to the `next` route
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) router.replace(next);
-    });
+    })();
   }, [next, router, supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
