@@ -62,11 +62,12 @@ async function fetchVaultStatus(userId: string): Promise<'unknown' | 'absent' | 
       .from('user_vault_status')
       .select('has_passphrase')
       .eq('user_id', userId)
-      .maybeSingle<{ has_passphrase: boolean }>();
+      .maybeSingle();
 
     if (error) return 'unknown';
     if (!data) return 'absent';
-    return data.has_passphrase ? 'present' : 'absent';
+    const row = data as { has_passphrase: boolean };
+    return row.has_passphrase ? 'present' : 'absent';
   } catch {
     return 'unknown';
   }
