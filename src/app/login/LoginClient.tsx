@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { getEmailHint } from "@/lib/emailHint";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
 
@@ -23,7 +23,7 @@ export default function LoginClient() {
     }
   }, [rawNext]);
 
-  const supabase = useMemo(() => createClientComponentClient(), []);
+  const supabase = useMemo(() => supabaseBrowser(), []);
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 export default function ResetPage() {
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const supabase = createClientComponentClient();
+  const supabase = supabaseBrowser();
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -31,7 +31,7 @@ export default function ResetPage() {
             type="email"
             required
             value={email}
-            onChange={e=>setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             placeholder="you@email.com"
             className="w-full rounded-md bg-neutral-900 px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
           />

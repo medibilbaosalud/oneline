@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useRouter } from 'next/navigation';
 
 export default function UpdatePasswordPage() {
@@ -9,7 +9,7 @@ export default function UpdatePasswordPage() {
   const [pw2, setPw2] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const supabase = createClientComponentClient();
+  const supabase = supabaseBrowser();
   const router = useRouter();
 
   async function submit(e: React.FormEvent) {
@@ -32,14 +32,14 @@ export default function UpdatePasswordPage() {
             type="password"
             placeholder="New password"
             value={pw}
-            onChange={e=>setPw(e.target.value)}
+            onChange={e => setPw(e.target.value)}
             className="w-full rounded-md bg-neutral-900 px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
           />
           <input
             type="password"
             placeholder="Confirm password"
             value={pw2}
-            onChange={e=>setPw2(e.target.value)}
+            onChange={e => setPw2(e.target.value)}
             className="w-full rounded-md bg-neutral-900 px-3 py-2 outline-none ring-1 ring-white/10 focus:ring-indigo-500"
           />
           {msg && <p className="rounded-md bg-neutral-800 p-2 text-sm">{msg}</p>}

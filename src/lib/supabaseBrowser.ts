@@ -1,15 +1,15 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 
-type BrowserClient = ReturnType<typeof createClientComponentClient>;
+type BrowserClient = ReturnType<typeof createBrowserClient>;
 
 let browserClient: BrowserClient | undefined;
 
 export function supabaseBrowser(): BrowserClient {
   if (!browserClient) {
-    browserClient = createClientComponentClient({
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    });
+    browserClient = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
   }
 
   return browserClient;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 import { OnboardingAssistant } from "@/components/OnboardingAssistant";
 
@@ -9,7 +9,7 @@ const STORAGE_PREFIX = "oneline:onboarding:tour:seen:";
 const INTENT_KEY = "oneline:onboarding:tour:intent";
 
 export function ProductTourAssistant() {
-  const supabase = useMemo(() => createClientComponentClient(), []);
+  const supabase = useMemo(() => supabaseBrowser(), []);
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [storageKey, setStorageKey] = useState<string | null>(null);

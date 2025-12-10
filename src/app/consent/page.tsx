@@ -1,10 +1,10 @@
 // src/app/consent/page.tsx
 "use client";
 import { useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
 export default function ConsentPage() {
-  const supabase = createClientComponentClient();
+  const supabase = supabaseBrowser();
   const [privacy, setPrivacy] = useState(false);
   const [terms, setTerms] = useState(false);
   const [marketing, setMarketing] = useState(false);
@@ -37,19 +37,19 @@ export default function ConsentPage() {
 
         <div className="mt-4 space-y-3 text-sm">
           <label className="flex items-start gap-3">
-            <input type="checkbox" checked={privacy} onChange={e=>setPrivacy(e.target.checked)} className="mt-1"/>
+            <input type="checkbox" checked={privacy} onChange={e => setPrivacy(e.target.checked)} className="mt-1" />
             <span>I accept the <a href="/privacy" target="_blank" className="underline">Privacy Policy</a>.</span>
           </label>
           <label className="flex items-start gap-3">
-            <input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)} className="mt-1"/>
+            <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} className="mt-1" />
             <span>I accept the <a href="/terms" target="_blank" className="underline">Terms of Service</a>.</span>
           </label>
           <label className="flex items-start gap-3">
-            <input type="checkbox" checked={age} onChange={e=>setAge(e.target.checked)} className="mt-1"/>
+            <input type="checkbox" checked={age} onChange={e => setAge(e.target.checked)} className="mt-1" />
             <span>I confirm I’m old enough to use the service in my country.</span>
           </label>
           <label className="flex items-start gap-3 opacity-80">
-            <input type="checkbox" checked={marketing} onChange={e=>setMarketing(e.target.checked)} className="mt-1"/>
+            <input type="checkbox" checked={marketing} onChange={e => setMarketing(e.target.checked)} className="mt-1" />
             <span>Optional: I want to receive product updates by email.</span>
           </label>
         </div>
