@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useVault } from "@/hooks/useVault";
 
 const features = [
     {
@@ -29,13 +30,16 @@ const features = [
 export default function CoachOnboarding({ onComplete }: { onComplete: () => void }) {
     const [show, setShow] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
+    const { dataKey } = useVault();
 
     useEffect(() => {
+        if (!dataKey) return;
+
         const hasSeen = localStorage.getItem("coach_onboarding_seen");
         if (!hasSeen) {
             setShow(true);
         }
-    }, []);
+    }, [dataKey]);
 
     function handleComplete() {
         localStorage.setItem("coach_onboarding_seen", "true");
@@ -51,7 +55,7 @@ export default function CoachOnboarding({ onComplete }: { onComplete: () => void
         }
     }
 
-    if (!show) return null;
+    if (!show || !dataKey) return null;
 
     const feature = features[currentSlide];
     const isLast = currentSlide === features.length - 1;
@@ -111,8 +115,8 @@ export default function CoachOnboarding({ onComplete }: { onComplete: () => void
                                 key={i}
                                 onClick={() => setCurrentSlide(i)}
                                 className={`w-2 h-2 rounded-full transition-all ${i === currentSlide
-                                        ? "bg-indigo-500 w-6"
-                                        : "bg-neutral-600 hover:bg-neutral-500"
+                                    ? "bg-indigo-500 w-6"
+                                    : "bg-neutral-600 hover:bg-neutral-500"
                                     }`}
                             />
                         ))}

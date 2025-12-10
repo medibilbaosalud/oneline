@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { useVault } from "@/hooks/useVault";
 
 type NotificationPromptProps = {
     onClose?: () => void;
@@ -177,6 +178,8 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
         }
     }
 
+    const { dataKey } = useVault();
+
     function handleDismiss() {
         // Track dismissals for cadence
         const currentCount = parseInt(localStorage.getItem("notification_prompt_dismiss_count") || "0", 10);
@@ -187,8 +190,8 @@ export default function NotificationPrompt({ onClose }: NotificationPromptProps)
         onClose?.();
     }
 
-    // Don't render if not authenticated, not supported, subscribed, or shouldn't show
-    if (!isAuthenticated || typeof window === "undefined" || !("Notification" in window) || subscribed || !shouldShow || permission === "denied") {
+    // Don't render if not authenticated, not supported, subscribed, or shouldn't show, or VAULT NOT UNLOCKED
+    if (!dataKey || !isAuthenticated || typeof window === "undefined" || !("Notification" in window) || subscribed || !shouldShow || permission === "denied") {
         return null;
     }
 
