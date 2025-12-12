@@ -52,6 +52,7 @@ export default function SummariesPage() {
   const { isVisitor, showSignupPrompt } = useVisitor();
   const [loading, setLoading] = useState(true);
   const [storyPreferences, setStoryPreferences] = useState<SummaryPreferences>({ ...DEFAULT_SUMMARY_PREFERENCES });
+  const [forceUnlock, setForceUnlock] = useState(false);
   const [reminder, setReminder] = useState<SummaryReminder>({
     period: "weekly",
     due: false,
@@ -117,29 +118,72 @@ export default function SummariesPage() {
 
         // Check journal entries for weekly minimum
         if (reminderCalc.period === "weekly" && reminderCalc.window) {
+          const fetchEnd = new Date().toISOString().slice(0, 10); // Check up to today
           const { data: rows } = await supabase
             .from("journal")
             .select("day, created_at")
             .eq("user_id", user.id)
             .gte("day", reminderCalc.window.start)
-            .lte("day", reminderCalc.window.end)
-            .limit(50);
+            .lte("day", fetchEnd)
+            .limit(100);
 
           if (rows) {
-            const uniqueDays = new Set<string>();
+            const prevWindowDays = new Set<string>();
+            const currentWindowDays = new Set<string>();
+
+            // reminderCalc.window.end is the LAST DAY of the previous period.
+            const splitDate = reminderCalc.window.end;
+
             for (const row of rows) {
               const day = row.day ?? row.created_at?.slice(0, 10);
-              if (day) uniqueDays.add(day);
+              if (!day) continue;
+
+              if (day <= splitDate) {
+                prevWindowDays.add(day);
+              } else {
+                currentWindowDays.add(day);
+              }
             }
 
-            const dayCount = uniqueDays.size;
-            const minimumMet = dayCount >= MIN_WEEKLY_ENTRIES;
+            const prevCount = prevWindowDays.size;
+            const currentCount = currentWindowDays.size;
+
+            // Smart Detection Logic:
+            // If Previous Window failed (< 4) BUT Current Window has entries...
+            // We switch context to Current Window to let them summarize NOW if they have enough (or want to force it).
+            // NOTE: We only switch if Current has MORE entries or Prev is completely empty/low?
+            // Let's be generous: If Prev is not Ready, and Current exists, suggest Current.
+
+            let finalWindow = reminderCalc.window;
+            let finalCount = prevCount;
+            let finalDue = reminderCalc.due && (prevCount >= MIN_WEEKLY_ENTRIES);
+
+            // If prev week is NOT ready, but we have activity this week...
+            if (prevCount < MIN_WEEKLY_ENTRIES && currentCount > 0) {
+              // Verify if current week is better or at least active
+              // Construct current window: [splitDate + 1 day, Today]
+              // Actually we probably want the full current week window for the label.
+              // But for now, let's just use the range we have data for or implies "Current Week".
+              // The "end" of current window technically is open, but we can set it to today or end of week.
+
+              // Let's just update the count and window to reflect "Current Progress"
+              finalCount = currentCount;
+              // We need to shift the window start to be splitDate + 1
+              const nextStart = new Date(new Date(splitDate).getTime() + 86400000).toISOString().slice(0, 10);
+              finalWindow = { start: nextStart, end: fetchEnd };
+
+              // It serves as "Current Week"
+              // Check if current week meets criteria
+              finalDue = currentCount >= MIN_WEEKLY_ENTRIES;
+            }
+
             setReminder({
               ...reminderCalc,
-              due: reminderCalc.due && minimumMet,
-              entryCount: dayCount,
+              window: finalWindow,
+              due: finalDue,
+              entryCount: finalCount,
               minimumRequired: MIN_WEEKLY_ENTRIES,
-              minimumMet,
+              minimumMet: finalCount >= MIN_WEEKLY_ENTRIES,
             });
           } else {
             setReminder(reminderCalc);
@@ -169,6 +213,9 @@ export default function SummariesPage() {
   const entryCount = reminder.entryCount ?? 0;
   const daysRemaining = Math.max(0, minimumRequired - entryCount);
   const entryLabel = entryCount === 1 ? "day" : "days";
+
+  // Allow unlock if due (met requirements) OR forced by user
+  const isUnlocked = (reminder.due && reminder.minimumMet) || forceUnlock;
 
   return (
     <main className="min-h-screen bg-neutral-950">
@@ -242,7 +289,7 @@ export default function SummariesPage() {
                 <p className="text-lg font-semibold text-white">{formatWindow(reminder.window) || "Select below"}</p>
               </div>
             </div>
-            {reminder.due && (
+            {isUnlocked && (
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300">
                 ✓ Ready to generate
               </span>
@@ -251,17 +298,17 @@ export default function SummariesPage() {
         </div>
 
         {/* Minimum not met banner */}
-        {reminder.minimumMet === false && (
+        {!isUnlocked && (
           <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-transparent p-5">
             <div className="flex items-start gap-4">
               <span className="text-3xl">📝</span>
-              <div>
+              <div className="flex-1">
                 <p className="font-semibold text-amber-200">Keep writing!</p>
                 <p className="text-sm text-amber-100/70 mt-1">
                   Add at least {minimumRequired} days in the last week to unlock your story.
                 </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="h-2 flex-1 rounded-full bg-amber-900/50 overflow-hidden">
+                <div className="mt-3 flex items-center gap-3">
+                  <div className="h-2 flex-1 rounded-full bg-amber-900/50 overflow-hidden max-w-[200px]">
                     <div
                       className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all"
                       style={{ width: `${Math.min(100, (entryCount / minimumRequired) * 100)}%` }}
@@ -269,6 +316,19 @@ export default function SummariesPage() {
                   </div>
                   <span className="text-sm font-medium text-amber-200">{entryCount}/{minimumRequired} {entryLabel}</span>
                 </div>
+
+                {entryCount >= 1 && (
+                  <button
+                    onClick={() => {
+                      if (confirm("Generating a summary with fewer than 4 days may result in a shorter or less detailed story. Do you want to continue?")) {
+                        setForceUnlock(true);
+                      }
+                    }}
+                    className="mt-4 text-xs font-medium text-amber-200 underline decoration-amber-200/50 hover:text-white transition"
+                  >
+                    Generate anyway (requires 1+ day)
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -292,11 +352,17 @@ export default function SummariesPage() {
             </div>
           ) : (
             <VaultGate>
-              <StoryGenerator
-                initialOptions={storyPreferences}
-                initialPreset={reminder.due && reminder.window ? "custom" : undefined}
-                initialRange={reminder.due && reminder.window ? { from: reminder.window.start, to: reminder.window.end } : undefined}
-              />
+              {isUnlocked ? (
+                <StoryGenerator
+                  initialOptions={storyPreferences}
+                  initialPreset={reminder.due && reminder.window ? "custom" : undefined}
+                  initialRange={reminder.due && reminder.window ? { from: reminder.window.start, to: reminder.window.end } : undefined}
+                />
+              ) : (
+                <div className="py-12 text-center text-neutral-500">
+                  <p>Complete your weekly streak to unlock the storyteller.</p>
+                </div>
+              )}
             </VaultGate>
           )}
         </div>
