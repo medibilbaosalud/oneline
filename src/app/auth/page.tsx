@@ -57,8 +57,8 @@ function AuthPageInner() {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        router.refresh();
-        router.push(nextPath);
+        // Force a hard redirect to ensure cookies are fresh and middleware sees the new session
+        window.location.href = nextPath;
         return;
       }
 
@@ -76,8 +76,8 @@ function AuthPageInner() {
         if (signInError) throw signInError;
       }
 
-      router.refresh();
-      router.push(nextPath);
+      // Force a hard redirect
+      window.location.href = nextPath;
       return;
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Authentication failed';

@@ -225,32 +225,47 @@ export function TourProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            // Regular authenticated user flow
-            const hasSeenLocal = typeof window !== "undefined" && localStorage.getItem(TOUR_COMPLETED_KEY);
+            // Regular user: Check if they have ANY entries
+            // Logic: If user has entries, they don't need the tour, even if they never "completed" it.
+            if (isSupabaseConfigured()) {
+                try {
+                    const supabase = supabaseBrowser();
 
+                    // 1. Check metadata first (fastest)
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user?.user_metadata?.interactive_tour_completed) {
+                        setHasChecked(true);
+                        return;
+                    }
+
+                    // 2. Check actual usage (entries count)
+                    const { count, error } = await supabase
+                        .from('journal')
+                        .select('*', { count: 'exact', head: true });
+
+                    if (!error && count !== null && count > 0) {
+                        // User has entries -> Treat as educated user -> mark complete locally
+                        if (typeof window !== "undefined") {
+                            localStorage.setItem(TOUR_COMPLETED_KEY, "true");
+                        }
+                        setHasChecked(true);
+                        // Optionally backend sync could happen here but let's just silence the tour
+                        return;
+                    }
+                } catch {
+                    // If check fails, fall back to showing it if local storage says so, or not.
+                    // Safer to just allow flow to continue to local check.
+                }
+            }
+
+            // 3. Last check: Local storage for "dismissed" state
+            const hasSeenLocal = typeof window !== "undefined" && localStorage.getItem(TOUR_COMPLETED_KEY);
             if (hasSeenLocal) {
                 setHasChecked(true);
                 return;
             }
 
-            if (isSupabaseConfigured()) {
-                try {
-                    const supabase = supabaseBrowser();
-                    const { data: { user } } = await supabase.auth.getUser();
-
-                    if (user?.user_metadata?.interactive_tour_completed) {
-                        if (typeof window !== "undefined") {
-                            localStorage.setItem(TOUR_COMPLETED_KEY, "true");
-                        }
-                        setHasChecked(true);
-                        return;
-                    }
-                } catch {
-                    // Continue showing tour
-                }
-            }
-
-            // First time user - start tour!
+            // User has 0 entries and hasn't seen/dismissed tour -> Start it!
             setHasChecked(true);
             setIsActive(true);
         }
