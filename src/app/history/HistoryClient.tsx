@@ -3,6 +3,7 @@
 // SECURITY: Decrypts ciphertext entries locally; plaintext is never stored in React state until the vault is unlocked.
 
 import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { decryptText, encryptText } from '@/lib/crypto';
 import { useVault } from '@/hooks/useVault';
 import { useEntryLimits } from '@/hooks/useEntryLimits';
@@ -328,95 +329,151 @@ export default function HistoryClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-200">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-white">Private by design</p>
-          <p className="text-xs text-zinc-400">Switch to the encrypted-only view to see exactly what servers receive.</p>
+      {/* Privacy Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 to-transparent px-5 py-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🔐</span>
+          <div>
+            <p className="text-sm font-semibold text-white">Private by design</p>
+            <p className="text-xs text-emerald-200/60">Only you can read your entries. Servers see ciphertext only.</p>
+          </div>
         </div>
         <button
           onClick={() => setShowEncryptedOnly(true)}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-neutral-100 transition hover:border-indigo-300/60 hover:bg-indigo-500/10"
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-neutral-200 transition hover:bg-white/10"
         >
-          View encrypted list
+          View encrypted
         </button>
       </div>
 
       {reloading && (
-        <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-950/60 px-4 py-2 text-xs text-neutral-300">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-300" aria-hidden />
-          Refreshing your entries…
-        </div>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200"
+        >
+          <motion.span
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="h-4 w-4 rounded-full border-2 border-indigo-400 border-t-transparent"
+          />
+          Syncing your entries…
+        </motion.div>
       )}
 
-      {sortedItems.map((entry) => {
-        const isEditing = editingId === entry.id;
-        return (
-          <article key={entry.id} className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-sm">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm text-zinc-400">
-              <span>{fmtDate(entry)}</span>
-              {entry.legacy && (
-                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-                  Legacy — re-save to encrypt
-                </span>
-              )}
-            </div>
+      {/* Timeline of entries */}
+      <div className="relative">
+        {/* Timeline line */}
+        <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-500/50 via-purple-500/30 to-transparent" />
 
-            {entry.error && (
-              <p className="mb-3 rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {entry.error}
-              </p>
-            )}
+        <AnimatePresence>
+          {sortedItems.map((entry, index) => {
+            const isEditing = editingId === entry.id;
+            return (
+              <motion.article
+                key={entry.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="relative pl-14 pb-6"
+              >
+                {/* Timeline dot */}
+                <div className="absolute left-4 top-6 flex h-5 w-5 items-center justify-center">
+                  <div className={`h-3 w-3 rounded-full ${entry.error ? 'bg-rose-500' : entry.legacy ? 'bg-amber-500' : 'bg-indigo-500'}`} />
+                </div>
 
-            {!isEditing ? (
-              <p className="whitespace-pre-wrap text-lg leading-relaxed text-zinc-100">{entry.text}</p>
-            ) : (
-              <textarea
-                value={draft}
-                onChange={(ev) => setDraft(ev.target.value.slice(0, entryLimit))}
-                rows={4}
-                maxLength={entryLimit}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            )}
+                {/* Entry card */}
+                <div className={`rounded-2xl border p-5 transition-all ${isEditing
+                    ? 'border-indigo-500/50 bg-indigo-500/5'
+                    : entry.error
+                      ? 'border-rose-500/30 bg-rose-500/5'
+                      : 'border-white/10 bg-neutral-900/60 hover:border-white/20'
+                  }`}>
+                  {/* Header */}
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white">{fmtDate(entry)}</span>
+                      {entry.legacy && (
+                        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                          Unencrypted
+                        </span>
+                      )}
+                    </div>
+                    {!entry.error && !entry.legacy && (
+                      <span className="text-xs text-emerald-400/70">🔒 Encrypted</span>
+                    )}
+                  </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {!isEditing ? (
-                <>
-                  <button
-                    onClick={() => startEditing(entry)}
-                    className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => deleteEntry(entry)}
-                    disabled={deletingId === entry.id}
-                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-60"
-                  >
-                    {deletingId === entry.id ? 'Deleting…' : 'Delete'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => saveEdit(entry)}
-                    disabled={savingId === entry.id}
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                  >
-                    {savingId === entry.id ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    onClick={cancelEditing}
-                    className="rounded-lg bg-zinc-700 px-3 py-1.5 text-sm font-medium text-zinc-100 hover:bg-zinc-600"
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-            </div>
-          </article>
-        );
-      })}
+                  {/* Error message */}
+                  {entry.error && (
+                    <div className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                      ⚠️ {entry.error}
+                    </div>
+                  )}
+
+                  {/* Content */}
+                  {!isEditing ? (
+                    <p className="whitespace-pre-wrap text-base leading-relaxed text-neutral-100">
+                      {entry.text || <span className="italic text-neutral-500">No content available</span>}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <textarea
+                        value={draft}
+                        onChange={(ev) => setDraft(ev.target.value.slice(0, entryLimit))}
+                        rows={4}
+                        maxLength={entryLimit}
+                        className="w-full rounded-xl border border-white/10 bg-neutral-900 px-4 py-3 text-neutral-100 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        autoFocus
+                      />
+                      <div className="text-right text-xs text-neutral-500">
+                        {draft.length}/{entryLimit}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {!isEditing ? (
+                      <>
+                        <button
+                          onClick={() => startEditing(entry)}
+                          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-neutral-200 transition hover:bg-white/10"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => deleteEntry(entry)}
+                          disabled={deletingId === entry.id}
+                          className="flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
+                        >
+                          {deletingId === entry.id ? '⏳ Deleting…' : '🗑️ Delete'}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => saveEdit(entry)}
+                          disabled={savingId === entry.id}
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                        >
+                          {savingId === entry.id ? '⏳ Saving…' : '✓ Save'}
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-neutral-200 transition hover:bg-white/10"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </motion.article>
+            );
+          })}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

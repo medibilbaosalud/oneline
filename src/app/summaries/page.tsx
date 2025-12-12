@@ -115,8 +115,8 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
   const initialRange = hasCustomRange
     ? { from: fromParam!, to: toParam! }
     : reminder.due && reminder.window
-    ? { from: reminder.window.start, to: reminder.window.end }
-    : undefined;
+      ? { from: reminder.window.start, to: reminder.window.end }
+      : undefined;
 
   const initialPreset = initialRange ? "custom" : undefined;
 
@@ -127,88 +127,106 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
   const remainingLabel = daysRemaining === 1 ? "day" : "days";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-black">
-      <div className="pointer-events-none absolute inset-0 opacity-60">
-        <div className="absolute -left-24 top-10 h-64 w-64 rounded-full bg-indigo-500/30 blur-[120px]" />
-        <div className="absolute right-0 top-40 h-72 w-72 rounded-full bg-blue-500/20 blur-[140px]" />
+    <main className="min-h-screen bg-neutral-950">
+      {/* Background effects */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-24 top-10 h-96 w-96 rounded-full bg-purple-500/20 blur-[150px]" />
+        <div className="absolute right-0 top-40 h-80 w-80 rounded-full bg-indigo-500/15 blur-[130px]" />
       </div>
 
-      <div className="relative mx-auto max-w-5xl px-6 py-10">
-        <section className="overflow-hidden rounded-3xl border border-white/5 bg-white/5 px-6 py-8 shadow-xl shadow-indigo-950/30">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Encrypted summaries</p>
-              <div>
-                <h1 className="text-3xl font-semibold text-white sm:text-4xl">Summaries that still sound like you</h1>
-                <p className="mt-2 max-w-2xl text-base text-zinc-300">
-                  Unlock your vault, pick a window, and get a recap that keeps your tone, languages, and highlights intact.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-xs text-zinc-200">
-                <span className="rounded-full bg-white/10 px-3 py-1">No credit card. Encrypted by default.</span>
-                <span className="rounded-full bg-white/10 px-3 py-1">Works in every language you write.</span>
-                <span className="rounded-full bg-white/10 px-3 py-1">Exportable anytime.</span>
+      <div className="relative mx-auto max-w-4xl px-4 py-10">
+        {/* Hero Section */}
+        <header className="mb-10">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 blur-xl opacity-50" />
+              <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-3xl shadow-lg">
+                ✨
               </div>
             </div>
-            <div className="flex gap-3 rounded-2xl border border-white/10 bg-black/40 px-5 py-4 text-sm text-zinc-200 shadow-inner">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-zinc-400">Status</p>
-                <p className="font-semibold text-white">{humanizePeriod(reminder.period)} cadence</p>
-                <p className="text-xs text-zinc-400">Ready when you are.</p>
-              </div>
-              <div className="h-full w-px bg-white/10" />
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-zinc-400">Range</p>
-                <p className="font-semibold text-white">{formatWindow(reminder.window) || "Select below"}</p>
-                <p className="text-xs text-zinc-400">Adjust with presets or custom dates.</p>
-              </div>
+            <div>
+              <p className="text-xs uppercase tracking-widest text-purple-400">AI Stories</p>
+              <h1 className="text-4xl font-bold text-white">Summaries</h1>
             </div>
           </div>
-        </section>
+          <p className="text-lg text-neutral-300 max-w-2xl">
+            Transform your journal entries into personalized narratives. Your stories, your voice, your memories.
+          </p>
+        </header>
 
-        <div className="mt-6 rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-zinc-200 shadow-inner shadow-black/30">
-          <div className="flex flex-col gap-3 items-start justify-between sm:flex-row sm:items-center">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Feedback</p>
-              <p className="font-semibold text-white">Spotted an issue or have an idea?</p>
-              <p className="text-xs text-zinc-300">Every user can send feedback—no login required. It lives at the bottom of this page.</p>
+        {/* Feature Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl">🎭</span>
+              <h3 className="font-semibold text-white">Your Voice</h3>
             </div>
-            <a
-              href="#feedback"
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/10 transition hover:bg-white/20"
-            >
-              Jump to feedback
-              <span aria-hidden>↘</span>
-            </a>
+            <p className="text-sm text-neutral-400">AI writes in your tone and style, preserving your unique perspective.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl">🔐</span>
+              <h3 className="font-semibold text-white">Private</h3>
+            </div>
+            <p className="text-sm text-neutral-400">Entries decrypt locally. We never see your plaintext.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl">🌍</span>
+              <h3 className="font-semibold text-white">Multilingual</h3>
+            </div>
+            <p className="text-sm text-neutral-400">Write in any language. Your story respects your words.</p>
           </div>
         </div>
 
-        {reminder.due && (
-          <div className="mt-6 rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-4 text-sm text-indigo-50 shadow-lg shadow-indigo-900/30">
-            <p className="text-sm font-semibold text-white">
-              {humanizePeriod(reminder.period)} recap ready to generate
-            </p>
-            <p className="mt-1 text-xs text-indigo-100/80">
-              Suggested range: {formatWindow(reminder.window)}. We’ll load these defaults for you below.
-            </p>
-          </div>
-        )}
-
-        {reminder.minimumMet === false && (
-          <div className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-50 shadow-lg shadow-amber-900/30">
-            <p className="text-sm font-semibold text-white">Write a few more days first</p>
-            <p className="mt-1 text-xs text-amber-100/80">
-              Add at least {minimumRequired} days in the last week to unlock your next weekly story.
-            </p>
-            {reminder.entryCount !== undefined && (
-              <p className="mt-1 text-xs text-amber-100/80">
-                You&apos;re at {entryCount}/{minimumRequired} {entryLabel} — {daysRemaining} more {remainingLabel} to go.
-              </p>
+        {/* Status Card */}
+        <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-500/10 via-transparent to-indigo-500/10 p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-purple-300">Cadence</p>
+                <p className="text-2xl font-bold text-white">{humanizePeriod(reminder.period)}</p>
+              </div>
+              <div className="h-10 w-px bg-white/10" />
+              <div>
+                <p className="text-xs uppercase tracking-wider text-purple-300">Suggested Range</p>
+                <p className="text-lg font-semibold text-white">{formatWindow(reminder.window) || "Select below"}</p>
+              </div>
+            </div>
+            {reminder.due && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300">
+                ✓ Ready to generate
+              </span>
             )}
           </div>
+        </div>
+
+        {/* Banners */}
+        {reminder.minimumMet === false && (
+          <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-transparent p-5">
+            <div className="flex items-start gap-4">
+              <span className="text-3xl">📝</span>
+              <div>
+                <p className="font-semibold text-amber-200">Keep writing!</p>
+                <p className="text-sm text-amber-100/70 mt-1">
+                  Add at least {minimumRequired} days in the last week to unlock your story.
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="h-2 flex-1 rounded-full bg-amber-900/50 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (entryCount / minimumRequired) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-amber-200">{entryCount}/{minimumRequired} {entryLabel}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        <div className="mt-8">
+        {/* Story Generator */}
+        <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-6">
           <VaultGate>
             <StoryGenerator
               initialOptions={storyPreferences}
@@ -218,9 +236,24 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
           </VaultGate>
         </div>
 
-        <div className="mt-10">
-          <FeedbackForm id="feedback" />
-        </div>
+        {/* Feedback - Collapsible */}
+        <details className="group mt-10">
+          <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-white/10 bg-neutral-900/60 px-5 py-4 transition hover:bg-neutral-900 [&::-webkit-details-marker]:hidden">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">💬</span>
+              <div>
+                <p className="font-medium text-white">Send feedback</p>
+                <p className="text-xs text-neutral-400">Found a bug or have a suggestion?</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-neutral-400 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="mt-3" id="feedback">
+            <FeedbackForm defaultPage="/summaries" className="border-white/10 bg-neutral-900/40" />
+          </div>
+        </details>
       </div>
     </main>
   );

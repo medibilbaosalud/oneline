@@ -63,32 +63,78 @@ export default async function HistoryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0A0A0B] text-zinc-100">
-      <div className="mx-auto w-full max-w-3xl px-4 py-8">
-        <header className="mb-6 space-y-3">
-          <h1 className="text-3xl font-semibold">History</h1>
-          <p className="text-sm text-zinc-400">
-            Review your encrypted journal entries and keep a private archive of generated summaries. Both stay protected by your
-            vault key.
-          </p>
-          <div className="flex flex-wrap gap-3 text-xs text-zinc-300">
-            <a className="rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:border-indigo-400 hover:text-white" href="#journal-history">
-              Journal entries
-            </a>
-            <a className="rounded-full border border-white/10 bg-white/5 px-3 py-1 hover:border-indigo-400 hover:text-white" href="#summary-history">
-              Summaries
-            </a>
+    <main className="min-h-screen bg-neutral-950 text-zinc-100">
+      <div className="mx-auto w-full max-w-4xl px-4 py-8">
+        {/* Hero Header */}
+        <header className="mb-8">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-2xl">
+              📜
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-widest text-indigo-400">Your Archive</p>
+              <h1 className="text-3xl font-bold text-white">History</h1>
+            </div>
           </div>
+          <p className="text-neutral-400 max-w-xl">
+            Your encrypted journal entries and generated stories. Everything stays protected by your vault key.
+          </p>
         </header>
 
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4 text-center">
+            <p className="text-3xl font-bold text-white">{entries.length}</p>
+            <p className="text-xs text-neutral-500">Total entries</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4 text-center">
+            <p className="text-3xl font-bold text-emerald-400">🔒</p>
+            <p className="text-xs text-neutral-500">E2E Encrypted</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4 text-center">
+            <p className="text-3xl font-bold text-white">
+              {entries.length > 0 ? new Date(entries[entries.length - 1].created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
+            </p>
+            <p className="text-xs text-neutral-500">First entry</p>
+          </div>
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-center">
+            <p className="text-3xl font-bold text-indigo-300">{entryLimit}</p>
+            <p className="text-xs text-indigo-200/60">Char limit</p>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6">
+          <a
+            href="#journal-history"
+            className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-300 transition hover:bg-indigo-500/20"
+          >
+            📝 Journal Entries
+          </a>
+          <a
+            href="#summary-history"
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-neutral-300 transition hover:bg-white/10"
+          >
+            📖 Stories
+          </a>
+        </div>
+
         <VaultGate>
-          <div className="space-y-10">
+          <div className="space-y-12">
             <section id="journal-history">
               {entries.length > 0 ? (
                 <HistoryClient initialEntries={entries} initialEntryLimit={entryLimit} />
               ) : (
-                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-6 text-zinc-400">
-                  No entries yet.
+                <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-8 text-center">
+                  <span className="text-5xl">✨</span>
+                  <h3 className="mt-4 text-lg font-semibold text-white">No entries yet</h3>
+                  <p className="mt-2 text-neutral-400">Start writing daily to build your personal archive.</p>
+                  <a
+                    href="/today"
+                    className="mt-4 inline-block rounded-xl bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                  >
+                    Write your first entry
+                  </a>
                 </div>
               )}
             </section>
@@ -101,4 +147,4 @@ export default async function HistoryPage() {
   );
 }
 
-// SECURITY WARNING: Without the user’s passphrase, historical entries stay encrypted and unreadable.
+// SECURITY WARNING: Without the user's passphrase, historical entries stay encrypted and unreadable.

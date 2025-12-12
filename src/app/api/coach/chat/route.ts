@@ -98,10 +98,11 @@ ${nameSection}
 - Don't use unnecessary clinical language
 
 ## Response format
-- Maximum 2-3 short paragraphs
+- **BE CONCISE**: 1-2 short paragraphs MAX. This is a chat, not an essay.
+- Write like you're texting a friend - short sentences, to the point
 - Use emojis sparingly (1-2 max)
-- If you detect intense suffering or risk, kindly encourage talking to a professional or someone they trust
-- End with something useful: a reflection, a question, or a small challenge
+- If you detect intense suffering or risk, kindly encourage talking to a professional
+- End with ONE thing: a question OR a small challenge (not both)
 
 ## IMPORTANT: Language
 - **Always respond in the same language the user writes in**
@@ -323,7 +324,7 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
         // Call Groq with cascade
         const { reply, modelUsed } = await chatWithGroq(messages, {
             temperature: 0.75,
-            maxTokens: 768, // Slightly more tokens for richer responses
+            maxTokens: 350, // Keep responses short and chat-like
         });
 
         // Increment usage count
