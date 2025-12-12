@@ -84,9 +84,9 @@ export async function persistSummary(
   key: CryptoKey,
   story: string,
   meta: { from?: string; to?: string; period?: string; imageUrl?: string; title?: string },
-) {
+): Promise<string | null> {
   const trimmed = story.trim();
-  if (!trimmed) return;
+  if (!trimmed) return null;
 
   const { cipher_b64, iv_b64 } = await encryptText(key, trimmed);
   const supabase = supabaseBrowser();
@@ -105,11 +105,17 @@ export async function persistSummary(
   // NOTE: Supabase client typing does not yet include the summary_histories table. Cast to any
   // so we can insert while keeping runtime behavior intact until generated types are added.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from("summary_histories").insert(payload);
+  const { data, error } = await (supabase as any)
+    .from("summary_histories")
+    .insert(payload)
+    .select("id")
+    .single();
 
   if (error) {
     throw new Error(error.message || "Unable to save summary history.");
   }
+
+  return data?.id as string | null;
 }
 
 export async function loadSummaries(userId: string, key: CryptoKey) {
@@ -155,5 +161,18 @@ export async function deleteSummary(userId: string, id: string) {
 
   if (error) {
     throw new Error(error.message || "Unable to delete this summary.");
+  }
+}
+
+export async function updateSummaryImage(userId: string, summaryId: string, imageUrl: string) {
+  const supabase = supabaseBrowser();
+  const { error } = await supabase
+    .from("summary_histories")
+    .update({ image_url: imageUrl })
+    .eq("user_id", userId)
+    .eq("id", summaryId);
+
+  if (error) {
+    throw new Error(error.message || "Unable to update summary image.");
   }
 }

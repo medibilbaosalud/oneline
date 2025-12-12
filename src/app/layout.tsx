@@ -55,6 +55,19 @@ export default function RootLayout({
           {children}
           <InstallPrompt />
         </Providers>
+        {/* Theme initialization - prevents flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+          (function() {
+            try {
+              var t = localStorage.getItem('oneline-theme') || 'dark';
+              var resolved = t === 'system' 
+                ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+                : t;
+              document.documentElement.setAttribute('data-theme', resolved);
+            } catch(e) {}
+          })();
+        ` }} />
         <script dangerouslySetInnerHTML={{ __html: `console.log("VERSION: v2025-12-08-1048")` }} />
       </body>
     </html>

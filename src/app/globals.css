@@ -11,6 +11,18 @@
   color-scheme: dark;
 }
 
+/* Light theme - premium, high-contrast aesthetic */
+[data-theme="light"] {
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-panel: #f1f5f9;
+  --app-border: rgba(0, 0, 0, 0.08);
+  --app-text: #1e293b;
+  --app-muted: #64748b;
+  --app-accent: #0284c7;
+  color-scheme: light;
+}
+
 body {
   background: var(--app-bg);
   color: var(--app-text);

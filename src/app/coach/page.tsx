@@ -447,39 +447,73 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                     history: messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
                     hasConsent: true,
                     shareEntries: shareEntries,
-                    entries: entriesToSend, // <-- NEW: Send decrypted entries from client
+                    entries: entriesToSend,
                     forceNewChat: shouldStartNewChat,
                 }),
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                if (data.limitReached) {
-                    setError(`Daily limit reached (${data.limit} messages)`);
-                    return;
+            // Handle errors (usually JSON)
+            const contentType = response.headers.get("content-type");
+            if (contentType?.includes("application/json") || !response.ok) {
+                if (!response.body) throw new Error("No response");
+                // If it's JSON error or we can't stream
+                if (contentType?.includes("application/json")) {
+                    const data = await response.json();
+                    if (data.limitReached) {
+                        setError(`Daily limit reached (${data.limit} messages)`);
+                        return;
+                    }
+                    throw new Error(data.error || "Failed to get response");
                 }
-                throw new Error(data.error || "Failed to get response");
+                if (!response.ok) throw new Error("Network response was not ok");
             }
 
-            if (data.usage) {
-                setUsage(data.usage);
+            // Read usage headers
+            const usageHeader = response.headers.get("X-Coach-Usage");
+            const limitHeader = response.headers.get("X-Coach-Limit");
+            if (usageHeader && limitHeader) {
+                setUsage({ used: parseInt(usageHeader), limit: parseInt(limitHeader) });
             }
 
             if (shouldStartNewChat) {
                 setShouldStartNewChat(false);
             }
 
+            // Create placeholder assistant message
+            const assistantMessageId = (Date.now() + 1).toString();
             const assistantMessage: Message = {
-                id: (Date.now() + 1).toString(),
+                id: assistantMessageId,
                 role: "assistant",
-                content: data.response,
+                content: "",
                 timestamp: new Date(),
             };
-
             setMessages((prev) => [...prev, assistantMessage]);
+
+            // Stream reader
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) throw new Error("No stream reader available");
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                setMessages((prev) =>
+                    prev.map((msg) =>
+                        msg.id === assistantMessageId
+                            ? { ...msg, content: msg.content + chunk }
+                            : msg
+                    )
+                );
+            }
+
         } catch (err) {
+            console.error(err);
             setError(err instanceof Error ? err.message : "Something went wrong");
+            // Remove the empty assistant message if it failed immediately? 
+            // Better to leave it or mark as error, but for now simple error toast is fine.
         } finally {
             setLoading(false);
             inputRef.current?.focus();
@@ -939,8 +973,8 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                             type="submit"
                             disabled={!input.trim() || loading || !hasConsent}
                             className={`flex-shrink-0 rounded-2xl p-3.5 text-white shadow-lg transition-all ${!input.trim() || loading || !hasConsent
-                                    ? 'bg-white/5 text-neutral-600 shadow-none'
-                                    : 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-indigo-500/30 hover:shadow-indigo-500/50'
+                                ? 'bg-white/5 text-neutral-600 shadow-none'
+                                : 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-indigo-500/30 hover:shadow-indigo-500/50'
                                 }`}
                         >
                             <svg className="h-5 w-5 translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

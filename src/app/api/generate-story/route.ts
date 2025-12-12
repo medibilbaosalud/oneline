@@ -143,78 +143,21 @@ export async function POST(req: NextRequest) {
       entries,
     });
 
-    // Generate Audio and Image
-    // New Flow: Story -> Image Prompt -> Image
-    // This avoids sending massive context to the image model and improves quality/quota usage.
+    // SKIP Audio and Image generation here.
+    // Client will request them in a secondary background call.
 
-    let imageBase64: string | null = null;
-    let audioBase64: string | null = null;
-    let audioMimeType: string | null = null;
-
-    const includeImage = body.options?.includeImage !== false; // Default to true
-    const includeAudio = body.options?.includeAudio !== false; // Default to true
-
-    try {
-      // 1. Generate Image Prompt (using text model) - ONLY if image is requested
-      // LOGIC FOR CODEX: We first generate a specific prompt for the image using a cheaper/faster text model.
-      // This ensures the image model receives a concise, optimized description rather than the full story text.
-      let imagePrompt = null;
-      if (includeImage) {
-        imagePrompt = await generateImagePrompt(story);
-      }
-
-      // 2. Generate Audio and Image in parallel (using the optimized prompt for image)
-      // LOGIC FOR CODEX: We use Promise.allSettled to ensure that if one fails (e.g. image quota), the other (audio) still succeeds.
-      // This decoupling is critical for user experience.
-      const tasks = [];
-
-      if (includeAudio) {
-        tasks.push(generateStoryAudio(story));
-      } else {
-        tasks.push(Promise.resolve(null)); // Placeholder for audio result
-      }
-
-      if (includeImage && imagePrompt) {
-        // LOGIC FOR CODEX: Here we call the actual image generation model with the prompt generated in step 1.
-        tasks.push(generateStoryImage(imagePrompt));
-      } else {
-        tasks.push(Promise.resolve(null)); // Placeholder for image result
-      }
-
-      const results = await Promise.allSettled(tasks);
-
-      const audioResult = results[0];
-      const imageResult = results[1];
-
-      if (includeAudio && audioResult.status === 'fulfilled' && audioResult.value) {
-        const val = audioResult.value as any;
-        audioBase64 = val.data;
-        audioMimeType = val.mimeType;
-      } else if (includeAudio && audioResult.status === 'rejected') {
-        console.error("Audio generation failed:", audioResult.reason);
-      }
-
-      if (includeImage && imageResult.status === 'fulfilled' && imageResult.value) {
-        imageBase64 = imageResult.value as string;
-      } else if (includeImage && imageResult.status === 'rejected') {
-        console.error("Image generation failed:", imageResult.reason);
-      }
-    } catch (e) {
-      console.error("Error generating multimedia assets:", e);
-      // Do not fail the whole request if assets fail
-    }
-
-    const usedAfter = usageUnits(updated);
+    // We already recorded the summary usage.
 
     return NextResponse.json(
       {
         story,
-        audioBase64,
-        audioMimeType,
-        imageBase64,
+        // No assets returned in this fast path
+        audioBase64: null,
+        audioMimeType: null,
+        imageBase64: null,
         words: wordCount,
         mode,
-        usageUnits: usedAfter,
+        usageUnits: usageUnits(updated),
         remainingUnits: remainingUnits(updated),
         dailyLimit: DAILY_LIMIT_UNITS,
       },

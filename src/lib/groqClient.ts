@@ -208,3 +208,47 @@ export async function transcribeWithGroq(
 
 // Export types for use in other modules
 export type { GroqMessage, ChatResult, TranscriptionResult };
+
+/**
+ * Stream chat response from Groq.
+ * Uses model cascade for reliability on stream start.
+ */
+export async function* streamChatWithGroq(
+    messages: GroqMessage[],
+    options?: {
+        temperature?: number;
+        maxTokens?: number;
+    }
+): AsyncGenerator<{ content: string; modelUsed: string }, void, unknown> {
+    const client = getGroqClient();
+    const errors: { model: string; error: string }[] = [];
+
+    for (const model of CHAT_MODEL_CASCADE) {
+        try {
+            const stream = await client.chat.completions.create({
+                model,
+                messages,
+                temperature: options?.temperature ?? 0.7,
+                max_tokens: options?.maxTokens ?? 1024,
+                stream: true,
+            });
+
+            for await (const chunk of stream) {
+                const content = chunk.choices[0]?.delta?.content || "";
+                // Yield even empty strings if needed to keep connection alive, usually just content
+                if (content) {
+                    yield { content, modelUsed: model };
+                }
+            }
+            return; // Stream finished successfully
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[Groq Stream] Model ${model} failed:`, errorMessage);
+            errors.push({ model, error: errorMessage });
+            // Continue to next model
+        }
+    }
+
+    console.error("[Groq Stream] All models failed cascade:", errors);
+    throw new Error("All Groq models are unavailable for streaming.");
+}

@@ -3,7 +3,7 @@
 
 // SECURITY: This client component never sends plaintext to the server; entries are encrypted locally before POSTing.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RestartTourButton } from '@/components/InteractiveTour';
@@ -21,6 +21,7 @@ import { recordDailyEntry } from '@/lib/streakService';
 import MoodSelector, { type MoodScore } from '@/components/engagement/MoodSelector';
 import ReflectionModal from '@/components/engagement/ReflectionModal';
 import { useReflection } from '@/hooks/useReflection';
+import { useDebounce } from '@/hooks/useDebounce';
 
 type StreakData = {
   current: number;
@@ -107,6 +108,11 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
   const todayString = useMemo(() => ymdUTC(), []);
   const [selectedDay, setSelectedDay] = useState(todayString);
   const [selectedMood, setSelectedMood] = useState<MoodScore | null>(null);
+
+  // Auto-save logic
+  const debouncedText = useDebounce(text, 2000);
+  const lastSavedText = useRef(''); // Track last successfully saved text to prevent loops
+  const firstLoad = useRef(true); // Prevent auto-saving immediately on load
 
   // Reflection system
   const { pendingReflection, generateReflection, markAsViewed } = useReflection();
@@ -268,6 +274,10 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
       setEntryId(null);
       setLegacyReadOnly(false);
       setText('');
+      // Reset lastSavedText when switching days
+      lastSavedText.current = '';
+      firstLoad.current = true;
+
       try {
         if (localMode) {
           const { getLocalEntry } = await import('@/lib/localStorageManager');
@@ -318,18 +328,24 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
     if (!pendingEntry) {
       setLegacyReadOnly(false);
       setText('');
+      // If we loaded blank, that's our baseline
+      lastSavedText.current = '';
       return;
     }
     if (pendingEntry.content_cipher && pendingEntry.iv) {
       if (!dataKey) return;
       decryptText(dataKey, pendingEntry.content_cipher, pendingEntry.iv)
         .then((plain) => {
-          setText(plain.slice(0, entryLimit));
+          const txt = plain.slice(0, entryLimit);
+          setText(txt);
+          lastSavedText.current = txt; // Establish baseline
           setLegacyReadOnly(false);
         })
         .catch(() => {
           if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
-            setText(pendingEntry.content.slice(0, entryLimit));
+            const txt = pendingEntry.content.slice(0, entryLimit);
+            setText(txt);
+            lastSavedText.current = txt;
             setLegacyReadOnly(true);
             setMsg(
               'Encrypted copy could not be unlocked — showing legacy text. Press “Save entry” to re-encrypt it with your vault.',
@@ -343,11 +359,14 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           }
         });
     } else if (typeof pendingEntry.content === 'string' && pendingEntry.content.length > 0) {
-      setText(pendingEntry.content.slice(0, entryLimit));
+      const txt = pendingEntry.content.slice(0, entryLimit);
+      setText(txt);
+      lastSavedText.current = txt;
       setLegacyReadOnly(true);
     } else {
       setLegacyReadOnly(false);
       setText('');
+      lastSavedText.current = '';
     }
   }, [pendingEntry, dataKey, entryLimit]);
 
@@ -366,24 +385,48 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
     });
   }, []);
 
-  async function save() {
-    // In visitor mode, prompt signup instead of saving
-    if (isVisitor) {
-      showSignupPrompt();
+  // UseEffect for Auto-Save
+  useEffect(() => {
+    // Skip if loading, saving, or if text hasn't changed from what we last saved
+    if (loadingEntry || saving || debouncedText === lastSavedText.current) return;
+
+    // Skip if this is the very first render and we just loaded data (avoid false positive save)
+    // Actually debouncedText will be equal to lastSavedText initially because we set it in the pendingEntry effect.
+    // But just in case:
+    if (firstLoad.current) {
+      firstLoad.current = false;
       return;
     }
+
+    if (debouncedText.length > 0) {
+      saveEntry({ isAutoSave: true });
+    }
+  }, [debouncedText, loadingEntry, saving]);
+
+  async function saveEntry(options: { isAutoSave?: boolean } = {}) {
+    const { isAutoSave = false } = options;
+
+    // In visitor mode, prompts signup
+    if (isVisitor && !isAutoSave) {
+      showSignupPrompt();
+      return;
+    } else if (isVisitor && isAutoSave) {
+      return; // No autosave in visitor mode
+    }
+
     if (needLogin) {
-      setMsg('Please sign in to save.');
+      if (!isAutoSave) setMsg('Please sign in to save.');
       return;
     }
     if (!dataKey) {
-      setMsg('Unlock your vault to save.');
+      if (!isAutoSave) setMsg('Unlock your vault to save.');
       return;
     }
     const trimmed = text.trim().slice(0, entryLimit);
     if (!trimmed) return;
+
     setSaving(true);
-    setMsg(null);
+    if (!isAutoSave) setMsg(null);
 
     const enc = await encryptText(dataKey, trimmed);
 
@@ -395,11 +438,17 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
         setEntryId(newId);
         setPendingEntry({ id: newId, content_cipher: enc.cipher_b64, iv: enc.iv_b64 });
         setLegacyReadOnly(false);
-        setMsg(isToday ? 'Saved locally ✓' : `Saved locally for ${selectedDay} ✓`);
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate(50);
+        lastSavedText.current = trimmed; // Update baseline
+
+        if (!isAutoSave) {
+          setMsg(isToday ? 'Saved locally ✓' : `Saved locally for ${selectedDay} ✓`);
+          if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+          setTimeout(() => setMsg(null), 1500);
+        } else {
+          setMsg('Autosaved.');
+          setTimeout(() => setMsg(null), 1000);
         }
-        setTimeout(() => setMsg(null), 1500);
+
       } else {
         const endpoint = isToday ? '/api/journal/today' : `/api/journal/day/${selectedDay}`;
         const payload = { id: entryId, content_cipher: enc.cipher_b64, iv: enc.iv_b64 };
@@ -412,12 +461,12 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(payload),
-          credentials: 'include', // Ensure cookies are sent for auth
+          credentials: 'include',
         });
 
         if (r.status === 401) {
           setNeedLogin(true);
-          setMsg('Please sign in to save.');
+          if (!isAutoSave) setMsg('Please sign in to save.');
           return;
         }
         if (!r.ok) {
@@ -430,32 +479,37 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
         setEntryId(newId ?? null);
         setPendingEntry({ id: newId ?? undefined, content_cipher: enc.cipher_b64, iv: enc.iv_b64 });
         setLegacyReadOnly(false);
-        setMsg(isToday ? 'Saved ✓' : `Saved for ${selectedDay} ✓`);
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate(50);
+        lastSavedText.current = trimmed; // Update baseline
+
+        if (!isAutoSave) {
+          setMsg(isToday ? 'Saved ✓' : `Saved for ${selectedDay} ✓`);
+          if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
+        } else {
+          setMsg('Saved'); // Minimal feedback
         }
+
         loadStreak();
-        // Record activity for new streak system
+        // Record activity for new streak system (fire and forget)
         const supabase = supabaseBrowser();
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.id && isToday) {
           recordDailyEntry(user.id, selectedMood ?? undefined).catch(() => { });
 
-          // Record writing time for smart notifications
-          const { data: { session } } = await supabase.auth.getSession();
+          // Record writing time for smart notifications - only on manual save or significant autosave?
+          // Let's do it on every save to be safe, it's just a timestamp update.
+          const { data: { session } = {} } = await supabase.auth.getSession();
           if (session?.access_token) {
             fetch('/api/notifications/record-writing-time', {
               method: 'POST',
               headers: { Authorization: `Bearer ${session.access_token}` },
-            }).catch(() => { }); // Fire and forget
+            }).catch(() => { });
           }
 
-          // Generate reflection for tomorrow (only for today's entries)
-          generateReflection(text, todayString).then((success) => {
-            if (success) {
-              setShowAnticipationModal(true);
-            }
-          }).catch(() => { });
+          if (!isAutoSave) {
+            generateReflection(text, todayString).then((success) => {
+              if (success) setShowAnticipationModal(true);
+            }).catch(() => { });
+          }
         }
         setTimeout(() => setMsg(null), 1500);
       }
@@ -467,22 +521,25 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
         const { addToSyncQueue } = await import('@/lib/offlineSync');
         await addToSyncQueue(endpoint, payload);
 
-        setMsg('Saved to device (Offline) ✓');
+        setMsg(isAutoSave ? 'Saved (Offline)' : 'Saved to device (Offline) ✓');
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate(50);
         }
         // Optimistically update UI
         setPendingEntry({ id: entryId ?? undefined, content_cipher: enc.cipher_b64, iv: enc.iv_b64 });
+        lastSavedText.current = trimmed;
         setTimeout(() => setMsg(null), 2000);
       } else {
         const message = e instanceof Error && e.message ? e.message : 'Save failed';
-        setMsg(message);
+        if (!isAutoSave) setMsg(message);
       }
     } finally {
       setSaving(false);
     }
   }
 
+  // Alias for manual save button
+  const save = () => saveEntry({ isAutoSave: false });
   if (!authChecked) {
     return (
       <div className="flex h-[50vh] items-center justify-center">

@@ -14,6 +14,7 @@ import { clearStoredPassphrase, getStoredPassphrase } from "@/lib/passphraseStor
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { primeEntryLimitsCache } from "@/hooks/useEntryLimits";
 import NotificationSettings from "@/components/NotificationSettings";
+import { useTheme, type Theme } from "@/hooks/useTheme";
 
 type Frequency = "weekly" | "monthly" | "yearly";
 type StoryLength = "short" | "medium" | "long";
@@ -74,6 +75,46 @@ function formatWindow(window?: { start: string; end: string }) {
   } catch {
     return `${window.start} → ${window.end}`;
   }
+}
+
+// Theme toggle component
+function ThemeToggle() {
+  const { theme, setTheme, mounted } = useTheme();
+
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="mt-4 flex gap-2">
+        <div className="h-10 w-24 animate-pulse rounded-xl bg-white/10" />
+        <div className="h-10 w-24 animate-pulse rounded-xl bg-white/10" />
+        <div className="h-10 w-24 animate-pulse rounded-xl bg-white/10" />
+      </div>
+    );
+  }
+
+  const options: { value: Theme; label: string; icon: string }[] = [
+    { value: "dark", label: "Dark", icon: "🌙" },
+    { value: "light", label: "Light", icon: "☀️" },
+    { value: "system", label: "System", icon: "💻" },
+  ];
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => setTheme(opt.value)}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${theme === opt.value
+              ? "border-2 border-indigo-500 bg-indigo-500/20 text-white"
+              : "border border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10"
+            }`}
+        >
+          <span>{opt.icon}</span>
+          <span>{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function SettingsClient() {
@@ -399,6 +440,15 @@ export default function SettingsClient() {
         </header>
 
         <div className="mt-8 space-y-6">
+          {/* Appearance Section */}
+          <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
+            <h2 className="text-lg font-semibold">Appearance</h2>
+            <p className="mt-2 text-sm app-muted">
+              Choose how OneLine looks. Your preference is saved on this device.
+            </p>
+            <ThemeToggle />
+          </section>
+
           <section className="rounded-3xl border app-panel p-6 shadow-lg shadow-black/20">
             <h2 className="text-lg font-semibold">Profile</h2>
             {settingsLoading ? (

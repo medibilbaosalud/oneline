@@ -25,7 +25,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { chatWithGroq, type GroqMessage } from "@/lib/groqClient";
+import type { GroqMessage } from "@/lib/groqClient";
 import { loadCoachMemory, saveCoachMemory, buildMemoryContext } from "@/lib/coachMemory";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -321,47 +321,74 @@ Usa esta información para contextualizar tus respuestas de forma natural. No li
         // Add current message
         messages.push({ role: "user", content: message });
 
-        // Call Groq with cascade
-        const { reply, modelUsed } = await chatWithGroq(messages, {
-            temperature: 0.75,
-            maxTokens: 350, // Keep responses short and chat-like
-        });
-
-        // Increment usage count
+        // Increment usage count BEFORE streaming (optimistic)
+        // This allows us to return the new usage in headers
+        const newCount = currentCount + 1;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any)
             .from("coach_usage")
             .upsert({
                 user_id: user.id,
                 usage_date: today,
-                count: currentCount + 1,
+                count: newCount,
             }, { onConflict: "user_id,usage_date" });
 
-        // Save conversation to memory for persistence
-        try {
-            await saveCoachMemory(user.id, [
-                { role: "user", content: message, timestamp: new Date().toISOString() },
-                { role: "assistant", content: reply, timestamp: new Date().toISOString() },
-            ], forceNewChat);
-            console.log("[Coach] Conversation saved to memory");
-        } catch (memoryError) {
-            console.error("[Coach] Failed to save memory:", memoryError);
-            // Don't fail the request if memory save fails
-        }
+        // Create the stream
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    // Use the streaming client
+                    // We only import what we need dynamically or use the one at the top if changed
+                    const { streamChatWithGroq } = await import("@/lib/groqClient");
+                    const generator = streamChatWithGroq(messages, {
+                        temperature: 0.75,
+                        maxTokens: 350,
+                    });
 
-        return NextResponse.json({
-            response: reply,
-            modelUsed,
-            usage: {
-                used: currentCount + 1,
-                limit: DAILY_COACH_LIMIT,
+                    let fullResponse = "";
+                    let modelUsed = "unknown";
+
+                    for await (const chunk of generator) {
+                        fullResponse += chunk.content;
+                        modelUsed = chunk.modelUsed;
+                        controller.enqueue(encoder.encode(chunk.content));
+                    }
+
+                    // Stream finished successfully
+                    // Save conversation to memory
+                    try {
+                        await saveCoachMemory(user.id, [
+                            { role: "user", content: message, timestamp: new Date().toISOString() },
+                            { role: "assistant", content: fullResponse, timestamp: new Date().toISOString() },
+                        ], forceNewChat);
+                        console.log("[Coach] Conversation saved to memory (Model:", modelUsed, ")");
+                    } catch (memoryError) {
+                        console.error("[Coach] Failed to save memory:", memoryError);
+                    }
+
+                    controller.close();
+                } catch (e) {
+                    console.error("[Coach] Stream error:", e);
+                    controller.error(e);
+                }
             }
+        });
+
+        // Return the stream with usage headers
+        return new NextResponse(stream, {
+            headers: {
+                "Content-Type": "text/plain; charset=utf-8",
+                "X-Coach-Usage": String(newCount),
+                "X-Coach-Limit": String(DAILY_COACH_LIMIT),
+            },
         });
 
     } catch (error) {
         console.error("[Coach API] Error:", error);
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
+        // JSON error response
         return NextResponse.json(
             {
                 error: errorMessage.includes("GROQ_API_KEY")
