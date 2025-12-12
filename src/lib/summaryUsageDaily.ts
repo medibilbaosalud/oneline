@@ -2,6 +2,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SummaryMode = "standard" | "advanced";
 
+export type SummaryQuota = {
+  unlimited: boolean;
+  limit: number;
+  used: number;
+  remaining: number;
+  period: {
+    start: string;
+    end: string;
+  };
+  resetAt: string;
+};
+
 export type SummaryDailyUsageRow = {
   id: number;
   user_id: string;
