@@ -2,7 +2,12 @@
 
 import type { ReactNode } from "react";
 import { TourProvider } from "@/components/InteractiveTour";
+import { VisitorProvider } from "@/components/VisitorMode";
 
 export default function Providers({ children }: { children: ReactNode }) {
-  return <TourProvider>{children}</TourProvider>;
+  return (
+    <VisitorProvider>
+      <TourProvider>{children}</TourProvider>
+    </VisitorProvider>
+  );
 }

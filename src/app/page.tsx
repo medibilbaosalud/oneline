@@ -11,6 +11,7 @@ import { FeatureShowcase } from "@/components/FeatureShowcase";
 import { SocialProof, Testimonials } from "@/components/SocialProof";
 import { StoryPreview } from "@/components/StoryPreview";
 import { FAQ } from "@/components/FAQ";
+import { VisitorModeButton } from "@/components/VisitorModeButton";
 
 export const metadata: Metadata = {
   title: "OneLine — Capture your day in 30 seconds",
@@ -73,6 +74,7 @@ export default function Landing({ searchParams }: LandingProps) {
                 <span className="text-xs font-normal text-white/70">Free forever • No credit card</span>
               </span>
             </ShinyCTA>
+            <VisitorModeButton />
             <Link
               href="#demo"
               className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"

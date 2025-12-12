@@ -4,10 +4,10 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import { useVault } from "@/hooks/useVault";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { isSupabaseConfigured } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, isSupabaseConfigured } from "@/lib/supabaseBrowser";
 
 const TOUR_COMPLETED_KEY = "oneline:interactive-tour:completed";
+const VISITOR_TOUR_KEY = "oneline:visitor-tour:completed";
 
 // Tour step definition
 export type TourStep = {
@@ -191,12 +191,38 @@ export function TourProvider({ children }: { children: ReactNode }) {
     const [isActive, setIsActive] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
     const [hasChecked, setHasChecked] = useState(false);
+    const [isVisitorMode, setIsVisitorMode] = useState(false);
+
+    // Check if visitor mode
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const visitorMode = localStorage.getItem("oneline:visitor-mode") === "true";
+            setIsVisitorMode(visitorMode);
+        }
+    }, []);
 
     // Check if tour should auto-start
     useEffect(() => {
-        if (hasChecked || !dataKey) return;
+        if (hasChecked) return;
+
+        // Need either dataKey (authenticated) or visitor mode to show tour
+        if (!dataKey && !isVisitorMode) return;
 
         async function checkTourStatus() {
+            // Check for visitor mode tour completion
+            if (isVisitorMode) {
+                const hasSeenVisitorTour = typeof window !== "undefined" && localStorage.getItem(VISITOR_TOUR_KEY);
+                if (hasSeenVisitorTour) {
+                    setHasChecked(true);
+                    return;
+                }
+                // First time visitor - start tour!
+                setHasChecked(true);
+                setIsActive(true);
+                return;
+            }
+
+            // Regular authenticated user flow
             const hasSeenLocal = typeof window !== "undefined" && localStorage.getItem(TOUR_COMPLETED_KEY);
 
             if (hasSeenLocal) {
@@ -227,7 +253,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         }
 
         checkTourStatus();
-    }, [dataKey, hasChecked]);
+    }, [dataKey, hasChecked, isVisitorMode]);
 
     // Navigate to step's page if needed
     useEffect(() => {
@@ -248,12 +274,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
     const endTour = useCallback(async () => {
         setIsActive(false);
 
-        // Mark as completed
+        // Mark as completed based on mode
         if (typeof window !== "undefined") {
-            localStorage.setItem(TOUR_COMPLETED_KEY, "true");
+            if (isVisitorMode) {
+                localStorage.setItem(VISITOR_TOUR_KEY, "true");
+            } else {
+                localStorage.setItem(TOUR_COMPLETED_KEY, "true");
+            }
         }
 
-        if (isSupabaseConfigured()) {
+        // Only sync to Supabase for authenticated users
+        if (!isVisitorMode && isSupabaseConfigured()) {
             try {
                 const supabase = supabaseBrowser();
                 await supabase.auth.updateUser({
@@ -266,7 +297,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
                 console.error("[Tour] Failed to sync:", err);
             }
         }
-    }, []);
+    }, [isVisitorMode]);
 
     const nextStep = useCallback(() => {
         if (currentStep < TOUR_STEPS.length - 1) {
