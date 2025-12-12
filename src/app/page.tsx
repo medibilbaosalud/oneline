@@ -8,11 +8,24 @@ import { SignupFeedbackBanner } from "@/components/SignupFeedbackBanner";
 import { LandingDemo } from "@/components/LandingDemo";
 import { ComparisonTable } from "@/components/ComparisonTable";
 import { FeatureShowcase } from "@/components/FeatureShowcase";
+import { SocialProof, Testimonials } from "@/components/SocialProof";
+import { StoryPreview } from "@/components/StoryPreview";
+import { FAQ } from "@/components/FAQ";
 
 export const metadata: Metadata = {
   title: "OneLine — Capture your day in 30 seconds",
   description:
     "Not a note app. OneLine helps you write one encrypted line daily, then generates AI-powered stories from your weeks and months. Build real self-awareness.",
+  openGraph: {
+    title: "OneLine — Your brain forgets 80% of your day",
+    description: "Capture it in 30 seconds flat. Encrypted, private, AI-powered stories.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OneLine — Capture your day in 30 seconds",
+    description: "Not a note app. Build real self-awareness with encrypted daily journaling.",
+  },
 };
 
 type LandingProps = {
@@ -35,7 +48,7 @@ export default function Landing({ searchParams }: LandingProps) {
       <Aurora />
 
       {/* ============ HERO SECTION ============ */}
-      <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
+      <section className="relative mx-auto w-full max-w-6xl px-6 pt-12 md:pt-20">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
           {/* Differentiator badge */}
           <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-sm font-medium text-indigo-300">
@@ -43,21 +56,21 @@ export default function Landing({ searchParams }: LandingProps) {
             Not a note app
           </span>
 
-          <h1 className="mt-6 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-bold leading-tight text-transparent md:text-6xl lg:text-7xl">
-            Your brain forgets 80% of your day.
+          <h1 className="mt-6 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-bold leading-[1.1] text-transparent md:text-6xl lg:text-7xl">
+            Your brain forgets 80%<br className="hidden sm:block" /> of your day.
           </h1>
           <p className="mt-4 text-xl font-medium text-indigo-400 md:text-2xl">
             OneLine captures it in 30 seconds flat.
           </p>
           <p className="mt-4 max-w-xl text-pretty text-base text-zinc-400 md:text-lg">
-            Write 333 characters before bed. Get encrypted privacy, streaks that stick, and AI-generated stories of your weeks and months — in your own voice.
+            Write 333 characters before bed. Encrypted privacy. Streaks that stick. AI stories in your voice.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <ShinyCTA href="/today">
               <span className="flex flex-col items-center leading-tight">
                 <span>Start writing now</span>
-                <span className="text-xs font-normal text-white/70">Free • Encrypted • 30 seconds</span>
+                <span className="text-xs font-normal text-white/70">Free forever • No credit card</span>
               </span>
             </ShinyCTA>
             <Link
@@ -75,6 +88,11 @@ export default function Landing({ searchParams }: LandingProps) {
             <QuickStat value="E2E" label="encrypted" />
           </div>
         </div>
+      </section>
+
+      {/* ============ SOCIAL PROOF STATS ============ */}
+      <section className="relative mx-auto mt-16 w-full md:mt-24">
+        <SocialProof />
       </section>
 
       {/* ============ INTERACTIVE DEMO ============ */}
@@ -96,10 +114,15 @@ export default function Landing({ searchParams }: LandingProps) {
             Notes app? Been there, abandoned that.
           </h2>
           <p className="mt-2 max-w-lg mx-auto text-zinc-400">
-            You've tried journals, notes, and diaries. They all end the same way. Here's why OneLine actually sticks.
+            You've tried journals, notes, and diaries. They all end the same way.
           </p>
         </div>
         <ComparisonTable />
+      </section>
+
+      {/* ============ STORY PREVIEW ============ */}
+      <section className="relative mx-auto mt-24 w-full md:mt-32">
+        <StoryPreview />
       </section>
 
       {/* ============ FEATURE DEMOS ============ */}
@@ -109,6 +132,11 @@ export default function Landing({ searchParams }: LandingProps) {
           <p className="mt-2 text-zinc-400">The secret sauce that makes this habit stick</p>
         </div>
         <FeatureShowcase />
+      </section>
+
+      {/* ============ TESTIMONIALS ============ */}
+      <section className="relative mx-auto mt-24 w-full md:mt-32">
+        <Testimonials />
       </section>
 
       {/* ============ HOW IT WORKS ============ */}
@@ -140,7 +168,7 @@ export default function Landing({ searchParams }: LandingProps) {
                 Privacy that actually holds
               </h2>
               <p className="text-zinc-300">
-                Your passphrase creates the encryption key locally. We never see your plaintext — the servers only store ciphertext. Delete anytime, export everything, no questions asked.
+                Your passphrase creates the encryption key locally. We never see your plaintext — the servers only store ciphertext.
               </p>
               <ul className="space-y-2 text-sm text-zinc-300">
                 <li className="flex items-center gap-2">
@@ -174,8 +202,13 @@ export default function Landing({ searchParams }: LandingProps) {
         </div>
       </section>
 
+      {/* ============ FAQ ============ */}
+      <section className="relative mx-auto mt-24 w-full md:mt-32">
+        <FAQ />
+      </section>
+
       {/* ============ FINAL CTA ============ */}
-      <section className="relative mx-auto mt-24 w-full max-w-4xl px-6 pb-24 md:mt-32 md:pb-32">
+      <section className="relative mx-auto mt-24 w-full max-w-4xl px-6 md:mt-32">
         <div className="rounded-3xl border border-indigo-500/20 bg-gradient-to-b from-indigo-500/10 to-transparent p-10 text-center md:p-14">
           <h2 className="text-2xl font-semibold text-white md:text-4xl">
             Start your first line tonight
@@ -197,25 +230,55 @@ export default function Landing({ searchParams }: LandingProps) {
         </div>
       </section>
 
-      <footer className="border-t border-white/5 bg-[#06070A]">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-zinc-500 md:flex-row">
-          <span>© {new Date().getFullYear()} OneLine</span>
-          <div className="flex flex-wrap items-center gap-4">
-            <a className="transition hover:text-zinc-300" href="#how">
-              How it works
-            </a>
-            <a className="transition hover:text-zinc-300" href="/encryption">
-              Encryption
-            </a>
-            <a className="transition hover:text-zinc-300" href="/privacy">
-              Privacy
-            </a>
-            <Link
-              href="/today"
-              className="rounded-lg bg-indigo-600/90 px-4 py-2 font-medium text-white transition hover:bg-indigo-500"
-            >
-              Go to Today
-            </Link>
+      {/* ============ FOOTER ============ */}
+      <footer className="mt-24 border-t border-white/5 bg-[#06070A]">
+        <div className="mx-auto w-full max-w-6xl px-6 py-12">
+          <div className="grid gap-8 md:grid-cols-4">
+            {/* Brand */}
+            <div className="md:col-span-2">
+              <Link href="/" className="text-xl font-bold text-white">
+                OneLine
+              </Link>
+              <p className="mt-3 text-sm text-zinc-400 max-w-sm">
+                One honest line a day. Encrypted by default. AI-powered stories that read like you.
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 text-xs font-medium text-emerald-400">
+                  ✓ GDPR Compliant
+                </span>
+                <span className="rounded-full bg-indigo-500/20 border border-indigo-500/30 px-3 py-1 text-xs font-medium text-indigo-400">
+                  ✓ E2E Encrypted
+                </span>
+              </div>
+            </div>
+
+            {/* Links */}
+            <div>
+              <h4 className="text-sm font-semibold text-white mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><Link href="/today" className="hover:text-white transition">Today</Link></li>
+                <li><Link href="/history" className="hover:text-white transition">History</Link></li>
+                <li><Link href="/summaries" className="hover:text-white transition">Summaries</Link></li>
+                <li><Link href="/encryption" className="hover:text-white transition">Encryption</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold text-white mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-zinc-400">
+                <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white transition">Terms of Service</Link></li>
+                <li><Link href="/cookies" className="hover:text-white transition">Cookie Policy</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="mt-10 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+            <span>© {new Date().getFullYear()} OneLine. Made with 🧠 for self-awareness.</span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs">Built with Next.js • Hosted on Vercel</span>
+            </div>
           </div>
         </div>
       </footer>
