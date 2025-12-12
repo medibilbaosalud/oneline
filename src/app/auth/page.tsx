@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmailHint } from '@/lib/emailHint';
 import GoogleSignInButton from '@/app/components/GoogleSignInButton';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 function AuthPageInner() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -28,6 +29,27 @@ function AuthPageInner() {
       return '/today';
     }
   }, [nextParam]);
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const sb = supabaseBrowser();
+
+    // Check initial session
+    sb.auth.getSession().then((result: any) => {
+      if (result.data?.session) {
+        window.location.href = nextPath;
+      }
+    });
+
+    // Listen for changes (e.g. login success)
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event: any, session: any) => {
+      if (session) {
+        window.location.href = nextPath;
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [nextPath]);
 
   const emailHint = useMemo(
     () => (mode === 'signup' ? getEmailHint(email) : null),
