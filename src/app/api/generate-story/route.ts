@@ -124,8 +124,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { story, wordCount, tokenUsage } = await generateYearStory(entries, from, to, options, modelConfig);
+    const { story, wordCount, tokenUsage, modelUsed } = await generateYearStory(entries, from, to, options, modelConfig);
     const consumedTokens = tokenUsage?.totalTokenCount ?? 0;
+
+    if (mode === 'advanced' && !modelUsed?.includes('pro')) {
+      console.warn(`[SUMMARY] Advanced mode fallback triggered. Requested Pro but used: ${modelUsed}`);
+    }
 
     const updated = await updateDailyUsage(supabase, dailyUsage, mode, consumedTokens);
     await bumpMinuteUsage(supabase, minuteUsage, consumedTokens);

@@ -368,6 +368,20 @@ async function loadGenerativeModel(config: StoryModelConfig) {
   throw new Error('No Gemini model available for generateContent()');
 }
 
+// Comprehensive fallback list
+const STANDARD_MODELS = [
+  'gemini-2.5-flash',           // 1. Flash 2.5
+  'gemini-2.5-flash-preview',   // 2. Flash 2.5 Preview
+  'gemini-2.5-flash-001',       // 2b. Flash 2.5 Preview (alt name)
+  'gemini-2.5-flash-lite',      // 3. Flash-Lite 2.5
+  'gemini-2.5-flash-lite-preview', // 4. Flash-Lite 2.5 Preview
+  'gemini-2.5-flash-lite-001',  // 4b. Flash-Lite 2.5 Preview (alt name)
+  'gemini-2.0-flash',           // 5. Flash 2.0
+  'gemini-2.0-flash-lite',      // 6. Flash-Lite 2.0
+  'gemini-2.0-flash-lite-preview-02-05', // 6b. Flash-Lite 2.0 Preview
+  'gemini-1.5-flash',           // 7. Flash 1.5 (Last resort)
+];
+
 export async function generateYearStory(
   entries: YearStoryEntry[],
   from: string,
@@ -375,7 +389,7 @@ export async function generateYearStory(
   options: YearStoryOptions,
   modelConfig?: Partial<StoryModelConfig>,
   attempt: 0 | 1 = 0,
-) {
+): Promise<{ story: string; wordCount: number; tokenUsage: any; modelUsed: string }> {
   const feed = entriesToFeed(entries);
   const feedLimit = attempt === 0 ? 16000 : 9000;
   const trimmedFeed = limitFeed(feed, feedLimit);
@@ -386,24 +400,25 @@ export async function generateYearStory(
   const mode = modelConfig?.mode ?? 'standard';
 
   let modelsToTry: string[] = [];
+
+  // Logic: Always respect explicit request first, then cascade if allowed.
+  // For "advanced" mode, we WANT a cascade: Pro -> [Standard Fallback Stack]
+  // This ensures the user gets a story even if Pro is rate-limited.
+
   if (requestedModel) {
-    modelsToTry = [requestedModel];
+    if (mode === 'advanced' && requestedModel.includes('pro')) {
+      // If explicitly asking for Pro in advanced mode, fallback to standard stack
+      modelsToTry = [requestedModel, ...STANDARD_MODELS];
+    } else {
+      // Rigid request (e.g. testing)
+      modelsToTry = [requestedModel];
+    }
   } else if (mode === 'advanced') {
-    modelsToTry = ['gemini-2.5-pro'];
+    // Implicit Advanced -> Pro -> Fallback
+    modelsToTry = ['gemini-2.5-pro', ...STANDARD_MODELS];
   } else {
-    // Comprehensive fallback list as requested by user to avoid 429 errors
-    modelsToTry = [
-      'gemini-2.5-flash',           // 1. Flash 2.5
-      'gemini-2.5-flash-preview',   // 2. Flash 2.5 Preview
-      'gemini-2.5-flash-001',       // 2b. Flash 2.5 Preview (alt name)
-      'gemini-2.5-flash-lite',      // 3. Flash-Lite 2.5
-      'gemini-2.5-flash-lite-preview', // 4. Flash-Lite 2.5 Preview
-      'gemini-2.5-flash-lite-001',  // 4b. Flash-Lite 2.5 Preview (alt name)
-      'gemini-2.0-flash',           // 5. Flash 2.0
-      'gemini-2.0-flash-lite',      // 6. Flash-Lite 2.0
-      'gemini-2.0-flash-lite-preview-02-05', // 6b. Flash-Lite 2.0 Preview
-      'gemini-1.5-flash',           // 7. Flash 1.5 (Last resort)
-    ];
+    // Standard Mode -> Fallback stack
+    modelsToTry = [...STANDARD_MODELS];
   }
 
   let lastError: unknown = null;
@@ -433,6 +448,7 @@ export async function generateYearStory(
         story,
         wordCount: story.split(/\s+/).length,
         tokenUsage: response?.response?.usageMetadata ?? { totalTokenCount: 0 },
+        modelUsed: modelName,
       };
 
     } catch (error: unknown) {
