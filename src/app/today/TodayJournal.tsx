@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ProductTourAssistant } from '@/components/ProductTourAssistant';
+import { WelcomeTour } from '@/components/WelcomeTour';
 import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
 import { encryptText, decryptText } from '@/lib/crypto';
@@ -525,7 +525,7 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
       animate={{ opacity: 1 }}
       className="space-y-6"
     >
-      <ProductTourAssistant />
+      <WelcomeTour />
       <VaultGate>
         <div className="space-y-6">
           <AnimatePresence>
