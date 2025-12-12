@@ -785,24 +785,24 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
             </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 pb-40 bg-gradient-to-b from-neutral-950 to-neutral-900">
-                <div className="mx-auto max-w-2xl space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 pb-48 bg-neutral-950 scrollbar-hide">
+                <div className="mx-auto max-w-2xl space-y-6">
                     <AnimatePresence>
                         {messages.map((message) => (
                             <motion.div
                                 key={message.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                className={`flex gap-4 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
                             >
                                 {/* Avatar */}
-                                <div className={`flex-shrink-0 ${message.role === "user" ? "" : ""}`}>
+                                <div className="flex-shrink-0 mt-1">
                                     {message.role === "assistant" ? (
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm shadow">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-sm shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
                                             🧠
                                         </div>
                                     ) : (
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-700 text-sm">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-800 text-sm ring-1 ring-white/5">
                                             👤
                                         </div>
                                     )}
@@ -810,15 +810,15 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
 
                                 {/* Message bubble */}
                                 <div
-                                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === "user"
-                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20"
-                                        : "border border-white/5 bg-neutral-800/90 text-neutral-100"
+                                    className={`max-w-[85%] rounded-2xl px-5 py-3.5 shadow-sm ${message.role === "user"
+                                        ? "bg-indigo-600 text-white shadow-indigo-500/10 rounded-tr-none"
+                                        : "border border-white/5 bg-[#1F2430] text-neutral-100 rounded-tl-none"
                                         }`}
                                 >
-                                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed">
                                         {message.content}
                                     </p>
-                                    <p className={`mt-1 text-[10px] ${message.role === "user" ? "text-indigo-200/60" : "text-neutral-500"}`}>
+                                    <p className={`mt-1.5 text-[10px] font-medium ${message.role === "user" ? "text-indigo-200/60" : "text-neutral-500"}`}>
                                         {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
@@ -828,23 +828,23 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
 
                     {loading && (
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="flex gap-3"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex gap-4"
                         >
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-sm shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
                                 🧠
                             </div>
-                            <div className="rounded-2xl border border-white/5 bg-neutral-800/90 px-4 py-3">
+                            <div className="rounded-2xl rounded-tl-none border border-white/5 bg-[#1F2430] px-5 py-4 shadow-sm">
                                 <div className="flex items-center gap-1.5">
                                     <motion.span
-                                        animate={{ scale: [1, 1.2, 1] }}
-                                        transition={{ repeat: Infinity, duration: 0.6 }}
+                                        animate={{ scale: [1, 1.25, 1], opacity: [0.5, 1, 0.5] }}
+                                        transition={{ repeat: Infinity, duration: 1, ease: "easeInOut" }}
                                         className="h-2 w-2 rounded-full bg-indigo-400"
                                     />
                                     <motion.span
-                                        animate={{ scale: [1, 1.2, 1] }}
-                                        transition={{ repeat: Infinity, duration: 0.6, delay: 0.15 }}
+                                        animate={{ scale: [1, 1.25, 1], opacity: [0.5, 1, 0.5] }}
+                                        transition={{ repeat: Infinity, duration: 1, delay: 0.2, ease: "easeInOut" }}
                                         className="h-2 w-2 rounded-full bg-purple-400"
                                     />
                                     <motion.span
@@ -887,17 +887,18 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
             )}
 
             {/* Input */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-neutral-950/95 backdrop-blur-xl p-4 pb-6">
+            <div className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[#0c0e15]/80 backdrop-blur-2xl p-4 pb-6">
                 <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
-                    <div className="flex gap-3">
+                    <div className="flex gap-4 items-end">
                         {/* Microphone Button */}
-                        <button
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
                             type="button"
                             onClick={isRecording ? stopRecording : startRecording}
                             disabled={loading}
-                            className={`flex-shrink-0 rounded-xl p-3 transition ${isRecording
-                                ? "bg-rose-600 text-white animate-pulse shadow-lg shadow-rose-500/30"
-                                : "border border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white"
+                            className={`flex-shrink-0 rounded-2xl p-3.5 transition-all ${isRecording
+                                ? "bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/30"
+                                : "border border-white/5 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white"
                                 } disabled:opacity-50`}
                             title={isRecording ? "Stop recording" : "Voice input"}
                         >
@@ -910,9 +911,9 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                 </svg>
                             )}
-                        </button>
+                        </motion.button>
 
-                        <div className="relative flex-1">
+                        <div className="relative flex-1 group/input">
                             <textarea
                                 ref={inputRef}
                                 value={input}
@@ -923,22 +924,29 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                                         handleSubmit();
                                     }
                                 }}
-                                placeholder="Ask me anything about your journal..."
+                                placeholder="Reflect on your day..."
                                 rows={1}
                                 disabled={!hasConsent || usage.used >= usage.limit}
-                                className="w-full resize-none rounded-xl border border-white/10 bg-neutral-800/80 px-4 py-3 pr-12 text-sm text-white placeholder-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 disabled:opacity-50"
+                                className="w-full resize-none rounded-2xl border border-white/5 bg-white/5 px-5 py-3.5 pr-4 text-[15px] text-white placeholder-neutral-500 focus:bg-white/10 focus:outline-none transition-colors disabled:opacity-50 scrollbar-hide"
+                                style={{ minHeight: "52px", maxHeight: "120px" }}
                             />
+                            {/* Glow effect on focus */}
+                            <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-transparent group-focus-within/input:ring-indigo-500/30 transition-all pointer-events-none" />
                         </div>
 
-                        <button
+                        <motion.button
+                            whileTap={{ scale: 0.95 }}
                             type="submit"
                             disabled={!input.trim() || loading || !hasConsent}
-                            className="flex-shrink-0 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 p-3 text-white shadow-lg shadow-indigo-500/30 transition hover:shadow-indigo-500/50 disabled:opacity-50 disabled:shadow-none"
+                            className={`flex-shrink-0 rounded-2xl p-3.5 text-white shadow-lg transition-all ${!input.trim() || loading || !hasConsent
+                                    ? 'bg-white/5 text-neutral-600 shadow-none'
+                                    : 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-indigo-500/30 hover:shadow-indigo-500/50'
+                                }`}
                         >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            <svg className="h-5 w-5 translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
-                        </button>
+                        </motion.button>
                     </div>
                 </form>
             </div>

@@ -378,16 +378,16 @@ export default function HistoryClient({
                 className="relative pl-14 pb-6"
               >
                 {/* Timeline dot */}
-                <div className="absolute left-4 top-6 flex h-5 w-5 items-center justify-center">
-                  <div className={`h-3 w-3 rounded-full ${entry.error ? 'bg-rose-500' : entry.legacy ? 'bg-amber-500' : 'bg-indigo-500'}`} />
+                <div className="absolute left-[1.15rem] top-7 flex h-4 w-4 items-center justify-center z-10">
+                  <div className={`h-2.5 w-2.5 rounded-full ring-4 ring-neutral-950 ${entry.error ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : entry.legacy ? 'bg-amber-500' : 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]'}`} />
                 </div>
 
                 {/* Entry card */}
-                <div className={`rounded-2xl border p-5 transition-all ${isEditing
-                    ? 'border-indigo-500/50 bg-indigo-500/5'
-                    : entry.error
-                      ? 'border-rose-500/30 bg-rose-500/5'
-                      : 'border-white/10 bg-neutral-900/60 hover:border-white/20'
+                <div className={`group rounded-3xl border p-6 transition-all duration-300 ${isEditing
+                  ? 'border-indigo-500/50 bg-indigo-500/10 shadow-lg shadow-indigo-500/10'
+                  : entry.error
+                    ? 'border-rose-500/30 bg-rose-500/5'
+                    : 'border-white/5 bg-white/5 backdrop-blur-md hover:border-white/10 hover:shadow-xl hover:translate-x-1 hover:bg-white/[0.07]'
                   }`}>
                   {/* Header */}
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

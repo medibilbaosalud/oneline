@@ -615,17 +615,17 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
           {/* Main Writing Area - Full Width on Mobile, 2/3 on Desktop */}
           <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
             {/* Entry Section - Given more prominence */}
-            <section className="flex flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg relative overflow-hidden">
-              {/* Gradient accent */}
-              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+            <section className="flex flex-col rounded-3xl border border-white/5 bg-neutral-900/40 p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden group transition-colors hover:border-white/10">
+              {/* Gradient accent - thinner and animated */}
+              <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent group-hover:via-indigo-400/80 transition-all duration-700" />
 
               {/* Header with date controls */}
-              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">{displayDate}</h2>
-                  <p className="mt-1 text-sm text-neutral-400">What happened today? Keep it brief.</p>
+                  <h2 className="text-3xl font-bold tracking-tight text-white">{displayDate}</h2>
+                  <p className="text-sm font-medium text-indigo-400/80 mt-1">Daily Chronicle</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-xl bg-white/5 p-1">
                   <input
                     type="date"
                     max={todayString}
@@ -637,13 +637,16 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                         setSelectedDay(capped);
                       }
                     }}
-                    className="rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500"
+                    className="bg-transparent px-3 py-1.5 text-sm font-medium text-neutral-300 outline-none focus:text-white [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-50 [&::-webkit-calendar-picker-indicator]:hover:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                   />
                   <button
                     type="button"
                     onClick={() => setSelectedDay(todayString)}
                     disabled={isToday}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${isToday ? 'bg-indigo-500/20 text-indigo-300' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${isToday
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/10'
+                      }`}
                   >
                     Today
                   </button>
@@ -651,7 +654,10 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                     type="button"
                     onClick={() => setSelectedDay(yesterdayString)}
                     disabled={selectedDay === yesterdayString}
-                    className="rounded-lg bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-neutral-700 disabled:opacity-50"
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${selectedDay === yesterdayString
+                      ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+                      : 'text-neutral-400 hover:text-white hover:bg-white/10'
+                      }`}
                   >
                     Yesterday
                   </button>
@@ -659,26 +665,30 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
               </div>
 
               {/* Textarea - Made larger and more prominent */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 group/input">
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value.slice(0, entryLimit))}
                   maxLength={entryLimit}
                   disabled={legacyReadOnly || saving || loadingEntry}
                   placeholder="One line that captures your day…"
-                  className="min-h-[280px] w-full resize-none rounded-xl border border-white/10 bg-black/30 p-5 text-lg leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/40 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="min-h-[320px] w-full resize-none rounded-2xl border border-white/5 bg-black/20 p-6 text-xl leading-relaxed text-zinc-100 placeholder:text-neutral-600 focus:outline-none focus:bg-black/30 transition-colors disabled:cursor-not-allowed disabled:opacity-70 scrollbar-hide"
                 />
+
+                {/* Visual Focus Ring (separated for cleaner look) */}
+                <div className="pointer-events-none absolute inset-0 rounded-2xl border border-transparent group-focus-within/input:border-indigo-500/30 transition-colors" />
+
                 {/* Character counter - Floating */}
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-neutral-800">
+                <div className="absolute bottom-4 right-4 flex items-center gap-3 rounded-full bg-black/40 px-3 py-1.5 backdrop-blur-sm border border-white/5">
+                  <div className="h-1 w-16 overflow-hidden rounded-full bg-white/10">
                     <motion.div
                       className={`h-full rounded-full ${text.length >= entryLimit ? 'bg-rose-500' : 'bg-indigo-500'}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${(text.length / entryLimit) * 100}%` }}
                     />
                   </div>
-                  <span className={`text-xs font-medium ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-500'}`}>
-                    {text.length}/{entryLimit}
+                  <span className={`text-xs font-medium ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-400'}`}>
+                    {entryLimit - text.length}
                   </span>
                 </div>
               </div>
@@ -689,8 +699,8 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                 </p>
               )}
 
-              {/* Actions Bar */}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              {/* Actions Bar - Glassy and organized */}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-white/5 pt-4">
                 <div className="flex items-center gap-2">
                   <SpeechToText
                     onTranscript={(transcript) => {
@@ -706,43 +716,48 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                       setLegacyReadOnly(false);
                     }}
                     disabled={saving || loadingEntry || !text}
-                    className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-300 transition hover:bg-neutral-700 disabled:opacity-40"
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-neutral-400 transition hover:text-white hover:bg-white/5 disabled:opacity-40"
                   >
                     Clear
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {/* Mood Selector - Inline */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Mood Selector toggle */}
                   {isToday && (
-                    <div className="flex items-center gap-2 rounded-xl bg-neutral-800/60 px-3 py-2">
-                      <span className="text-xs text-neutral-500">Mood:</span>
+                    <div className="hidden sm:block">
                       <MoodSelector value={selectedMood} onChange={setSelectedMood} compact />
                     </div>
                   )}
 
                   {/* Save Button with feedback */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <AnimatePresence>
                       {msg && (
                         <motion.span
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0 }}
-                          className="text-sm font-medium text-emerald-400"
+                          initial={{ opacity: 0, x: 10, filter: "blur(4px)" }}
+                          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="hidden text-xs font-medium text-emerald-400 sm:block"
                         >
                           {msg}
                         </motion.span>
                       )}
                     </AnimatePresence>
                     <motion.button
-                      whileTap={{ scale: 0.97 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       type="button"
                       onClick={save}
                       disabled={!text.trim() || saving || loadingEntry}
-                      className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-indigo-500/40 disabled:opacity-40 disabled:shadow-none"
+                      className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:shadow-indigo-500/40 disabled:opacity-40 disabled:shadow-none"
                     >
-                      {saving ? 'Saving…' : 'Save entry'}
+                      <span className="relative z-10 flex items-center gap-2">
+                        {saving && <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>}
+                        {saving ? 'Saving…' : 'Save Entry'}
+                      </span>
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shine" />
                     </motion.button>
                   </div>
                 </div>
@@ -752,32 +767,49 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
             {/* Streak Sidebar - More Visual */}
             <aside className="space-y-4">
               {/* Streak Hero Card */}
-              <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-red-500/5 to-transparent p-5">
-                <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-orange-500/20 blur-2xl" />
-                <div className="relative">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-wider text-orange-300">Current Streak</span>
-                    <motion.span
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="text-2xl"
-                    >
-                      {(streak?.current ?? 0) > 0 ? '🔥' : '💨'}
-                    </motion.span>
+              <div className="relative overflow-hidden rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-amber-900/10 to-transparent p-6 shadow-xl backdrop-blur-md">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-orange-500/20 blur-3xl opacity-50" />
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="inline-block rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-orange-300 border border-orange-500/20 mb-2">Current Streak</span>
+                      <p className="text-5xl font-bold tracking-tight text-white mb-1 shadow-orange-500/50 drop-shadow-lg">{streak?.current ?? 0}</p>
+                      <p className="text-sm font-medium text-orange-200/60">consecutive days</p>
+                    </div>
+                    <div className="relative">
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0], opacity: [0.8, 1, 0.8] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                        className="text-4xl drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]"
+                      >
+                        {(streak?.current ?? 0) > 0 ? '🔥' : '🌑'}
+                      </motion.div>
+                    </div>
                   </div>
-                  <p className="mt-2 text-4xl font-bold text-white">{streak?.current ?? 0} <span className="text-lg font-normal text-neutral-400">days</span></p>
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-orange-500 to-yellow-400"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPercent}%` }}
-                      transition={{ duration: 1 }}
-                    />
+
+                  <div className="mt-6">
+                    <div className="flex justify-between text-xs font-medium mb-1.5">
+                      <span className="text-neutral-400">Progress</span>
+                      <span className="text-orange-300">{progressPercent}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-black/40 border border-white/5">
+                      <motion.div
+                        className="h-full rounded-full bg-gradient-to-r from-orange-600 via-orange-500 to-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPercent}%` }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                      />
+                    </div>
                   </div>
+
                   {upcomingCompanion && (
-                    <p className="mt-2 text-xs text-neutral-400">
-                      {upcomingCompanion.emoji} {upcomingCompanion.name} unlocks at {upcomingCompanion.min} days
-                    </p>
+                    <div className="mt-4 flex items-center gap-3 rounded-lg bg-white/5 p-3 border border-white/5">
+                      <span className="text-xl opacity-50 grayscale filter">{upcomingCompanion.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-neutral-300 truncate">{upcomingCompanion.name}</p>
+                        <p className="text-[10px] text-neutral-500">Unlocks at {upcomingCompanion.min} days</p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
