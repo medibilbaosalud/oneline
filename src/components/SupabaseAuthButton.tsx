@@ -3,17 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, isSupabaseConfigured } from "@/lib/supabaseBrowser";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 export default function SupabaseAuthButton() {
-  const supabase = useMemo(() => supabaseBrowser(), []);
+  const configured = isSupabaseConfigured();
+  const supabase = useMemo(() => configured ? supabaseBrowser() : null, [configured]);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     (async () => {
@@ -65,7 +71,9 @@ export default function SupabaseAuthButton() {
       </div>
       <button
         onClick={async () => {
-          await supabase.auth.signOut();
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
           router.replace("/today");
           router.refresh();
         }}

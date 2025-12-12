@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { SupabaseClient, AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { supabaseBrowser, isSupabaseConfigured } from "@/lib/supabaseBrowser";
 import { useVault } from "@/hooks/useVault";
 
 export type NotificationRecord = {
@@ -27,7 +27,9 @@ function formatDate(input: string) {
 }
 
 export default function NotificationsBell() {
-  const supabase = useMemo(() => supabaseBrowser() as SupabaseClient<any, "public", any>, []);
+  // Early return if Supabase is not configured
+  const configured = isSupabaseConfigured();
+
   const { dataKey } = useVault();
   const [userId, setUserId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -45,6 +47,12 @@ export default function NotificationsBell() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const alertsAllowed = useMemo(() => !!dataKey && pathname?.startsWith("/today"), [dataKey, pathname]);
+
+  // Get supabase client only if configured (will never be null when used below due to early return)
+  const supabase = useMemo(() => {
+    if (!configured) return null;
+    return supabaseBrowser() as SupabaseClient<any, "public", any>;
+  }, [configured]);
 
   useEffect(() => {
     return () => {
@@ -64,6 +72,8 @@ export default function NotificationsBell() {
   };
 
   useEffect(() => {
+    if (!supabase) return;
+
     let active = true;
 
     (async () => {
@@ -99,6 +109,11 @@ export default function NotificationsBell() {
       if (overlayTimer.current) clearTimeout(overlayTimer.current);
     };
   }, [supabase]);
+
+  // Early return if Supabase is not configured - render nothing
+  if (!configured || !supabase) {
+    return null;
+  }
 
   const loadNotifications = async (uid: string) => {
     setLoading(true);
@@ -371,8 +386,8 @@ export default function NotificationsBell() {
                 <div
                   key={note.id}
                   className={`group w-full rounded-2xl border px-4 py-3 text-left transition ${note.is_read
-                      ? "border-white/5 bg-neutral-900/80"
-                      : "border-indigo-400/30 bg-indigo-950/30 shadow-[0_14px_40px_-22px_rgba(99,102,241,0.9)]"
+                    ? "border-white/5 bg-neutral-900/80"
+                    : "border-indigo-400/30 bg-indigo-950/30 shadow-[0_14px_40px_-22px_rgba(99,102,241,0.9)]"
                     }`}
                 >
                   <div className="flex items-start justify-between gap-3">

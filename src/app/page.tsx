@@ -5,12 +5,14 @@ import type { Metadata } from "next";
 export const dynamic = 'force-dynamic';
 
 import { SignupFeedbackBanner } from "@/components/SignupFeedbackBanner";
-import { LandingOnboardingSection } from "@/components/LandingOnboardingSection";
+import { LandingDemo } from "@/components/LandingDemo";
+import { ComparisonTable } from "@/components/ComparisonTable";
+import { FeatureShowcase } from "@/components/FeatureShowcase";
 
 export const metadata: Metadata = {
-  title: "OneLine — One honest line a day",
+  title: "OneLine — Capture your day in 30 seconds",
   description:
-    "Write up to 333 characters about your day, encrypted end to end by a passphrase only you know. Build a science-backed reflection habit and generate stories that read like you.",
+    "Not a note app. OneLine helps you write one encrypted line daily, then generates AI-powered stories from your weeks and months. Build real self-awareness.",
 };
 
 type LandingProps = {
@@ -32,196 +34,166 @@ export default function Landing({ searchParams }: LandingProps) {
 
       <Aurora />
 
+      {/* ============ HERO SECTION ============ */}
       <section className="relative mx-auto w-full max-w-6xl px-6 pt-16 md:pt-24">
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <Badge>Private • 333 characters • Daily momentum</Badge>
+          {/* Differentiator badge */}
+          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 text-sm font-medium text-indigo-300">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-400" />
+            Not a note app
+          </span>
 
-          <h1 className="mt-4 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-6xl">
-            One honest line a day.
+          <h1 className="mt-6 bg-gradient-to-br from-white via-zinc-200 to-zinc-500 bg-clip-text text-4xl font-bold leading-tight text-transparent md:text-6xl lg:text-7xl">
+            Your brain forgets 80% of your day.
           </h1>
-          <p className="mt-4 max-w-2xl text-pretty text-lg text-zinc-300">
-            Capture a single, encrypted line in under a minute. OneLine keeps it private, turns it into science-backed reflection, and helps you notice the patterns that change you.
+          <p className="mt-4 text-xl font-medium text-indigo-400 md:text-2xl">
+            OneLine captures it in 30 seconds flat.
+          </p>
+          <p className="mt-4 max-w-xl text-pretty text-base text-zinc-400 md:text-lg">
+            Write 333 characters before bed. Get encrypted privacy, streaks that stick, and AI-generated stories of your weeks and months — in your own voice.
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <ShinyCTA href="/today">
               <span className="flex flex-col items-center leading-tight">
-                <span>Start now</span>
-                <span className="text-xs font-normal text-white/80">No credit card. Encrypted by default.</span>
+                <span>Start writing now</span>
+                <span className="text-xs font-normal text-white/70">Free • Encrypted • 30 seconds</span>
               </span>
             </ShinyCTA>
             <Link
-              href="/encryption"
+              href="#demo"
               className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
             >
-              See how encryption works
-            </Link>
-            <Link
-              href="/visitor"
-              className="rounded-xl bg-gradient-to-r from-indigo-500/70 via-purple-500/70 to-emerald-500/70 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:from-indigo-400 hover:via-purple-400 hover:to-emerald-400"
-            >
-              Explore visitor mode
+              Watch it work ↓
             </Link>
           </div>
 
-          <div className="mt-10 grid w-full max-w-3xl grid-cols-1 gap-3 text-left md:grid-cols-3">
-            <Stat k="7s" v="Average time to write a line" />
-            <Stat k="92%" v="Return the next week and keep going" />
-            <Stat k="0 ads" v="Your words stay private. Always." />
+          {/* Quick stats */}
+          <div className="mt-10 grid w-full max-w-xl grid-cols-3 gap-3 text-center">
+            <QuickStat value="333" label="characters max" />
+            <QuickStat value="30s" label="avg. time" />
+            <QuickStat value="E2E" label="encrypted" />
           </div>
         </div>
       </section>
 
-      <section id="benefits" className="relative mx-auto mt-14 w-full max-w-6xl px-6 md:mt-20">
+      {/* ============ INTERACTIVE DEMO ============ */}
+      <section id="demo" className="relative mx-auto mt-20 w-full max-w-6xl px-6 md:mt-28">
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-semibold text-white md:text-3xl">See it in action</h2>
+          <p className="mt-2 text-zinc-400">Watch how fast one line gets saved and encrypted</p>
+        </div>
+        <LandingDemo />
+      </section>
+
+      {/* ============ COMPARISON TABLE ============ */}
+      <section className="relative mx-auto mt-24 w-full max-w-6xl px-6 md:mt-32">
+        <div className="mb-10 text-center">
+          <span className="inline-block rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-zinc-400">
+            Why this is different
+          </span>
+          <h2 className="mt-4 text-2xl font-semibold text-white md:text-3xl">
+            Notes app? Been there, abandoned that.
+          </h2>
+          <p className="mt-2 max-w-lg mx-auto text-zinc-400">
+            You've tried journals, notes, and diaries. They all end the same way. Here's why OneLine actually sticks.
+          </p>
+        </div>
+        <ComparisonTable />
+      </section>
+
+      {/* ============ FEATURE DEMOS ============ */}
+      <section className="relative mx-auto mt-24 w-full max-w-6xl px-6 md:mt-32">
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-semibold text-white md:text-3xl">Three things that change everything</h2>
+          <p className="mt-2 text-zinc-400">The secret sauce that makes this habit stick</p>
+        </div>
+        <FeatureShowcase />
+      </section>
+
+      {/* ============ HOW IT WORKS ============ */}
+      <section id="how" className="mx-auto mt-24 w-full max-w-6xl px-6 md:mt-32">
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-semibold text-white md:text-3xl">How it works</h2>
+          <p className="mt-2 text-zinc-400">Your evening ritual in 3 steps</p>
+        </div>
         <div className="grid gap-5 md:grid-cols-3">
-          <FeatureCard
-            title="Write fast"
-            desc="333 characters max means two or three sentences — enough to remember, never enough to stall."
-            emoji="⏱️"
-          />
-          <FeatureCard
-            title="Encrypted by default"
-            desc="Your passphrase derives the key locally; servers only see ciphertext."
-            emoji="🔒"
-          />
-          <FeatureCard
-            title="Stories that sound like you"
-            desc="Generate monthly, quarterly, or yearly recaps without rewriting. Tone and highlights stay faithful to your words."
-            emoji="📖"
-          />
+          <StepCard n="1" title="Write one line before bed">
+            Two or three sentences about your day. That's it — 333 characters max.
+          </StepCard>
+          <StepCard n="2" title="It's encrypted instantly">
+            Your passphrase creates the key. Servers only see ciphertext.
+          </StepCard>
+          <StepCard n="3" title="Generate your story">
+            Pick a week, month, or year. AI writes your narrative in your voice.
+          </StepCard>
         </div>
       </section>
 
-      <section className="relative mx-auto mt-16 w-full max-w-6xl px-6 md:mt-20">
-        <div className="space-y-8 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-indigo-500/10 backdrop-blur">
-          <div className="space-y-2 text-center md:text-left">
-            <h2 className="text-3xl font-semibold text-white md:text-4xl">Why OneLine matters now</h2>
-            <p className="text-base text-zinc-300 md:text-lg">
-              Your brain wasn’t built for endless feeds, scattered notes, and 20-minute journaling sessions. OneLine gives you a tiny daily pause that actually fits your life.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <FeatureCard
-              title="Life blurs together"
-              desc="Most days disappear in a scroll of notifications. Without a simple way to capture what mattered, weeks feel the same and it’s hard to see your own story."
-              emoji="🌫️"
-            />
-            <FeatureCard
-              title="Your brain is biased"
-              desc="We remember stressful or odd moments more than the quiet wins. That makes you feel stuck, even when you’re actually growing."
-              emoji="🧠"
-            />
-            <FeatureCard
-              title="You need something tiny"
-              desc="Big journaling apps feel like another task. OneLine asks for just 333 characters — two or three sentences — so you can keep the habit even on rough days."
-              emoji="✨"
-            />
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <h3 className="text-2xl font-semibold text-white">What changes when you write one line a day</h3>
-                <p className="text-sm text-zinc-300 md:text-base">
-                  In 30–60 seconds a night, you quietly train attention, memory, and self-awareness. Over a few weeks, that compounds into real change:
-                </p>
-              </div>
-              <ul className="space-y-2 text-sm text-zinc-200 md:text-base">
-                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />You notice small wins instead of only problems.</li>
-                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-indigo-400" />You remember what actually happened, not just how you felt in the worst moment.</li>
-                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-fuchsia-400" />You see patterns in your mood, energy, and choices.</li>
-                <li className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-cyan-400" />You have a written record when you need to make decisions about work, relationships, or health.</li>
+      {/* ============ PRIVACY SECTION (Condensed) ============ */}
+      <section className="relative mx-auto mt-24 w-full max-w-6xl px-6 md:mt-32">
+        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/5 via-transparent to-indigo-500/5 p-8 md:p-12">
+          <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-center">
+            <div className="space-y-4">
+              <span className="inline-block text-3xl">🔐</span>
+              <h2 className="text-2xl font-semibold text-white md:text-3xl">
+                Privacy that actually holds
+              </h2>
+              <p className="text-zinc-300">
+                Your passphrase creates the encryption key locally. We never see your plaintext — the servers only store ciphertext. Delete anytime, export everything, no questions asked.
+              </p>
+              <ul className="space-y-2 text-sm text-zinc-300">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  AES-GCM encryption before anything touches the cloud
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Zero-knowledge — we can't read your entries even if we wanted to
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Export your data anytime in plain JSON
+                </li>
               </ul>
+              <Link
+                href="/encryption"
+                className="inline-flex items-center gap-2 text-sm font-medium text-indigo-400 hover:text-indigo-300 transition"
+              >
+                Learn how encryption works <span aria-hidden>→</span>
+              </Link>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-6 shadow-[0_18px_60px_rgba(79,70,229,0.25)]">
-            <div className="space-y-2">
-              <h3 className="text-2xl font-semibold text-white">Built on a method your brain already likes</h3>
-              <p className="text-sm text-zinc-200 md:text-base">
-                OneLine is designed around <strong>Tiny Habits + expressive writing</strong>, two approaches with decades of research behind them:
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center">
+              <p className="text-xs uppercase tracking-widest text-zinc-500 mb-3">Passphrase = Key</p>
+              <p className="text-lg font-semibold text-white mb-2">Lose it and the vault stays sealed</p>
+              <p className="text-sm text-zinc-400">
+                We cannot reset your passphrase. That's the whole point.
               </p>
             </div>
-            <div className="mt-4 space-y-3 text-sm text-zinc-100 md:text-base">
-              <p><strong>Tiny Habits framework.</strong> Stanford behavior scientist BJ Fogg showed that tiny, 30-second actions attached to an existing routine are far more likely to stick than ambitious goals. OneLine turns reflection into one tiny habit before bed or after brushing your teeth.</p>
-              <p><strong>Expressive & positive journaling.</strong> Studies on expressive writing and brief online journaling have found improvements in mood, stress, resilience, and even physical health when people regularly write about their thoughts and feelings.</p>
-              <p><strong>Gratitude-style highlights.</strong> Simple practices where you record a few good moments each day can increase happiness and reduce depressive symptoms. OneLine’s 333-character limit captures those highlights without pressure.</p>
-              <p className="text-zinc-300">OneLine doesn’t promise therapy or miracles — it gives you a tiny, science-informed ritual you can keep, so the benefits compound over time.</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-center gap-3 text-center md:flex-row md:justify-between md:text-left">
-            <div className="text-sm text-zinc-300 md:text-base">
-              Start your first line tonight — it’s free, takes under 30 seconds, and you can export everything anytime. No credit card. Encrypted by default.
-            </div>
-            <ShinyCTA href="/today">
-              <span className="flex flex-col items-center leading-tight">
-                <span>Start writing now</span>
-                <span className="text-xs font-normal text-white/80">No credit card. Encrypted by default.</span>
-              </span>
-            </ShinyCTA>
           </div>
         </div>
       </section>
 
-      <section className="relative mx-auto mt-16 w-full max-w-6xl px-6 md:mt-20">
-        <div className="grid gap-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent p-6 backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
-          <div className="space-y-4 text-pretty text-base leading-relaxed text-zinc-300 md:text-lg">
-            <h2 className="text-left text-2xl font-semibold text-white">Privacy that actually holds</h2>
-            <p className="text-zinc-300">Everything happens client-side: key derivation, encryption, and unlock. We never see your passphrase or plaintext.</p>
-            <ul className="space-y-3 text-sm leading-relaxed text-zinc-200 md:text-base">
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span><strong>End-to-end by default.</strong> AES-GCM before anything touches Supabase.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span><strong>Passphrase = key.</strong> Lose it and the vault stays sealed; we cannot reset it.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                <span><strong>Your data, your terms.</strong> Export or delete anytime without requests or support tickets.</span>
-              </li>
-            </ul>
+      {/* ============ FINAL CTA ============ */}
+      <section className="relative mx-auto mt-24 w-full max-w-4xl px-6 pb-24 md:mt-32 md:pb-32">
+        <div className="rounded-3xl border border-indigo-500/20 bg-gradient-to-b from-indigo-500/10 to-transparent p-10 text-center md:p-14">
+          <h2 className="text-2xl font-semibold text-white md:text-4xl">
+            Start your first line tonight
+          </h2>
+          <p className="mt-3 text-zinc-400 max-w-lg mx-auto">
+            Takes 30 seconds. Free forever for daily entries. Your words stay encrypted and private.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <ShinyCTA href="/today" large>
+              Start writing now
+            </ShinyCTA>
             <Link
-              href="/encryption"
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_40px_rgba(79,70,229,0.25)] transition hover:border-indigo-300/50 hover:bg-indigo-500/20"
+              href="/visitor"
+              className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:bg-white/10"
             >
-              Learn how the vault works <span aria-hidden>→</span>
+              Try visitor mode first
             </Link>
           </div>
-          <div className="space-y-4 rounded-2xl border border-white/10 bg-black/30 p-5 text-left text-sm leading-relaxed text-zinc-200 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-            <h3 className="text-lg font-semibold text-white">Built to change you</h3>
-            <ul className="space-y-3 text-zinc-300">
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-400" />
-                <span><strong>Daily micro-reflection.</strong> Neuroscience shows short, consistent check-ins reduce stress and sharpen recall.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                <span><strong>Identity-first habit.</strong> 333 characters train you to notice who you are becoming, not just what you did.</span>
-              </li>
-              <li className="flex gap-3">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-fuchsia-400" />
-                <span><strong>Stories powered by your words.</strong> Recaps keep your tone and highlight the growth you care about.</span>
-              </li>
-            </ul>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-200">
-              <p className="text-xs uppercase tracking-[0.24em] text-indigo-200/80">No recovery</p>
-              <p className="mt-2 text-sm text-zinc-300">True privacy means we cannot unlock for you—protect your passphrase.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <LandingOnboardingSection />
-
-      <section id="how" className="mx-auto mt-16 w-full max-w-6xl px-6 pb-16 md:mt-24 md:pb-20">
-        <div className="grid gap-5 md:grid-cols-3">
-          <StepCard n="1" title="End the day with one line">Two or three sentences that fit inside 333 characters.</StepCard>
-          <StepCard n="2" title="Unlock with your passphrase">Write and read only when the vault is open locally.</StepCard>
-          <StepCard n="3" title="Generate a recap">Pick a period — last week, month, quarter, or year — and see your progress in your own voice.</StepCard>
         </div>
       </section>
 
@@ -229,14 +201,14 @@ export default function Landing({ searchParams }: LandingProps) {
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-zinc-500 md:flex-row">
           <span>© {new Date().getFullYear()} OneLine</span>
           <div className="flex flex-wrap items-center gap-4">
-            <a className="transition hover:text-zinc-300" href="#benefits">
-              Benefits
-            </a>
             <a className="transition hover:text-zinc-300" href="#how">
               How it works
             </a>
             <a className="transition hover:text-zinc-300" href="/encryption">
               Encryption
+            </a>
+            <a className="transition hover:text-zinc-300" href="/privacy">
+              Privacy
             </a>
             <Link
               href="/today"
@@ -253,39 +225,11 @@ export default function Landing({ searchParams }: LandingProps) {
 
 /* ---------- Tiny components ---------- */
 
-function Badge({ children }: { children: React.ReactNode }) {
+function QuickStat({ value, label }: { value: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-300 backdrop-blur">
-      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-      {children}
-    </span>
-  );
-}
-
-function Stat({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur transition hover:bg-white/10">
-      <div className="text-2xl font-semibold text-white">{k}</div>
-      <div className="mt-1 text-sm text-zinc-400">{v}</div>
-    </div>
-  );
-}
-
-function FeatureCard({
-  title,
-  desc,
-  emoji,
-}: {
-  title: string;
-  desc: string;
-  emoji: string;
-}) {
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-      <div className="absolute -inset-20 -z-10 scale-0 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.15),transparent_60%)] blur-2xl transition-all duration-500 group-hover:scale-100" />
-      <div className="text-2xl">{emoji}</div>
-      <h3 className="mt-2 text-base font-semibold text-zinc-200">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{desc}</p>
+    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+      <div className="text-xl font-bold text-white">{value}</div>
+      <div className="text-xs text-zinc-500">{label}</div>
     </div>
   );
 }
@@ -300,11 +244,11 @@ function StepCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-      <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+      <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold text-white">
         {n}
       </div>
-      <h4 className="text-base font-semibold text-zinc-200">{title}</h4>
+      <h4 className="text-lg font-semibold text-white">{title}</h4>
       <p className="mt-2 text-sm text-zinc-400">{children}</p>
     </div>
   );
@@ -313,14 +257,17 @@ function StepCard({
 function ShinyCTA({
   href,
   children,
+  large,
 }: {
   href: string;
   children: React.ReactNode;
+  large?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="shiny-cta relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-fuchsia-500/25"
+      className={`shiny-cta relative inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-fuchsia-500/25 ${large ? "px-8 py-4 text-base" : "px-6 py-3 text-sm"
+        }`}
     >
       <span className="sweep absolute inset-0 overflow-hidden rounded-xl" />
       {children}
