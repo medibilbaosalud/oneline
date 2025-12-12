@@ -702,67 +702,67 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
             </AnimatePresence>
 
             {/* Header */}
-            <header className="border-b border-white/10 bg-neutral-950/95 px-4 py-3 backdrop-blur-sm">
+            <header className="border-b border-white/10 bg-gradient-to-r from-neutral-950 via-neutral-900/95 to-neutral-950 px-4 py-4 backdrop-blur-sm">
                 <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-xl">
-                            🧠
+                        <div className="relative">
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 blur opacity-60" />
+                            <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl shadow-lg">
+                                🧠
+                            </div>
                         </div>
                         <div>
-                            <h1 className="font-semibold text-white">AI Coach</h1>
-                            <p className="text-xs text-neutral-400">Your personal companion</p>
+                            <h1 className="text-lg font-bold text-white">AI Coach</h1>
+                            <p className="text-xs text-neutral-400">Your journaling companion</p>
                         </div>
                     </div>
 
-                    {/* Access Level Indicator - click to change */}
+                    {/* Action buttons */}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setShowConsentModal(true)}
-                            className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs transition ${shareEntries
-                                ? "bg-emerald-500/20 text-emerald-400"
-                                : "bg-neutral-800 text-neutral-400"
+                            className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition ${shareEntries
+                                ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                : "border border-white/10 bg-white/5 text-neutral-400"
                                 }`}
                             title="Change access level"
                         >
-                            {shareEntries ? "📅" : "🔒"}
+                            {shareEntries ? "📖" : "🔒"}
                             <span className="hidden sm:inline">
-                                {shareEntries ? "With History" : "Metadata Only"}
+                                {shareEntries ? "Full Access" : "Limited"}
                             </span>
                         </button>
 
-                        {/* Finish Chat / New Chat button */}
                         <button
                             onClick={handleFinishChat}
-                            className="flex items-center gap-1 rounded-lg bg-orange-600/30 px-2 py-1.5 text-xs text-orange-300 transition hover:bg-orange-600/50"
-                            title="Finish this chat and start fresh"
+                            className="flex items-center gap-1.5 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-xs font-medium text-orange-300 transition hover:bg-orange-500/20"
+                            title="Finish chat and start fresh"
                         >
-                            ✅
-                            <span className="hidden sm:inline">Finish Chat</span>
+                            ✨
+                            <span className="hidden sm:inline">New Chat</span>
                         </button>
 
-                        {/* Load Previous button */}
                         <button
                             onClick={loadChatsList}
-                            className="flex items-center gap-1 rounded-lg bg-neutral-700 px-2 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-600"
+                            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-neutral-300 transition hover:bg-white/10"
                             title="View chat history"
                         >
                             📚
-                            <span className="hidden sm:inline">History</span>
                         </button>
 
                         {/* Usage indicator */}
-                        <div className="text-right text-xs text-neutral-400">
-                            <span className={usage.used >= usage.limit ? "text-rose-400" : ""}>
-                                {usage.used}/{usage.limit}
+                        <div className="ml-1 flex flex-col items-center rounded-xl border border-white/10 bg-white/5 px-3 py-1.5">
+                            <span className={`text-sm font-bold ${usage.used >= usage.limit ? "text-rose-400" : "text-white"}`}>
+                                {usage.used}
                             </span>
-                            <span className="block text-[10px]">today</span>
+                            <span className="text-[10px] text-neutral-500">/{usage.limit} today</span>
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 pb-20">
+            <div className="flex-1 overflow-y-auto p-4 pb-40 bg-gradient-to-b from-neutral-950 to-neutral-900">
                 <div className="mx-auto max-w-2xl space-y-4">
                     <AnimatePresence>
                         {messages.map((message) => (
@@ -770,16 +770,33 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                                 key={message.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                                className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
                             >
+                                {/* Avatar */}
+                                <div className={`flex-shrink-0 ${message.role === "user" ? "" : ""}`}>
+                                    {message.role === "assistant" ? (
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm shadow">
+                                            🧠
+                                        </div>
+                                    ) : (
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-700 text-sm">
+                                            👤
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Message bubble */}
                                 <div
-                                    className={`max-w-[85%] rounded-2xl px-4 py-3 ${message.role === "user"
-                                        ? "bg-indigo-600 text-white"
-                                        : "bg-neutral-800/80 text-neutral-100"
+                                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === "user"
+                                        ? "bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                                        : "border border-white/5 bg-neutral-800/90 text-neutral-100"
                                         }`}
                                 >
                                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                                         {message.content}
+                                    </p>
+                                    <p className={`mt-1 text-[10px] ${message.role === "user" ? "text-indigo-200/60" : "text-neutral-500"}`}>
+                                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
                             </motion.div>
@@ -790,20 +807,38 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="flex justify-start"
+                            className="flex gap-3"
                         >
-                            <div className="rounded-2xl bg-neutral-800/80 px-4 py-3">
-                                <div className="flex gap-1">
-                                    <span className="h-2 w-2 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: "0ms" }} />
-                                    <span className="h-2 w-2 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: "150ms" }} />
-                                    <span className="h-2 w-2 animate-bounce rounded-full bg-neutral-400" style={{ animationDelay: "300ms" }} />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm">
+                                🧠
+                            </div>
+                            <div className="rounded-2xl border border-white/5 bg-neutral-800/90 px-4 py-3">
+                                <div className="flex items-center gap-1.5">
+                                    <motion.span
+                                        animate={{ scale: [1, 1.2, 1] }}
+                                        transition={{ repeat: Infinity, duration: 0.6 }}
+                                        className="h-2 w-2 rounded-full bg-indigo-400"
+                                    />
+                                    <motion.span
+                                        animate={{ scale: [1, 1.2, 1] }}
+                                        transition={{ repeat: Infinity, duration: 0.6, delay: 0.15 }}
+                                        className="h-2 w-2 rounded-full bg-purple-400"
+                                    />
+                                    <motion.span
+                                        animate={{ scale: [1, 1.2, 1] }}
+                                        transition={{ repeat: Infinity, duration: 0.6, delay: 0.3 }}
+                                        className="h-2 w-2 rounded-full bg-fuchsia-400"
+                                    />
+                                    <span className="ml-2 text-xs text-neutral-500">Thinking...</span>
                                 </div>
                             </div>
                         </motion.div>
                     )}
 
                     {error && (
-                        <div className="text-center text-sm text-rose-400">{error}</div>
+                        <div className="mx-auto max-w-md rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-center text-sm text-rose-300">
+                            ⚠️ {error}
+                        </div>
                     )}
 
                     <div ref={messagesEndRef} />
@@ -812,13 +847,14 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
 
             {/* Suggested prompts */}
             {messages.length <= 1 && hasConsent && (
-                <div className="border-t border-white/10 bg-neutral-950/50 px-4 py-3">
+                <div className="border-t border-white/10 bg-gradient-to-t from-neutral-900 via-neutral-900/95 to-transparent px-4 py-4">
+                    <p className="mb-3 text-center text-xs text-neutral-500">Try one of these:</p>
                     <div className="mx-auto flex max-w-2xl flex-wrap justify-center gap-2">
                         {SUGGESTED_PROMPTS.map((prompt) => (
                             <button
                                 key={prompt.text}
                                 onClick={() => handlePromptClick(prompt.text)}
-                                className="rounded-full border border-white/10 bg-neutral-800/50 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-700"
+                                className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-500/20 hover:border-indigo-500/30"
                             >
                                 {prompt.emoji} {prompt.text}
                             </button>
@@ -828,17 +864,17 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
             )}
 
             {/* Input */}
-            <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-neutral-950 p-4 pb-6">
+            <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-neutral-950/95 backdrop-blur-xl p-4 pb-6">
                 <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         {/* Microphone Button */}
                         <button
                             type="button"
                             onClick={isRecording ? stopRecording : startRecording}
                             disabled={loading}
-                            className={`rounded-xl px-3 py-3 transition ${isRecording
-                                ? "bg-rose-600 text-white animate-pulse"
-                                : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                            className={`flex-shrink-0 rounded-xl p-3 transition ${isRecording
+                                ? "bg-rose-600 text-white animate-pulse shadow-lg shadow-rose-500/30"
+                                : "border border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white"
                                 } disabled:opacity-50`}
                             title={isRecording ? "Stop recording" : "Voice input"}
                         >
@@ -853,25 +889,28 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
                             )}
                         </button>
 
-                        <textarea
-                            ref={inputRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSubmit();
-                                }
-                            }}
-                            placeholder="Ask me anything about your journal..."
-                            rows={1}
-                            disabled={!hasConsent || usage.used >= usage.limit}
-                            className="flex-1 resize-none rounded-xl border border-white/10 bg-neutral-800 px-4 py-3 text-sm text-white placeholder-neutral-500 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
-                        />
+                        <div className="relative flex-1">
+                            <textarea
+                                ref={inputRef}
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSubmit();
+                                    }
+                                }}
+                                placeholder="Ask me anything about your journal..."
+                                rows={1}
+                                disabled={!hasConsent || usage.used >= usage.limit}
+                                className="w-full resize-none rounded-xl border border-white/10 bg-neutral-800/80 px-4 py-3 pr-12 text-sm text-white placeholder-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 disabled:opacity-50"
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             disabled={!input.trim() || loading || !hasConsent}
-                            className="rounded-xl bg-indigo-600 px-4 py-3 text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                            className="flex-shrink-0 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 p-3 text-white shadow-lg shadow-indigo-500/30 transition hover:shadow-indigo-500/50 disabled:opacity-50 disabled:shadow-none"
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
