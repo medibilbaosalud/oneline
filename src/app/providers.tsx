@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { TourProvider } from "@/components/InteractiveTour";
 
 export default function Providers({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <TourProvider>{children}</TourProvider>;
 }
