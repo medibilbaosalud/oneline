@@ -10,6 +10,7 @@ import { getActivityHistory, getOrCreateStreak } from "@/lib/streakService";
 import MoodTrends from "@/components/insights/MoodTrends";
 import WritingPatterns from "@/components/insights/WritingPatterns";
 import InsightsOnboarding from "@/components/InsightsOnboarding";
+import { useVisitor } from "@/components/VisitorMode";
 
 type MoodData = { date: string; mood: number };
 type ActivityData = { date: string; count: number };
@@ -28,7 +29,34 @@ const COMPANIONS = [
     { min: 120, emoji: "🐉", name: "Nova the Dragonfly" },
 ];
 
+// Demo data for visitor mode
+const generateDemoData = () => {
+    const today = new Date();
+    const demoMoods: MoodData[] = [];
+    const demoActivity: ActivityData[] = [];
+
+    for (let i = 13; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().slice(0, 10);
+        demoMoods.push({ date: dateStr, mood: Math.floor(Math.random() * 2) + 3 }); // 3-4 range
+        demoActivity.push({ date: dateStr, count: i % 3 === 0 ? 0 : 1 });
+    }
+
+    return {
+        moods: demoMoods,
+        activities: demoActivity,
+        streak: {
+            currentStreak: 7,
+            longestStreak: 14,
+            totalEntries: 42,
+            fireLevel: 2,
+        }
+    };
+};
+
 export default function InsightsPage() {
+    const { isVisitor } = useVisitor();
     const [loading, setLoading] = useState(true);
     const [moodData, setMoodData] = useState<MoodData[]>([]);
     const [activityData, setActivityData] = useState<ActivityData[]>([]);
@@ -37,6 +65,16 @@ export default function InsightsPage() {
 
     useEffect(() => {
         async function loadData() {
+            // In visitor mode, use demo data
+            if (isVisitor) {
+                const demo = generateDemoData();
+                setMoodData(demo.moods);
+                setActivityData(demo.activities);
+                setStreakData(demo.streak);
+                setLoading(false);
+                return;
+            }
+
             if (!isSupabaseConfigured()) {
                 setError("Please configure Supabase to view insights");
                 setLoading(false);
@@ -85,7 +123,7 @@ export default function InsightsPage() {
         }
 
         loadData();
-    }, []);
+    }, [isVisitor]);
 
     if (loading) {
         return (

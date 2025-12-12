@@ -1,24 +1,19 @@
 // src/app/history/page.tsx
 // SECURITY: Server delivers ciphertext metadata only; decryption happens inside the VaultGate client flow.
+"use client";
 
-import { redirect } from 'next/navigation';
-
-import VaultGate from '@/components/VaultGate';
-import HistoryClient from './HistoryClient';
-import SummaryHistory from './SummaryHistory';
-import { supabaseServer } from '@/lib/supabaseServer';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import VaultGate from "@/components/VaultGate";
+import HistoryClient from "./HistoryClient";
+import SummaryHistory from "./SummaryHistory";
+import { supabaseBrowser, isSupabaseConfigured } from "@/lib/supabaseBrowser";
+import { useVisitor } from "@/components/VisitorMode";
 import {
   ENTRY_LIMIT_BASE,
   coerceSummaryPreferences,
   entryLimitFor,
-} from '@/lib/summaryPreferences';
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-export const metadata = {
-  title: 'History — OneLine',
-};
+} from "@/lib/summaryPreferences";
 
 type EntryPayload = {
   id: string;
@@ -29,37 +24,99 @@ type EntryPayload = {
   content?: string | null;
 };
 
-export default async function HistoryPage() {
-  const sb = await supabaseServer();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
+// Demo entries for visitor mode
+const DEMO_ENTRIES: EntryPayload[] = [
+  {
+    id: "demo-1",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    day: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString().slice(0, 10),
+    content_cipher: null,
+    iv: null,
+    content: "Had a productive day at work. Finally solved that bug that's been bothering me for days. Made time for a quick walk in the evening - the sunset was beautiful.",
+  },
+  {
+    id: "demo-2",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+    day: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString().slice(0, 10),
+    content_cipher: null,
+    iv: null,
+    content: "Feeling grateful for the small things today. Coffee with an old friend, a good book, and some quiet time to reflect.",
+  },
+  {
+    id: "demo-3",
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+    day: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString().slice(0, 10),
+    content_cipher: null,
+    iv: null,
+    content: "Challenged myself to step out of my comfort zone. It wasn't easy, but I learned something new about myself.",
+  },
+];
 
-  if (!user) {
-    redirect('/auth?next=/history');
-  }
+export default function HistoryPage() {
+  const router = useRouter();
+  const { isVisitor } = useVisitor();
+  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<EntryPayload[]>([]);
+  const [entryLimit, setEntryLimit] = useState(ENTRY_LIMIT_BASE);
 
-  const { data } = await sb
-    .from('journal')
-    .select('id, created_at, day, content_cipher, iv, content')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  useEffect(() => {
+    async function loadData() {
+      // In visitor mode, use demo data
+      if (isVisitor) {
+        setEntries(DEMO_ENTRIES);
+        setLoading(false);
+        return;
+      }
 
-  const entries: EntryPayload[] = data ?? [];
+      if (!isSupabaseConfigured()) {
+        router.push("/auth?next=/history");
+        return;
+      }
 
-  let entryLimit = ENTRY_LIMIT_BASE;
-  try {
-    const { data: settingsRow, error } = await sb
-      .from('user_vaults')
-      .select('summary_preferences')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (!error && settingsRow?.summary_preferences) {
-      const prefs = coerceSummaryPreferences(settingsRow.summary_preferences);
-      entryLimit = entryLimitFor(!!prefs.extendedGuidance);
+      try {
+        const supabase = supabaseBrowser();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+          router.push("/auth?next=/history");
+          return;
+        }
+
+        const { data } = await supabase
+          .from("journal")
+          .select("id, created_at, day, content_cipher, iv, content")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        setEntries(data ?? []);
+
+        // Load entry limit
+        const { data: settingsRow, error } = await supabase
+          .from("user_vaults")
+          .select("summary_preferences")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (!error && settingsRow?.summary_preferences) {
+          const prefs = coerceSummaryPreferences(settingsRow.summary_preferences);
+          setEntryLimit(entryLimitFor(!!prefs.extendedGuidance));
+        }
+      } catch (error) {
+        console.error("[history] Error loading data:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-  } catch (error) {
-    console.error('[history] entry_limit_fallback', error);
+
+    loadData();
+  }, [isVisitor, router]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-2 border-indigo-500 border-t-transparent rounded-full" />
+      </main>
+    );
   }
 
   return (
@@ -72,12 +129,17 @@ export default async function HistoryPage() {
               📜
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest text-indigo-400">Your Archive</p>
+              <p className="text-xs uppercase tracking-widest text-indigo-400">
+                {isVisitor ? "Demo Archive" : "Your Archive"}
+              </p>
               <h1 className="text-3xl font-bold text-white">History</h1>
             </div>
           </div>
           <p className="text-neutral-400 max-w-xl">
-            Your encrypted journal entries and generated stories. Everything stays protected by your vault key.
+            {isVisitor
+              ? "This is a demo of how your history would look. Sign up to save your own entries."
+              : "Your encrypted journal entries and generated stories. Everything stays protected by your vault key."
+            }
           </p>
         </header>
 
@@ -93,7 +155,7 @@ export default async function HistoryPage() {
           </div>
           <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4 text-center">
             <p className="text-3xl font-bold text-white">
-              {entries.length > 0 ? new Date(entries[entries.length - 1].created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
+              {entries.length > 0 ? new Date(entries[entries.length - 1].created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—"}
             </p>
             <p className="text-xs text-neutral-500">First entry</p>
           </div>
@@ -139,7 +201,7 @@ export default async function HistoryPage() {
               )}
             </section>
 
-            <SummaryHistory />
+            {!isVisitor && <SummaryHistory />}
           </div>
         </VaultGate>
       </div>

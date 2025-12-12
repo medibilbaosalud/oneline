@@ -1,15 +1,14 @@
 // src/app/summaries/page.tsx
 // SECURITY: Story generation requires an unlocked vault to decrypt entries client-side.
+"use client";
 
-import { redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabaseServer";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import VaultGate from "@/components/VaultGate";
 import StoryGenerator from "./StoryGenerator";
 import FeedbackForm from "@/components/FeedbackForm";
+import { useVisitor } from "@/components/VisitorMode";
+import { supabaseBrowser, isSupabaseConfigured } from "@/lib/supabaseBrowser";
 import {
   DEFAULT_SUMMARY_PREFERENCES,
   coerceSummaryPreferences,
@@ -22,15 +21,6 @@ import {
 
 const TABLE = "user_vaults";
 const MIN_WEEKLY_ENTRIES = 4;
-
-type SearchParams = {
-  from?: string;
-  to?: string;
-};
-
-function isIsoDate(value: string | undefined): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
 
 function humanizePeriod(period: SummaryFrequency) {
   return period.charAt(0).toUpperCase() + period.slice(1);
@@ -48,83 +38,137 @@ function formatWindow(window?: { start: string; end: string }) {
   }
 }
 
-export default async function SummariesPage({ searchParams }: { searchParams?: SearchParams }) {
-  const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+type SummaryReminder = {
+  period: SummaryFrequency;
+  window?: { start: string; end: string };
+  due: boolean;
+  minimumMet?: boolean;
+  minimumRequired?: number;
+  entryCount?: number;
+};
 
-  if (!user) {
-    redirect("/auth?next=/summaries");
-  }
+export default function SummariesPage() {
+  const router = useRouter();
+  const { isVisitor, showSignupPrompt } = useVisitor();
+  const [loading, setLoading] = useState(true);
+  const [storyPreferences, setStoryPreferences] = useState<SummaryPreferences>({ ...DEFAULT_SUMMARY_PREFERENCES });
+  const [reminder, setReminder] = useState<SummaryReminder>({
+    period: "weekly",
+    due: false,
+  });
 
-  let frequency: SummaryFrequency = "weekly";
-  let storyPreferences: SummaryPreferences = { ...DEFAULT_SUMMARY_PREFERENCES };
-  let reminder = computeSummaryReminder(frequency, null);
-
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!error && data) {
-    const frequencySource = data.digest_frequency ?? data.frequency;
-    frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
-    const basePreferences = data.summary_preferences
-      ? coerceSummaryPreferences(data.summary_preferences)
-      : { ...DEFAULT_SUMMARY_PREFERENCES };
-    storyPreferences = withSummaryLength(
-      basePreferences,
-      data.story_length ?? basePreferences.length,
-    );
-    reminder = computeSummaryReminder(frequency, data.last_summary_at ?? null);
-  }
-
-  if (reminder.period === "weekly" && reminder.window) {
-    const { data: rows, error: journalError } = await supabase
-      .from("journal")
-      .select("day, created_at")
-      .eq("user_id", user.id)
-      .gte("day", reminder.window.start)
-      .lte("day", reminder.window.end)
-      .limit(50);
-
-    if (!journalError && rows) {
-      const uniqueDays = new Set<string>();
-      for (const row of rows) {
-        const day = row.day ?? row.created_at?.slice(0, 10);
-        if (day) uniqueDays.add(day);
+  useEffect(() => {
+    async function loadData() {
+      // In visitor mode, use demo settings
+      if (isVisitor) {
+        setReminder({
+          period: "weekly",
+          window: {
+            start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+            end: new Date().toISOString().slice(0, 10),
+          },
+          due: true,
+          minimumMet: true,
+          entryCount: 5,
+          minimumRequired: MIN_WEEKLY_ENTRIES,
+        });
+        setLoading(false);
+        return;
       }
 
-      const dayCount = uniqueDays.size;
-      const minimumMet = dayCount >= MIN_WEEKLY_ENTRIES;
-      reminder = {
-        ...reminder,
-        due: reminder.due && minimumMet,
-        entryCount: dayCount,
-        minimumRequired: MIN_WEEKLY_ENTRIES,
-        minimumMet,
-      };
+      if (!isSupabaseConfigured()) {
+        router.push("/auth?next=/summaries");
+        return;
+      }
+
+      try {
+        const supabase = supabaseBrowser();
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+          router.push("/auth?next=/summaries");
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from(TABLE)
+          .select("frequency, digest_frequency, story_length, summary_preferences, last_summary_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        let frequency: SummaryFrequency = "weekly";
+        let prefs: SummaryPreferences = { ...DEFAULT_SUMMARY_PREFERENCES };
+        let reminderCalc = computeSummaryReminder(frequency, null);
+
+        if (!error && data) {
+          const frequencySource = data.digest_frequency ?? data.frequency;
+          frequency = isSummaryFrequency(frequencySource) ? frequencySource : "weekly";
+          const basePreferences = data.summary_preferences
+            ? coerceSummaryPreferences(data.summary_preferences)
+            : { ...DEFAULT_SUMMARY_PREFERENCES };
+          prefs = withSummaryLength(
+            basePreferences,
+            data.story_length ?? basePreferences.length,
+          );
+          reminderCalc = computeSummaryReminder(frequency, data.last_summary_at ?? null);
+        }
+
+        setStoryPreferences(prefs);
+
+        // Check journal entries for weekly minimum
+        if (reminderCalc.period === "weekly" && reminderCalc.window) {
+          const { data: rows } = await supabase
+            .from("journal")
+            .select("day, created_at")
+            .eq("user_id", user.id)
+            .gte("day", reminderCalc.window.start)
+            .lte("day", reminderCalc.window.end)
+            .limit(50);
+
+          if (rows) {
+            const uniqueDays = new Set<string>();
+            for (const row of rows) {
+              const day = row.day ?? row.created_at?.slice(0, 10);
+              if (day) uniqueDays.add(day);
+            }
+
+            const dayCount = uniqueDays.size;
+            const minimumMet = dayCount >= MIN_WEEKLY_ENTRIES;
+            setReminder({
+              ...reminderCalc,
+              due: reminderCalc.due && minimumMet,
+              entryCount: dayCount,
+              minimumRequired: MIN_WEEKLY_ENTRIES,
+              minimumMet,
+            });
+          } else {
+            setReminder(reminderCalc);
+          }
+        } else {
+          setReminder(reminderCalc);
+        }
+      } catch (error) {
+        console.error("[summaries] Error loading data:", error);
+      } finally {
+        setLoading(false);
+      }
     }
+
+    loadData();
+  }, [isVisitor, router]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-2 border-purple-500 border-t-transparent rounded-full" />
+      </main>
+    );
   }
-
-  const fromParam = searchParams?.from;
-  const toParam = searchParams?.to;
-  const hasCustomRange = isIsoDate(fromParam) && isIsoDate(toParam);
-  const initialRange = hasCustomRange
-    ? { from: fromParam!, to: toParam! }
-    : reminder.due && reminder.window
-      ? { from: reminder.window.start, to: reminder.window.end }
-      : undefined;
-
-  const initialPreset = initialRange ? "custom" : undefined;
 
   const minimumRequired = reminder.minimumRequired ?? MIN_WEEKLY_ENTRIES;
   const entryCount = reminder.entryCount ?? 0;
   const daysRemaining = Math.max(0, minimumRequired - entryCount);
   const entryLabel = entryCount === 1 ? "day" : "days";
-  const remainingLabel = daysRemaining === 1 ? "day" : "days";
 
   return (
     <main className="min-h-screen bg-neutral-950">
@@ -145,12 +189,17 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
               </div>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest text-purple-400">AI Stories</p>
+              <p className="text-xs uppercase tracking-widest text-purple-400">
+                {isVisitor ? "Demo - AI Stories" : "AI Stories"}
+              </p>
               <h1 className="text-4xl font-bold text-white">Summaries</h1>
             </div>
           </div>
           <p className="text-lg text-neutral-300 max-w-2xl">
-            Transform your journal entries into personalized narratives. Your stories, your voice, your memories.
+            {isVisitor
+              ? "This is a demo of how AI-generated stories work. Sign up to create stories from your own journal entries."
+              : "Transform your journal entries into personalized narratives. Your stories, your voice, your memories."
+            }
           </p>
         </header>
 
@@ -201,7 +250,7 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
           </div>
         </div>
 
-        {/* Banners */}
+        {/* Minimum not met banner */}
         {reminder.minimumMet === false && (
           <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-transparent p-5">
             <div className="flex items-start gap-4">
@@ -227,13 +276,29 @@ export default async function SummariesPage({ searchParams }: { searchParams?: S
 
         {/* Story Generator */}
         <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-6">
-          <VaultGate>
-            <StoryGenerator
-              initialOptions={storyPreferences}
-              initialPreset={initialPreset}
-              initialRange={initialRange}
-            />
-          </VaultGate>
+          {isVisitor ? (
+            <div className="text-center py-8">
+              <span className="text-5xl">🔐</span>
+              <h3 className="mt-4 text-xl font-bold text-white">Sign up to generate stories</h3>
+              <p className="mt-2 text-neutral-400 max-w-md mx-auto">
+                Create an account to write journal entries and generate AI-powered stories from your own experiences.
+              </p>
+              <button
+                onClick={showSignupPrompt}
+                className="mt-6 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 px-8 py-3 font-semibold text-white shadow-lg hover:shadow-purple-500/25 transition"
+              >
+                Create Free Account
+              </button>
+            </div>
+          ) : (
+            <VaultGate>
+              <StoryGenerator
+                initialOptions={storyPreferences}
+                initialPreset={reminder.due && reminder.window ? "custom" : undefined}
+                initialRange={reminder.due && reminder.window ? { from: reminder.window.start, to: reminder.window.end } : undefined}
+              />
+            </VaultGate>
+          )}
         </div>
 
         {/* Feedback - Collapsible */}

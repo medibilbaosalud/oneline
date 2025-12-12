@@ -8,6 +8,7 @@ import { useVault } from "@/hooks/useVault";
 import { decryptText } from "@/lib/crypto";
 import VaultGate from "@/components/VaultGate";
 import CoachOnboarding from "@/components/CoachOnboarding";
+import { useVisitor } from "@/components/VisitorMode";
 
 type Message = {
     id: string;
@@ -28,6 +29,7 @@ const DAILY_LIMIT = 300;
 
 export default function CoachPage() {
     const { dataKey } = useVault(); // For decrypting entries
+    const { isVisitor, showSignupPrompt } = useVisitor();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -136,6 +138,20 @@ export default function CoachPage() {
 
     useEffect(() => {
         async function init() {
+            // Visitor mode initialization
+            if (isVisitor) {
+                setHasConsent(true); // Mock consent for demo UI
+                setShareEntries(false);
+                setMessages([{
+                    id: 'welcome-visitor',
+                    role: 'assistant',
+                    content: "Hi! I'm your AI Journal Coach. I can help you reflect on your day, find patterns in your mood, or just chat.\n\nSince this is a demo, I can't read your journal entries yet. Sign up to unlock my full potential!",
+                    timestamp: new Date()
+                }]);
+                setInitializing(false);
+                return;
+            }
+
             const supabase = supabaseBrowser();
             const { data: { user } } = await supabase.auth.getUser();
 
@@ -171,7 +187,7 @@ export default function CoachPage() {
             setInitializing(false);
         }
         init();
-    }, [loadChatHistory]);
+    }, [loadChatHistory, isVisitor]);
 
     function showWelcome() {
         // Clear ALL messages and show fresh welcome
@@ -379,6 +395,13 @@ I can see your journaling patterns and mood data to help you reflect. Ask me any
 
     async function handleSubmit(e?: React.FormEvent) {
         e?.preventDefault();
+
+        // In visitor mode, prompt signup instead of chatting
+        if (isVisitor) {
+            showSignupPrompt();
+            return;
+        }
+
         if (!input.trim() || loading || !hasConsent) return;
 
         if (usage.used >= usage.limit) {
