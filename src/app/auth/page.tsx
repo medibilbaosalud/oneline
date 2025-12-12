@@ -34,22 +34,22 @@ function AuthPageInner() {
   useEffect(() => {
     const sb = supabaseBrowser();
 
-    // Check initial session
-    sb.auth.getSession().then((result: any) => {
-      if (result.data?.session) {
-        window.location.href = nextPath;
+    // Listen for changes
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event: string, session: any) => {
+      // If we are already logged in but landed on auth page with a 'next' param,
+      // it means the server likely redirected us here (cookie missing/invalid).
+      // exploring 'INITIAL_SESSION' in this case would cause an infinite loop.
+      if (event === 'INITIAL_SESSION' && nextParam) {
+        return;
       }
-    });
 
-    // Listen for changes (e.g. login success)
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_event: any, session: any) => {
       if (session) {
         window.location.href = nextPath;
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [nextPath]);
+  }, [nextPath, nextParam]);
 
   const emailHint = useMemo(
     () => (mode === 'signup' ? getEmailHint(email) : null),
