@@ -604,15 +604,20 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
             )}
           </AnimatePresence>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
-            <section className="flex min-h-[420px] flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-5 shadow-sm relative overflow-hidden">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Main Writing Area - Full Width on Mobile, 2/3 on Desktop */}
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            {/* Entry Section - Given more prominence */}
+            <section className="flex flex-col rounded-2xl border border-white/10 bg-neutral-900/60 p-6 shadow-lg relative overflow-hidden">
+              {/* Gradient accent */}
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+
+              {/* Header with date controls */}
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Entry for</p>
-                  <h2 className="mt-1 text-xl font-semibold text-white">{displayDate}</h2>
-                  <p className="text-xs text-neutral-400">One concise line is enough. Unlock to save securely.</p>
+                  <h2 className="text-2xl font-bold text-white">{displayDate}</h2>
+                  <p className="mt-1 text-sm text-neutral-400">What happened today? Keep it brief.</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   <input
                     type="date"
                     max={todayString}
@@ -624,65 +629,61 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                         setSelectedDay(capped);
                       }
                     }}
-                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30"
+                    className="rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-sm text-white outline-none focus:border-indigo-500"
                   />
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
+                  <button
                     type="button"
                     onClick={() => setSelectedDay(todayString)}
                     disabled={isToday}
-                    className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${isToday ? 'bg-indigo-500/20 text-indigo-300' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'}`}
                   >
                     Today
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
+                  </button>
+                  <button
                     type="button"
                     onClick={() => setSelectedDay(yesterdayString)}
                     disabled={selectedDay === yesterdayString}
-                    className="rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
+                    className="rounded-lg bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-300 transition hover:bg-neutral-700 disabled:opacity-50"
                   >
                     Yesterday
-                  </motion.button>
+                  </button>
                 </div>
               </div>
-              <p className="mb-2 text-sm text-neutral-400">Keep it brief — you have {entryLimit} characters.</p>
 
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value.slice(0, entryLimit))}
-                maxLength={entryLimit}
-                disabled={legacyReadOnly || saving || loadingEntry}
-                placeholder="One line that captures your day…"
-                className="min-h-[220px] w-full flex-1 resize-none rounded-xl border border-white/5 bg-black/20 px-4 py-3 text-base leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 disabled:cursor-not-allowed disabled:opacity-70"
-              />
+              {/* Textarea - Made larger and more prominent */}
+              <div className="relative flex-1">
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value.slice(0, entryLimit))}
+                  maxLength={entryLimit}
+                  disabled={legacyReadOnly || saving || loadingEntry}
+                  placeholder="One line that captures your day…"
+                  className="min-h-[280px] w-full resize-none rounded-xl border border-white/10 bg-black/30 p-5 text-lg leading-relaxed text-zinc-100 outline-none placeholder:text-neutral-600 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/40 disabled:cursor-not-allowed disabled:opacity-70"
+                />
+                {/* Character counter - Floating */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <div className="h-1.5 w-24 overflow-hidden rounded-full bg-neutral-800">
+                    <motion.div
+                      className={`h-full rounded-full ${text.length >= entryLimit ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(text.length / entryLimit) * 100}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-500'}`}>
+                    {text.length}/{entryLimit}
+                  </span>
+                </div>
+              </div>
 
               {legacyReadOnly && (
-                <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-                  Legacy entry detected. Press “Save entry” once to encrypt it with your new vault.
+                <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                  Legacy entry detected. Press &quot;Save entry&quot; once to encrypt it with your vault.
                 </p>
               )}
 
-              <div className="mt-6 flex items-center justify-between gap-3">
-                {/* Left side: character count */}
-                <span className={`text-sm ${text.length === entryLimit ? 'text-rose-400' : 'text-neutral-400'}`}>
-                  {text.length}/{entryLimit}
-                </span>
-
-                {/* Right side: actions - always horizontal */}
+              {/* Actions Bar */}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <AnimatePresence>
-                    {msg && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="text-sm text-emerald-400"
-                      >
-                        {msg}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
                   <SpeechToText
                     onTranscript={(transcript) => {
                       const newText = text ? `${text} ${transcript}` : transcript;
@@ -690,133 +691,145 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
                     }}
                     disabled={saving || loadingEntry || text.length >= entryLimit}
                   />
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
+                  <button
                     type="button"
                     onClick={() => {
                       setText('');
                       setLegacyReadOnly(false);
                     }}
-                    disabled={saving || loadingEntry}
-                    className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-200 transition hover:bg-neutral-700 disabled:opacity-50"
+                    disabled={saving || loadingEntry || !text}
+                    className="rounded-lg bg-neutral-800 px-3 py-2 text-sm text-zinc-300 transition hover:bg-neutral-700 disabled:opacity-40"
                   >
-                    Clear Text
-                  </motion.button>
+                    Clear
+                  </button>
+                </div>
 
-                  {/* Mood Selector - inline */}
+                <div className="flex items-center gap-3">
+                  {/* Mood Selector - Inline */}
                   {isToday && (
-                    <div className="hidden sm:flex items-center gap-2 rounded-xl bg-neutral-800/50 px-3 py-1.5">
+                    <div className="flex items-center gap-2 rounded-xl bg-neutral-800/60 px-3 py-2">
                       <span className="text-xs text-neutral-500">Mood:</span>
                       <MoodSelector value={selectedMood} onChange={setSelectedMood} compact />
                     </div>
                   )}
 
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    type="button"
-                    onClick={save}
-                    disabled={!text.trim() || saving || loadingEntry}
-                    className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-400 disabled:opacity-40"
-                  >
-                    {saving ? 'Saving…' : 'Save entry'}
-                  </motion.button>
+                  {/* Save Button with feedback */}
+                  <div className="flex items-center gap-2">
+                    <AnimatePresence>
+                      {msg && (
+                        <motion.span
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="text-sm font-medium text-emerald-400"
+                        >
+                          {msg}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      type="button"
+                      onClick={save}
+                      disabled={!text.trim() || saving || loadingEntry}
+                      className="rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:shadow-indigo-500/40 disabled:opacity-40 disabled:shadow-none"
+                    >
+                      {saving ? 'Saving…' : 'Save entry'}
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Streak Sidebar - More Visual */}
+            <aside className="space-y-4">
+              {/* Streak Hero Card */}
+              <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-red-500/5 to-transparent p-5">
+                <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-orange-500/20 blur-2xl" />
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs uppercase tracking-wider text-orange-300">Current Streak</span>
+                    <motion.span
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="text-2xl"
+                    >
+                      {(streak?.current ?? 0) > 0 ? '🔥' : '💨'}
+                    </motion.span>
+                  </div>
+                  <p className="mt-2 text-4xl font-bold text-white">{streak?.current ?? 0} <span className="text-lg font-normal text-neutral-400">days</span></p>
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-orange-500 to-yellow-400"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPercent}%` }}
+                      transition={{ duration: 1 }}
+                    />
+                  </div>
+                  {upcomingCompanion && (
+                    <p className="mt-2 text-xs text-neutral-400">
+                      {upcomingCompanion.emoji} {upcomingCompanion.name} unlocks at {upcomingCompanion.min} days
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Mood selector on mobile - separate row */}
-              {isToday && (
-                <div className="mt-3 flex sm:hidden items-center gap-2 rounded-xl bg-neutral-800/50 px-3 py-2">
-                  <span className="text-xs text-neutral-500">Mood:</span>
-                  <MoodSelector value={selectedMood} onChange={setSelectedMood} compact />
-                </div>
-              )}
-            </section>
-
-            <aside className="rounded-2xl border border-white/10 bg-neutral-900/40 p-5 shadow-sm">
-              <header className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">Momentum</p>
-                  <h2 className="mt-2 text-lg font-semibold text-white">Your streak & companion</h2>
-                </div>
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-medium text-neutral-300">
-                  Auto-synced
-                </span>
-              </header>
-
-              <div className="mt-6 space-y-4 text-sm text-neutral-300">
+              {/* Companion Card */}
+              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-4">
                 <div className="flex items-center gap-3">
-                  <motion.span
+                  <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/40 text-2xl"
+                    transition={{ type: 'spring', stiffness: 200 }}
+                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/20 text-2xl"
                   >
                     {currentCompanion.emoji}
-                  </motion.span>
+                  </motion.div>
                   <div>
-                    <p className="text-base font-semibold text-white">{currentCompanion.name}</p>
-                    <p className="text-neutral-400">{currentCompanion.blurb}</p>
+                    <p className="font-semibold text-white">{currentCompanion.name}</p>
+                    <p className="text-xs text-neutral-400">{currentCompanion.blurb}</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-                  <p className="text-xs uppercase tracking-wider text-neutral-500">Current streak</p>
-                  <p className="mt-1 text-3xl font-semibold text-white">{streak?.current ?? 0} days</p>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-800">
-                    <motion.div
-                      className="h-full rounded-full bg-indigo-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPercent}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                    />
-                  </div>
-                  {upcomingCompanion ? (
-                    <p className="mt-3 text-xs text-neutral-400">
-                      {upcomingCompanion.emoji} Unlock {upcomingCompanion.name} at {upcomingCompanion.min} days.
-                    </p>
-                  ) : (
-                    <p className="mt-3 text-xs text-neutral-400">Keep the ritual alive — you’ve met every companion we have.</p>
-                  )}
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4 text-center">
+                  <p className="text-2xl font-bold text-white">{streak?.longest ?? 0}</p>
+                  <p className="text-xs text-neutral-500">Best streak</p>
                 </div>
-
-                <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-                  <p className="text-xs uppercase tracking-wider text-neutral-500">Longest run</p>
-                  <p className="mt-1 text-2xl font-semibold text-white">{streak?.longest ?? 0} days</p>
-                  <p className="mt-2 text-xs text-neutral-400">
-                    Your encrypted vault ensures only you can read your reflections.
-                  </p>
-                </div>
-
-                <div className="mt-6 border-t border-white/10 pt-4">
-                  <p className="mt-2 text-xs text-neutral-400">
-                    Your encrypted vault ensures only you can read your reflections.
-                  </p>
+                <div className="rounded-xl border border-white/10 bg-neutral-900/60 p-4 text-center">
+                  <p className="text-2xl font-bold text-white">🔒</p>
+                  <p className="text-xs text-neutral-500">E2E Encrypted</p>
                 </div>
               </div>
             </aside>
           </div>
 
-          <div className="mt-8">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-indigo-200">Feedback</p>
-                <h2 className="text-lg font-semibold text-white">Help us keep improving OneLine</h2>
-                <p className="text-sm text-zinc-300">
-                  Spot a glitch or have a suggestion? Send it from here—no login required.
-                </p>
-              </div>
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-100">
-                Seen by the team
-              </span>
-            </div>
-
-            <FeedbackForm defaultPage="/today" className="border-white/15 bg-neutral-900/60" />
-          </div>
 
           {/* Streak Dashboard */}
           <div className="mt-8">
             <StreakDashboard />
           </div>
+
+          {/* Feedback Section - Collapsible */}
+          <details className="group mt-8">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl border border-white/10 bg-neutral-900/60 px-5 py-4 transition hover:bg-neutral-900 [&::-webkit-details-marker]:hidden">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">💬</span>
+                <div>
+                  <p className="font-medium text-white">Send feedback</p>
+                  <p className="text-xs text-neutral-400">Found a bug or have a suggestion?</p>
+                </div>
+              </div>
+              <svg className="h-5 w-5 text-neutral-400 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="mt-3">
+              <FeedbackForm defaultPage="/today" className="border-white/10 bg-neutral-900/40" />
+            </div>
+          </details>
         </div>
       </VaultGate>
 
