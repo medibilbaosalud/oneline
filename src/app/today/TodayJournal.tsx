@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { RestartTourButton } from '@/components/InteractiveTour';
 import VaultGate from '@/components/VaultGate';
 import { useVault } from '@/hooks/useVault';
+import { useVisitor } from '@/components/VisitorMode';
 import { encryptText, decryptText } from '@/lib/crypto';
 import { ENTRY_LIMIT_BASE } from '@/lib/summaryPreferences';
 import { useEntryLimits } from '@/hooks/useEntryLimits';
@@ -89,6 +90,7 @@ type TodayClientProps = {
 export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: TodayClientProps) {
   const { entryLimit } = useEntryLimits({ entryLimit: initialEntryLimit });
   const { dataKey } = useVault();
+  const { isVisitor, showSignupPrompt } = useVisitor();
   const router = useRouter();
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
@@ -365,6 +367,11 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
   }, []);
 
   async function save() {
+    // In visitor mode, prompt signup instead of saving
+    if (isVisitor) {
+      showSignupPrompt();
+      return;
+    }
     if (needLogin) {
       setMsg('Please sign in to save.');
       return;
@@ -491,7 +498,8 @@ export default function TodayJournal({ initialEntryLimit = ENTRY_LIMIT_BASE }: T
     );
   }
 
-  if (needLogin || !authed) {
+  // In visitor mode, skip auth blocking and show demo UI
+  if ((needLogin || !authed) && !isVisitor) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}

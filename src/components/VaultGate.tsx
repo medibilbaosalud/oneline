@@ -5,11 +5,18 @@
 
 import { useEffect, useState } from 'react';
 import { useVault } from '@/hooks/useVault';
+import { useVisitor } from '@/components/VisitorMode';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function VaultGate({ children }: { children: React.ReactNode }) {
+type VaultGateProps = {
+  children: React.ReactNode;
+  demoContent?: React.ReactNode; // Optional demo content for visitor mode
+};
+
+export default function VaultGate({ children, demoContent }: VaultGateProps) {
   const { dataKey, status, loading, createWithPassphrase, unlockWithPassphrase, vaultError, passphraseStored } = useVault();
+  const { isVisitor, showSignupPrompt } = useVisitor();
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [remember, setRemember] = useState(true);
@@ -19,6 +26,15 @@ export default function VaultGate({ children }: { children: React.ReactNode }) {
   }, [passphraseStored]);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // In visitor mode, show demo content or default demo UI
+  if (isVisitor) {
+    if (demoContent) {
+      return <>{demoContent}</>;
+    }
+    // Show children but with save disabled (handled by parent)
+    return <>{children}</>;
+  }
 
   if (loading || status === 'loading') {
     return (

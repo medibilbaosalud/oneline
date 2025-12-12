@@ -201,11 +201,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // Check if tour should auto-start
+    // Check if tour should auto-start - ONLY on /today page when ready
     useEffect(() => {
         if (hasChecked) return;
 
-        // Need either dataKey (authenticated) or visitor mode to show tour
+        // Only auto-start tour on /today page
+        if (pathname !== "/today") return;
+
+        // Need either dataKey (authenticated + vault unlocked) or visitor mode to show tour
         if (!dataKey && !isVisitorMode) return;
 
         async function checkTourStatus() {
@@ -253,7 +256,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         }
 
         checkTourStatus();
-    }, [dataKey, hasChecked, isVisitorMode]);
+    }, [dataKey, hasChecked, isVisitorMode, pathname]);
 
     // Navigate to step's page if needed
     useEffect(() => {
